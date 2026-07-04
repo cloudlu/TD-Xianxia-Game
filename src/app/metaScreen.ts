@@ -1,9 +1,10 @@
 // 修炼界面（宗门）：法宝阁/天命阶/天赋/皮肤/充值 5 标签
 import {
   TOWERS, EQUIPMENT, EQUIPMENT_IDS, VIP_LEVELS, VIP_MAX_LEVEL,
-  SKINS, SKIN_IDS, TALENTS, TALENT_IDS, talentCost, SLOTS,
+  SKINS, SKIN_IDS, TALENTS, TALENT_IDS, talentCost, SLOTS, resolveTitle, completedChapters,
 } from '../data/config';
 import type { EquipSlot } from '../types';
+import { registry } from '../data/Registry';
 import { app, iap, persist } from './state';
 import {
   buyEquipment, equipItem, grantJade, upgradeVip, buySkin, equipSkin, upgradeTalent,
@@ -22,8 +23,13 @@ function updateBalance(): void {
 }
 
 export function renderMeta(): void {
+  const title = resolveTitle(completedChapters(registry.manifest(), app.progression));
+  const titleLine = title.nextTitle
+    ? `当前头衔：<b style="color:#ffd93d">${title.title}</b>　·　下一阶：<b>${title.nextTitle}</b>（再通关 1 章即可晋升）`
+    : `当前头衔：<b style="color:#ffd93d">${title.title}</b>　·　已达宗门至高`;
   metaCard.innerHTML = `
     <h2>宗 门 修 真</h2>
+    <div class="meta-balance">${titleLine}</div>
     <div class="meta-tabs">
       <button data-tab="法宝" class="${metaTab === '法宝' ? 'active' : ''}">法宝阁</button>
       <button data-tab="天命" class="${metaTab === '天命' ? 'active' : ''}">天命阶</button>

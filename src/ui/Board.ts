@@ -94,6 +94,29 @@ export class Board {
       ctx.beginPath(); ctx.arc(p.x * CELL, p.y * CELL, 4, 0, Math.PI * 2); ctx.fill();
     }
 
+    // 战斗特效：飘字伤害 + 死亡消散
+    for (const fx of state.effects) {
+      const t = fx.life / fx.maxLife;   // 1→0
+      if (fx.kind === 'dmg') {
+        ctx.globalAlpha = Math.max(0, t);
+        ctx.fillStyle = fx.color;
+        ctx.font = 'bold 16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(fx.text ?? '', fx.x * CELL, fx.y * CELL);
+        ctx.globalAlpha = 1;
+      } else { // poof：扩散消散圈
+        const rad = CELL * (0.3 + (1 - t) * 0.5);
+        ctx.globalAlpha = Math.max(0, t * 0.8);
+        ctx.strokeStyle = fx.color;
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(fx.x * CELL, fx.y * CELL, rad, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = fx.color + '33';
+        ctx.beginPath(); ctx.arc(fx.x * CELL, fx.y * CELL, rad, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+
     // 终点/起点标记
     this.drawEndpoints();
 
@@ -249,11 +272,19 @@ export class Board {
       ctx.arc(cx, cy, rad + 8, 0, Math.PI * 2);
       ctx.fill();
     }
-    // 本体
+    // 本体（受击闪白时叠加白色）
     ctx.fillStyle = e.def.color;
     ctx.beginPath();
     ctx.arc(cx, cy, rad, 0, Math.PI * 2);
     ctx.fill();
+    if (e.hitFlash > 0) {
+      ctx.globalAlpha = (stealth && !revealed ? 0.3 : 1) * Math.min(1, e.hitFlash / 0.12);
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = stealth && !revealed ? 0.3 : 1;
+    }
     // 精英金边
     if (elite) {
       ctx.strokeStyle = '#ffd93d';

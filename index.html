@@ -3,9 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>仙侠塔防 · P1 核心骨架</title>
+  <title>仙侠塔防</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
   <style>
+    /* 书法标题字体：Ma Shan Zheng（毛笔楷，标题）/ ZCOOL XiaoWei（小薇，副标），离线回退到系统字体 */
+    :root { --brush: 'Ma Shan Zheng', "PingFang SC", "Microsoft YaHei", cursive; --xiao: 'ZCOOL XiaoWei', "PingFang SC", serif; }
     * { box-sizing: border-box; }
+    /* 全局按钮基础主题：杜绝浏览器默认白底按钮，统一深色仙侠风；具体类可覆盖 */
+    button {
+      font-family: inherit;
+      background: linear-gradient(180deg, #2a3450, #1c2640);
+      color: #e0e0e0;
+      border: 1px solid #3a4a6a;
+      border-radius: 5px;
+      padding: 8px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: border-color 0.12s, transform 0.08s, box-shadow 0.12s;
+    }
+    button:hover:not(:disabled) { border-color: #5fd3ff; box-shadow: 0 0 8px rgba(95,211,255,0.2); }
+    button:active:not(:disabled) { transform: translateY(1px); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    input { font-family: inherit; }
     body {
       margin: 0;
       font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -90,7 +111,7 @@
       overflow-y: auto; padding: 24px 0;
     }
     .ls-card { width: 720px; max-width: 92vw; text-align: center; color: #f0e6d2; }
-    .ls-card h1 { font-size: 34px; color: #ffe9b8; font-weight: normal; letter-spacing: 8px; margin: 0 0 6px; }
+    .ls-card h1 { font-size: 40px; color: #ffe9b8; font-weight: normal; letter-spacing: 10px; margin: 0 0 6px; font-family: var(--brush); text-shadow: 0 0 16px rgba(255,217,61,0.4); }
     .ls-card .sub { color: #8b8ba0; letter-spacing: 4px; margin-bottom: 6px; }
     .ls-card .progress { color: #ffd93d; letter-spacing: 2px; font-size: 14px; margin-bottom: 28px; }
     .ls-list { display: flex; flex-direction: column; gap: 12px; max-height: 58vh; overflow-y: auto; padding-right: 6px; }
@@ -128,7 +149,7 @@
       background: linear-gradient(180deg,#2a2030,#1c1626); border: 1px solid #6b5436;
       border-radius: 10px; padding: 28px 36px; color: #f0e6d2;
     }
-    .meta-card h2 { margin: 0 0 4px; color: #ffe9b8; letter-spacing: 4px; font-weight: normal; }
+    .meta-card h2 { margin: 0 0 4px; color: #ffe9b8; letter-spacing: 4px; font-weight: normal; font-family: var(--brush); text-align: center; }
     .meta-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
     .meta-tabs button {
       background: #1c2238; border: 1px solid #3a4a6a; color: #8b8ba0;
@@ -204,6 +225,20 @@
     .tower-btn.disabled .cost { color: #ff6b6b !important; text-decoration: line-through; }
     #hint { font-size: 15px; color: #8b8ba0; min-width: 1280px; text-align: center; }
 
+    /* 下一波预告 */
+    #wavePreview {
+      min-width: 1280px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+      background: linear-gradient(180deg,#1a2240,#141a2e); border: 1px solid #2a3450;
+      border-radius: 6px; padding: 8px 14px; font-size: 14px; color: #8b8ba0;
+    }
+    #wavePreview .wv-label { letter-spacing: 2px; }
+    #wavePreview .wv-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #0f1320; border: 1px solid #3a4a6a; border-radius: 4px; padding: 2px 8px; color: #e0e0e0;
+    }
+    #wavePreview .wv-ico { font-weight: bold; }
+    #wavePreview .wv-count { color: #ffd93d; font-size: 13px; }
+
     /* 剧情弹窗 */
     #storyOverlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.72);
@@ -219,10 +254,10 @@
       box-shadow: 0 0 60px rgba(255,215,130,0.15), inset 0 0 40px rgba(0,0,0,0.4);
       color: #f0e6d2; text-align: center;
     }
-    .story-card .chapter { color: #ffd93d; letter-spacing: 6px; font-size: 16px; margin-bottom: 6px; }
-    .story-card h2 { margin: 0 0 24px; font-size: 30px; color: #ffe9b8; font-weight: normal;
-      letter-spacing: 4px; }
-    .story-card .body { font-size: 20px; line-height: 2.1; min-height: 180px;
+    .story-card .chapter { color: #ffd93d; letter-spacing: 6px; font-size: 16px; margin-bottom: 6px; font-family: var(--xiao); }
+    .story-card h2 { margin: 0 0 24px; font-size: 34px; color: #ffe9b8; font-weight: normal; font-family: var(--brush);
+      letter-spacing: 6px; text-shadow: 0 0 14px rgba(255,217,61,0.3); }
+    .story-card .body { font-size: 20px; line-height: 2.1; min-height: 180px; font-family: var(--xiao);
       white-space: pre-line; color: #e8dcc0; }
     .story-card .cursor { color: #ffd93d; animation: blink 0.8s steps(1) infinite; }
     @keyframes blink { 50% { opacity: 0; } }
@@ -240,6 +275,7 @@
 <body>
   <div id="app">
     <div id="hud"></div>
+    <div id="wavePreview"></div>
     <canvas id="board" width="1280" height="640"></canvas>
     <div id="panel"></div>
     <div id="hint">波次自动来袭 · 点塔弹出操作面板（升级/出售/切目标）· 右键塔快捷出售 · 左键空地建塔 · 顶部可暂停/加速</div>
@@ -256,7 +292,7 @@
   </div></div>
   <div id="levelSelect"><div class="ls-card">
     <h1>仙 侠 塔 防</h1>
-    <div class="sub">护 阵 长 老 · 守 卫 宗 门</div>
+    <div class="sub" id="lsSub">护 阵 长 老 · 守 卫 宗 门</div>
     <div class="progress" id="lsProgress"></div>
     <div class="ls-list" id="lsList"></div>
     <button id="metaBtn">宗 门</button>

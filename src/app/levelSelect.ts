@@ -1,6 +1,7 @@
 // 选关 / 关卡流程 / 通关结算
 import { Game } from '../engine/Game';
 import { registry } from '../data/Registry';
+import { resolveTitle, completedChapters } from '../data/config';
 import type { StoryBeat } from '../types';
 import { audio } from '../audio/AudioManager';
 import { app, buildMods, lookup, persist } from './state';
@@ -10,6 +11,7 @@ import { isUnlocked, computeStars, recordResult, awardContribution } from '../re
 const levelSelect = document.getElementById('levelSelect')!;
 const lsList = document.getElementById('lsList')!;
 const lsProgress = document.getElementById('lsProgress')!;
+const lsSub = document.getElementById('lsSub')!;
 const towerPanel = document.getElementById('towerPanel')!;
 
 function starsText(n: number): string { return '★'.repeat(n) + '☆'.repeat(3 - n); }
@@ -22,6 +24,9 @@ export function renderLevelSelect(): void {
     const r = app.progression.cleared[entry.levelId];
     if (r) { cleared += 1; stars += r.stars; }
   }
+  // 动态头衔（修真地位）：随通关章节晋升
+  const title = resolveTitle(completedChapters(manifest, app.progression));
+  lsSub.textContent = `${title.title}　·　${app.profileName || '修士'}`;
   lsProgress.textContent = `通关 ${cleared}/${total}    星 ★ ${stars}/${total * 3}`;
 
   lsList.innerHTML = '';
@@ -107,11 +112,39 @@ function resetSpeedUI(): void {
   });
 }
 
-/** 通关结算（由 main 的主循环在检测到 won 时调用） */
+/** 通关结算（由 main 的主循环在检测到 won 时调用）：含头衔晋升检测 */
 export function settleWin(livesRemaining: number, startLives: number, levelId: string, outro?: StoryBeat): void {
+  const manifest = registry.manifest();
+  const before = resolveTitle(completedChapters(manifest, app.progression)).index;
   const stars = computeStars(livesRemaining, startLives);
   app.progression = recordResult(app.progression, levelId, stars);
   app.progression = awardContribution(app.progression, stars);
+  const after = resolveTitle(completedChapters(manifest, app.progression));
   persist();
-  showStory(outro ?? { title: '守阵成功', lines: [`获得 ${20 + stars * 10} 宗门贡献。`], btn: '返 回 选 关' }, returnToSelect);
+
+  const beat: StoryBeat = outro ?? { title: '守阵成功', lines: [`获得 ${20 + stars * 10} 宗门贡献。`], btn: '返 回 选 关' };
+  if (after.index > before) {
+    // 晋升：先播结局，再弹晋升庆典，最后回选关
+    showStory(beat, () => showPromotion(after.title, returnToSelect));
+  } else {
+    showStory(beat, returnToSelect);
+  }
+}
+
+/** 头衔晋升庆典弹窗 */
+function showPromotion(newTitle: string, onClose: () => void): void {
+  audio.sfx('promote');
+  showStory(
+    {
+      chapter: '宗 门 嘉 奖',
+      title: `晋 升 · ${newTitle}`,
+      lines: [
+        '你的护阵之功，宗门上下有目共睹。',
+        `长老会决议：即日起，册封你为「${newTitle}」。`,
+        '修真之路，更进一层。',
+      ],
+      btn: '领 命',
+    },
+    onClose,
+  );
 }

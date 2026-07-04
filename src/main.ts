@@ -2,7 +2,7 @@
 // 覆盖层界面（选关/剧情/修炼）在 ./app/screens，共享状态在 ./app/state。
 
 import { Board } from './ui/Board';
-import { TOWERS, FAILED_STORY, SKINS } from './data/config';
+import { TOWERS, FAILED_STORY, SKINS, ENEMIES } from './data/config';
 import { audio } from './audio/AudioManager';
 import { app } from './app/state';
 import { showStory } from './app/storyModal';
@@ -23,6 +23,7 @@ board.skinResolver = (towerId) => {
   return { icon: s.icon, color: s.color, effect: s.effect };
 };
 const leakFlash = document.getElementById('leakFlash')!;
+const wavePreview = document.getElementById('wavePreview')!;
 
 // ---------- HUD ----------
 const hud = document.getElementById('hud')!;
@@ -184,6 +185,19 @@ function frame(now: number): void {
   elLives.textContent = String(s.lives);
   elWave.textContent = `${Math.min(s.waveIndex + 1, s.totalWaves)}/${s.totalWaves}`;
   elStatus.textContent = s.msg;
+
+  // 下一波敌人预告
+  if (s.nextWaveSpawns && s.nextWaveSpawns.length) {
+    const chips = s.nextWaveSpawns.map((sp) => {
+      const def = ENEMIES[sp.enemy];
+      const icon = def?.icon ?? '?';
+      const color = def?.color ?? '#888';
+      return `<span class="wv-chip"><span class="wv-ico" style="color:${color}">${icon}</span><span class="wv-count">×${sp.count}</span></span>`;
+    }).join('');
+    wavePreview.innerHTML = `<span class="wv-label">下一波</span> ${chips}`;
+  } else {
+    wavePreview.innerHTML = '<span class="wv-label">已是最后一波</span>';
+  }
 
   for (const [id, btn] of towerBtns) btn.classList.toggle('disabled', s.stones < TOWERS[id].cost);
   updateTowerPanel(s);

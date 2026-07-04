@@ -5,7 +5,7 @@
 //
 // 注意：音频属反馈层，不参与引擎确定性模拟（引擎不调用音频），故可自由用 Math.random。
 
-type SfxType = 'place' | 'upgrade' | 'sell' | 'kill' | 'leak' | 'wave' | 'win' | 'lose';
+type SfxType = 'place' | 'upgrade' | 'sell' | 'kill' | 'leak' | 'wave' | 'win' | 'lose' | 'promote';
 
 class AudioManager {
   private ctx: AudioContext | null = null;
@@ -127,6 +127,11 @@ class AudioManager {
       case 'lose':
         [392, 330, 262, 196].forEach((f, i) =>
           window.setTimeout(() => this.blip(f, 0.45, 'sine', 0.25), i * 180));
+        break;
+      case 'promote':
+        // 晋升号角：明亮上行琶音 + 高音延音，庆典感
+        [523, 659, 784, 1046, 1318].forEach((f, i) =>
+          window.setTimeout(() => this.blip(f, 0.5, 'triangle', 0.22), i * 110));
         break;
     }
   }

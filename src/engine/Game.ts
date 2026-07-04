@@ -52,6 +52,7 @@ interface EnemyR {
   x: number; y: number;
   abilityTimer: number; // BOSS 周期技能倒计时
   speedMul: number;     // 速度倍率（BOSS 狂暴用，默认 1）
+  hitFlash: number;     // 受击闪白剩余秒数（战斗打击感）
   dead: boolean;
   leaked: boolean;
 }
@@ -76,6 +77,16 @@ interface ProjectileR {
   dead: boolean;
 }
 
+/** 瞬时视觉特效（飘字伤害 / 死亡消散），由战斗结算产生、Board 渲染 */
+export interface VisEffect {
+  kind: 'dmg' | 'poof';
+  x: number; y: number;
+  text?: string;          // dmg 用
+  color: string;
+  life: number; maxLife: number;
+  vy: number;             // dmg 上浮速度
+}
+
 export interface GameState {
   status: GameStatus;
   stones: number;
@@ -88,6 +99,8 @@ export interface GameState {
   enemies: EnemyR[];
   towers: TowerR[];
   projectiles: ProjectileR[];
+  effects: VisEffect[];    // 战斗特效（飘字/消散）
+  nextWaveSpawns?: ReadonlyArray<{ enemy: string; count: number; path?: number }>;  // 下一波敌人预告
   msg: string;
 }
 
@@ -103,6 +116,7 @@ export class Game {
   private enemies: EnemyR[] = [];
   private towers: TowerR[] = [];
   private projectiles: ProjectileR[] = [];
+  private effects: VisEffect[] = [];   // 战斗视觉特效（飘字伤害/死亡消散）
 
   stones: number;
   lives: number;
@@ -158,6 +172,7 @@ export class Game {
     this.applyBossAbilities(dt);
     this.updateTowers(dt);
     this.updateProjectiles(dt);
+    this.updateEffects(dt);
     this.cleanup();
     if (this.lives <= 0 && this.status !== 'lost') {
       this.status = 'lost';
@@ -220,7 +235,7 @@ export class Game {
       uid: this.uidSeq++, def, hp: def.hp, maxHp: def.hp,
       shield: def.shield ?? 0, pathIndex, dist,
       x: p.x, y: p.y, abilityTimer: def.bossAbility?.interval ?? 0,
-      speedMul: 1, dead: false, leaked: false,
+      speedMul: 1, hitFlash: 0, dead: false, leaked: false,
     });
   }
 
@@ -322,12 +337,19 @@ export class Game {
   private damage(e: CombatEnemy, raw: number): void {
     if (e.dead) return;
     const enemy = e as EnemyR;
+    const before = enemy.hp + enemy.shield;
     const r = resolveHit(enemy.hp, enemy.maxHp, enemy.shield, raw, enemy.def.armor, enemy.def.lifestealHp ?? 0);
     enemy.hp = r.hp;
     enemy.shield = r.shield;
+    const dealt = before - (enemy.hp + enemy.shield);   // 实际造成的总损耗（盾+血）
+    if (dealt > 0) {
+      enemy.hitFlash = 0.12;                              // 受击闪白
+      this.effects.push({ kind: 'dmg', x: enemy.x, y: enemy.y, text: String(Math.round(dealt)), color: '#ffffff', life: 0.7, maxLife: 0.7, vy: -1.4 });
+    }
     if (enemy.hp <= 0) {
       enemy.dead = true;
       this.stones += enemy.def.bounty * this.mods.bountyMul();   // 赏金走玩家经济加成
+      this.effects.push({ kind: 'poof', x: enemy.x, y: enemy.y, color: enemy.def.color, life: 0.35, maxLife: 0.35, vy: 0 });
       if (enemy.def.split) {                                      // 死亡分裂：生崽（子体赏金 0）
         for (let i = 0; i < enemy.def.split.count; i++) {
           this.spawnEnemyAt(enemy.def.split.child, enemy.pathIndex, enemy.dist);
@@ -531,8 +553,24 @@ export class Game {
       enemies: this.enemies.map((e) => ({ ...e })),
       towers: this.towers.map((t) => ({ ...t })),
       projectiles: this.projectiles.map((p) => ({ ...p })),
+      effects: this.effects.map((fx) => ({ ...fx })),
+      nextWaveSpawns: this.peekNextWave(),
       msg: this.msg,
     };
+  }
+
+  /** 下一波敌人配置（prep 时为当前波，wave 时为再下一波）；无则 undefined */
+  private peekNextWave(): ReadonlyArray<{ enemy: string; count: number; path?: number }> | undefined {
+    const idx = this.waveActive ? this.waveIndex + 1 : this.waveIndex;
+    if (idx >= this.level.waves.length) return undefined;
+    return this.level.waves[idx].spawns;
+  }
+
+  /** 推进战斗特效（飘字上浮/衰减、闪白衰减） */
+  private updateEffects(dt: number): void {
+    for (const e of this.enemies) if (e.hitFlash > 0) e.hitFlash = Math.max(0, e.hitFlash - dt);
+    for (const fx of this.effects) { fx.life -= dt; fx.y += fx.vy * dt; }
+    this.effects = this.effects.filter((fx) => fx.life > 0);
   }
 
   private cleanup(): void {

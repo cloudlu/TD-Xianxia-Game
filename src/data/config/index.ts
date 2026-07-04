@@ -7,5 +7,7 @@ export { EQUIPMENT, EQUIPMENT_IDS, SLOTS } from './equipment';
 export { VIP_LEVELS, VIP_MAX_LEVEL } from './vip';
 export { SKINS, SKIN_IDS, EFFECT_COLOR } from './skins';
 export { TALENTS, TALENT_IDS, talentCost, talentMods } from './talents';
+export { TITLES, resolveTitle, completedChapters } from './titles';
+export type { TitleStatus } from './titles';
 export type { SkinEffect } from './skins';
 export type { StoryBeat } from '../../types';
