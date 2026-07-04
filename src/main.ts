@@ -5,7 +5,10 @@ import { Board } from './ui/Board';
 import { TOWERS, FAILED_STORY, SKINS } from './data/config';
 import { audio } from './audio/AudioManager';
 import { app } from './app/state';
-import { showStory, returnToSelect, settleWin, renderProfileSelect, switchProfile } from './app/screens';
+import { showStory } from './app/storyModal';
+import { returnToSelect, settleWin } from './app/levelSelect';
+import { renderProfileSelect, switchProfile } from './app/profileScreen';
+import './app/metaScreen';   // 模块加载时绑定 metaBtn 等
 import type { Game } from './engine/Game';
 
 // ---------- 棋盘 ----------
@@ -193,8 +196,10 @@ function frame(now: number): void {
 
   if (s.status !== app.prevStatus) {
     if (s.status === 'won') {
+      audio.stopMusic();
       settleWin(s.lives, app.currentLevel.lives, app.currentLevel.id, app.currentLevel.story?.outro);
     } else if (s.status === 'lost') {
+      audio.stopMusic();
       showStory(FAILED_STORY, returnToSelect);
     }
   }

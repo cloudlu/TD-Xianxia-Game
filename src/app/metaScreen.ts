@@ -1,173 +1,19 @@
-// 覆盖层界面：剧情弹窗 / 选关 / 关卡流程 / 修炼界面（法宝/天命/天赋/皮肤/充值）
-// 只依赖 app 状态 + DOM id，不依赖 main 的局部变量。
-
-import { Game } from '../engine/Game';
-import { registry } from '../data/Registry';
+// 修炼界面（宗门）：法宝阁/天命阶/天赋/皮肤/充值 5 标签
 import {
   TOWERS, EQUIPMENT, EQUIPMENT_IDS, VIP_LEVELS, VIP_MAX_LEVEL,
   SKINS, SKIN_IDS, TALENTS, TALENT_IDS, talentCost, SLOTS,
 } from '../data/config';
-import type { StoryBeat, EquipSlot } from '../types';
-import { audio } from '../audio/AudioManager';
-import { app, iap, lookup, buildMods, persist, selectProfile } from './state';
+import type { EquipSlot } from '../types';
+import { app, iap, persist } from './state';
 import {
-  isUnlocked, computeStars, recordResult, awardContribution,
   buyEquipment, equipItem, grantJade, upgradeVip, buySkin, equipSkin, upgradeTalent,
-  redeemJade, upgradeEquip, withDefaults,
+  redeemJade, upgradeEquip,
 } from '../repo/progress';
-import { listProfiles, createProfile, deleteProfile, saveRepoFor } from '../repo/profiles';
 
-// ---------- 剧情弹窗 ----------
-let typeTimer: number | null = null;
-const overlay = document.getElementById('storyOverlay')!;
-const sChapter = document.getElementById('storyChapter')!;
-const sTitle = document.getElementById('storyTitle')!;
-const sBody = document.getElementById('storyBody')!;
-const sBtn = document.getElementById('storyBtn') as HTMLButtonElement;
-const sSkip = document.getElementById('storySkip') as HTMLButtonElement;
-
-export function showStory(beat: StoryBeat, onClose: () => void): void {
-  sChapter.textContent = beat.chapter ?? '';
-  sTitle.textContent = beat.title;
-  sBtn.textContent = beat.btn;
-  sBody.textContent = '';
-  sBtn.disabled = true;
-  sBtn.style.opacity = '0.4';
-  overlay.classList.add('show');
-  app.paused = true;
-
-  const full = beat.lines.join('\n');
-  let i = 0;
-  const finish = () => {
-    if (typeTimer !== null) { clearInterval(typeTimer); typeTimer = null; }
-    sBody.textContent = full;
-    sBtn.disabled = false;
-    sBtn.style.opacity = '1';
-  };
-  typeTimer = window.setInterval(() => {
-    i += 1;
-    sBody.textContent = full.slice(0, i);
-    if (i >= full.length) finish();
-  }, 55);
-
-  sSkip.onclick = () => {            // 跳过：补全文字并直接关闭推进
-    finish();
-    overlay.classList.remove('show');
-    onClose();
-  };
-  sBtn.onclick = () => {
-    if (sBtn.disabled) { finish(); return; }   // 文字未完，先补全
-    overlay.classList.remove('show');
-    onClose();
-  };
-}
-
-// ---------- 选关 / 关卡流程 ----------
-const levelSelect = document.getElementById('levelSelect')!;
-const lsList = document.getElementById('lsList')!;
-const lsProgress = document.getElementById('lsProgress')!;
-const towerPanel = document.getElementById('towerPanel')!;
-const metaOverlay = document.getElementById('metaOverlay')!;
-
-function starsText(n: number): string { return '★'.repeat(n) + '☆'.repeat(3 - n); }
-
-export function renderLevelSelect(): void {
-  const manifest = registry.manifest();
-  const total = manifest.length;
-  let cleared = 0, stars = 0;
-  for (const entry of manifest) {
-    const r = app.progression.cleared[entry.levelId];
-    if (r) { cleared += 1; stars += r.stars; }
-  }
-  lsProgress.textContent = `通关 ${cleared}/${total}    星 ★ ${stars}/${total * 3}`;
-
-  lsList.innerHTML = '';
-  manifest.forEach((entry, i) => {
-    const lvl = registry.level(entry.levelId);
-    if (!lvl) return;
-    const unlocked = isUnlocked(manifest, i, app.progression);
-    const lvlStars = app.progression.cleared[entry.levelId]?.stars ?? 0;
-    const row = document.createElement('div');
-    row.className = 'level-row' + (unlocked ? '' : ' locked');
-    row.innerHTML = `
-      <div class="lr-title">
-        <div class="lr-name">${unlocked ? lvl.name : '？？？'}</div>
-        <div class="lr-chap">${entry.chapterTitle}</div>
-      </div>
-      <div class="${unlocked ? 'lr-stars' : 'lr-lock'}">${unlocked ? starsText(lvlStars) : '🔒'}</div>`;
-    if (unlocked) row.onclick = () => startLevel(entry.levelId);
-    lsList.appendChild(row);
-  });
-}
-
-export function returnToSelect(): void {
-  app.game = null;
-  app.currentLevel = null;
-  app.selectedUid = null;
-  towerPanel.classList.remove('show');
-  overlay.classList.remove('show');
-  renderLevelSelect();
-  levelSelect.style.display = 'flex';
-}
-
-export function startLevel(id: string): void {
-  const lvl = registry.level(id);
-  if (!lvl || !app.board) return;
-  app.currentLevel = lvl;
-  levelSelect.style.display = 'none';
-  app.board.configure(lvl.cols, lvl.rows, lvl.paths);
-
-  audio.init(); audio.resume(); audio.startMusic();   // 用户手势内初始化音频
-
-  app.game = new Game(lvl, lookup, 12345, undefined, buildMods());
-  app.game.onEvent = onGameEvent;
-
-  app.selectedUid = null;
-  app.speedMul = 1;
-  resetSpeedUI();
-  app.prevStatus = 'prep';
-  app.paused = true;
-  app.last = performance.now();
-  showStory(lvl.story?.intro ?? { title: lvl.name, lines: ['守卫此关。'], btn: '开 始' }, () => { app.paused = false; });
-}
-
-function onGameEvent(e: GameEventLike): void {
-  switch (e.type) {
-    case 'kill': audio.sfx('kill'); break;
-    case 'leak':
-      audio.sfx('leak');
-      app.leakFlashAmt = 1;
-      pulseLives();
-      break;
-    case 'waveStart': audio.sfx('wave'); break;
-    case 'win': audio.sfx('win'); break;
-    case 'lose': audio.sfx('lose'); break;
-  }
-}
-
-type GameEventLike =
-  | { type: 'kill' } | { type: 'leak' }
-  | { type: 'waveStart'; wave: number }
-  | { type: 'win' } | { type: 'lose' };
-
-function pulseLives(): void {
-  const el = document.getElementById('h-lives');
-  if (!el) return;
-  el.classList.remove('hit');
-  void el.offsetWidth;
-  el.classList.add('hit');
-}
-
-function resetSpeedUI(): void {
-  document.querySelectorAll('.speed-btn').forEach((b, i) => {
-    (b as HTMLElement).classList.toggle('active', [0, 1, 2][i] === app.speedMul);
-  });
-}
-
-// ---------- 修炼界面（标签：法宝 / 天命 / 天赋 / 皮肤 / 充值） ----------
 type MetaTab = '法宝' | '天命' | '天赋' | '皮肤' | '充值';
 let metaTab: MetaTab = '法宝';
 const metaCard = document.getElementById('metaCard')!;
+const metaOverlay = document.getElementById('metaOverlay')!;
 
 /** 刷新顶部余额（购买/兑换/强化后调用，避免数字不更新） */
 function updateBalance(): void {
@@ -175,7 +21,7 @@ function updateBalance(): void {
   if (el) el.innerHTML = `仙玉 <b style="color:#ffd93d">${app.progression.jade}</b>　·　贡献 <b style="color:#5fd3ff">${app.progression.contribution}</b>`;
 }
 
-function renderMeta(): void {
+export function renderMeta(): void {
   metaCard.innerHTML = `
     <h2>宗 门 修 真</h2>
     <div class="meta-tabs">
@@ -206,7 +52,6 @@ function renderEquipTab(): void {
   updateBalance();
   const el = document.getElementById('metaContent')!;
   const p = app.progression;
-  // 三槽位状态条
   let html = '<div class="eq-slots">';
   for (const s of SLOTS) {
     const id = p.equipped[s.key];
@@ -378,81 +223,3 @@ function renderRechargeTab(): void {
 }
 
 document.getElementById('metaBtn')!.onclick = () => { metaTab = '法宝'; renderMeta(); metaOverlay.classList.add('show'); };
-
-// 通关结算（由 main 的主循环在检测到 won 时调用）
-export function settleWin(livesRemaining: number, startLives: number, levelId: string, outro?: StoryBeat): void {
-  const stars = computeStars(livesRemaining, startLives);
-  app.progression = recordResult(app.progression, levelId, stars);
-  app.progression = awardContribution(app.progression, stars);
-  persist();
-  showStory(outro ?? { title: '守阵成功', lines: [`获得 ${20 + stars * 10} 宗门贡献。`], btn: '返 回 选 关' }, returnToSelect);
-}
-
-// ---------- 档案选择（多玩家存档隔离） ----------
-const profileSelect = document.getElementById('profileSelect')!;
-const profileList = document.getElementById('profileList')!;
-const profileNameInput = document.getElementById('profileNameInput') as HTMLInputElement;
-
-export function renderProfileSelect(): void {
-  const profiles = listProfiles();
-  profileList.innerHTML = '';
-  if (profiles.length === 0) {
-    profileList.innerHTML = '<div class="eq-desc" style="text-align:center">尚无修士，请新建一位开始你的修真之旅。</div>';
-  }
-  for (const p of profiles) {
-    // 读该档案进度摘要
-    const prog = saveRepoFor(p.id).load();
-    const cleared = Object.keys(prog.cleared).length;
-    const row = document.createElement('div');
-    row.className = 'profile-row';
-    row.innerHTML = `
-      <div>
-        <div class="pr-name">${p.name}</div>
-        <div class="pr-meta">通关 ${cleared} 关　·　仙玉 ${prog.jade}　·　贡献 ${prog.contribution}</div>
-      </div>
-      <button class="pr-del" data-del="${p.id}">删除</button>`;
-    row.onclick = (ev) => {
-      if ((ev.target as HTMLElement).dataset.del) return;   // 点删除不进入
-      enterProfile(p.id, p.name);
-    };
-    profileList.appendChild(row);
-  }
-  profileList.querySelectorAll('[data-del]').forEach((b) => {
-    (b as HTMLElement).onclick = (ev) => {
-      ev.stopPropagation();
-      deleteProfile((b as HTMLElement).dataset.del!);
-      renderProfileSelect();
-    };
-  });
-}
-
-function enterProfile(id: string, name: string): void {
-  selectProfile(id, name);
-  profileSelect.style.display = 'none';
-  renderLevelSelect();
-  levelSelect.style.display = 'flex';
-}
-
-document.getElementById('profileCreateBtn')!.onclick = () => {
-  const name = profileNameInput.value.trim();
-  if (!name) { profileNameInput.focus(); return; }
-  const p = createProfile(name);
-  profileNameInput.value = '';
-  enterProfile(p.id, p.name);
-};
-profileNameInput.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') document.getElementById('profileCreateBtn')!.click(); });
-
-/** 切换玩家：返回档案选择（挂到选关界面的「切换」按钮） */
-export function switchProfile(): void {
-  app.game = null;
-  app.currentLevel = null;
-  app.selectedUid = null;
-  app.profileId = null;
-  app.profileName = '';
-  app.progression = withDefaults({});
-  levelSelect.style.display = 'none';
-  metaOverlay.classList.remove('show');
-  towerPanel.classList.remove('show');
-  renderProfileSelect();
-  profileSelect.style.display = 'flex';
-}
