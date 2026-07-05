@@ -31,7 +31,7 @@ describe('nextUpgradeCost', () => {
     expect(nextUpgradeCost(sword, 0)).toBe(60); // 筑基
   });
 
-  it('returns null when already at max realm (渡劫)', () => {
-    expect(nextUpgradeCost(sword, 5)).toBeNull();
+  it('returns null when already at max realm (飞升)', () => {
+    expect(nextUpgradeCost(sword, 7)).toBeNull();
   });
 });

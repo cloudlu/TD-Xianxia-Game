@@ -3,6 +3,16 @@
 
 export type TowerBehavior = 'projectile' | 'pierce' | 'aura' | 'aoe' | 'chain';
 
+/** 难度模式（独立命名，不用境界名避免混淆） */
+export type Difficulty = 'simple' | 'normal' | 'hard';
+
+/** 难度乘数配置 */
+export const DIFFICULTY_MUL: Record<Difficulty, { hp: number; bounty: number; label: string }> = {
+  simple: { hp: 0.8, bounty: 1.1, label: '简单' },
+  normal: { hp: 1.0, bounty: 1.0, label: '普通' },
+  hard:   { hp: 1.5, bounty: 0.85, label: '困难' },
+};
+
 /** 装备槽位（设计文档 §9.2） */
 export type EquipSlot = 'weapon' | 'armor' | 'accessory';
 
@@ -52,6 +62,7 @@ export interface EnemyConfig {
   shield?: number;        // 护盾层：先破盾再掉血
   lifestealHp?: number;   // 受击回血（每次被命中且掉血时回 N 点，鼓励爆发）
   knockback?: boolean;    // 撞塔：经过塔时短暂瘫痪（带 §5.4 免疫护栏）
+  dodge?: number;         // 闪避概率 0..1：每次受击有概率完全规避
   stealth?: boolean;      // 隐身：仅在"破隐"光环（聚灵阵）范围内可被锁定
   split?: { child: string; count: number };   // 死亡分裂：生成 count 个 child（子体赏金应为 0）
   bossAbility?: {                               // BOSS 周期技能（§5.4 护栏）

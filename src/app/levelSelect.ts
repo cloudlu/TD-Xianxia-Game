@@ -2,11 +2,12 @@
 import { Game } from '../engine/Game';
 import { registry } from '../data/Registry';
 import { resolveTitle, completedChapters } from '../data/config';
-import type { StoryBeat } from '../types';
+import type { StoryBeat, Difficulty } from '../types';
+import { DIFFICULTY_MUL } from '../types';
 import { audio } from '../audio/AudioManager';
 import { app, buildMods, lookup, persist } from './state';
 import { showStory, hideStory } from './storyModal';
-import { isUnlocked, computeStars, recordResult, awardContribution } from '../repo/progress';
+import { isUnlocked, computeStars, recordResult, awardContribution, setDifficulty } from '../repo/progress';
 
 const levelSelect = document.getElementById('levelSelect')!;
 const lsList = document.getElementById('lsList')!;
@@ -28,6 +29,22 @@ export function renderLevelSelect(): void {
   const title = resolveTitle(completedChapters(manifest, app.progression));
   lsSub.textContent = `${title.title}　·　${app.profileName || '修士'}`;
   lsProgress.textContent = `通关 ${cleared}/${total}    星 ★ ${stars}/${total * 3}`;
+
+  // 难度选择器
+  const diffBar = document.getElementById('diffBar')!;
+  const curDiff = app.progression.difficulty ?? 'normal';
+  diffBar.innerHTML = '';
+  (['simple', 'normal', 'hard'] as Difficulty[]).forEach((d) => {
+    const b = document.createElement('button');
+    b.className = 'diff-btn' + (d === curDiff ? ' active' : '');
+    b.textContent = DIFFICULTY_MUL[d].label;
+    b.onclick = () => {
+      app.progression = setDifficulty(app.progression, d);
+      persist();
+      renderLevelSelect();
+    };
+    diffBar.appendChild(b);
+  });
 
   lsList.innerHTML = '';
   manifest.forEach((entry, i) => {
@@ -67,7 +84,8 @@ export function startLevel(id: string): void {
 
   audio.init(); audio.resume(); audio.startMusic();   // 用户手势内初始化音频
 
-  app.game = new Game(lvl, lookup, 12345, undefined, buildMods());
+  const diff = DIFFICULTY_MUL[app.progression.difficulty] ?? DIFFICULTY_MUL.normal;
+  app.game = new Game(lvl, lookup, 12345, undefined, buildMods(), diff.hp, diff.bounty);
   app.game.onEvent = onGameEvent;
 
   app.selectedUid = null;

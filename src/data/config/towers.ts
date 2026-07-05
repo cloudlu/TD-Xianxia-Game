@@ -13,6 +13,8 @@ export const TOWERS: Record<string, TowerConfig> = {
       { realm: '元婴', dmg: 150, rate: 1.8, range: 3.3, upgradeCost: 170, crit: 0.20, pierce: 1 },
       { realm: '化神', dmg: 260, rate: 2.2, range: 3.6, upgradeCost: 280, crit: 0.25, pierce: 1 },
       { realm: '渡劫', dmg: 520, rate: 2.5, range: 3.9, upgradeCost: 420, crit: 0.30, pierce: 1 },
+      { realm: '大乘', dmg: 1040, rate: 2.8, range: 4.2, upgradeCost: 620, crit: 0.35, pierce: 2 },
+      { realm: '飞升', dmg: 2080, rate: 3.0, range: 4.5, upgradeCost: 900, crit: 0.40, pierce: 2 },
     ],
   },
   talisman: {
@@ -26,6 +28,8 @@ export const TOWERS: Record<string, TowerConfig> = {
       { realm: '元婴', dmg: 135, rate: 2.3, range: 3.8, upgradeCost: 180, crit: 0.15 },
       { realm: '化神', dmg: 240, rate: 2.6, range: 4.1, upgradeCost: 300, crit: 0.20 },
       { realm: '渡劫', dmg: 480, rate: 2.9, range: 4.4, upgradeCost: 450, crit: 0.25 },
+      { realm: '大乘', dmg: 960, rate: 3.2, range: 4.7, upgradeCost: 660, crit: 0.30 },
+      { realm: '飞升', dmg: 1920, rate: 3.4, range: 5.0, upgradeCost: 950, crit: 0.35 },
     ],
   },
   spear: {
@@ -39,6 +43,8 @@ export const TOWERS: Record<string, TowerConfig> = {
       { realm: '元婴', dmg: 110, rate: 1.3, range: 3.3, upgradeCost: 160, crit: 0.15 },
       { realm: '化神', dmg: 190, rate: 1.5, range: 3.6, upgradeCost: 265, crit: 0.20 },
       { realm: '渡劫', dmg: 380, rate: 1.7, range: 3.9, upgradeCost: 400, crit: 0.25 },
+      { realm: '大乘', dmg: 760, rate: 1.9, range: 4.2, upgradeCost: 600, crit: 0.30 },
+      { realm: '飞升', dmg: 1520, rate: 2.1, range: 4.5, upgradeCost: 880, crit: 0.35 },
     ],
   },
   aura: {
@@ -52,6 +58,8 @@ export const TOWERS: Record<string, TowerConfig> = {
       { realm: '元婴', dmg: 0, rate: 0, range: 3.3, upgradeCost: 180, auraBuff: { dmgMul: 0.30, rateMul: 0.30 } },
       { realm: '化神', dmg: 0, rate: 0, range: 3.6, upgradeCost: 290, auraBuff: { dmgMul: 0.38, rateMul: 0.38 } },
       { realm: '渡劫', dmg: 0, rate: 0, range: 3.9, upgradeCost: 430, auraBuff: { dmgMul: 0.50, rateMul: 0.50 } },
+      { realm: '大乘', dmg: 0, rate: 0, range: 4.2, upgradeCost: 640, auraBuff: { dmgMul: 0.65, rateMul: 0.65 } },
+      { realm: '飞升', dmg: 0, rate: 0, range: 4.5, upgradeCost: 920, auraBuff: { dmgMul: 0.80, rateMul: 0.80 } },
     ],
   },
   fire_mage: {
@@ -65,6 +73,8 @@ export const TOWERS: Record<string, TowerConfig> = {
       { realm: '元婴', dmg: 195, rate: 1.1, range: 3.3, upgradeCost: 190, aoeRadius: 1.5, crit: 0.10 },
       { realm: '化神', dmg: 340, rate: 1.2, range: 3.6, upgradeCost: 300, aoeRadius: 1.6, crit: 0.15 },
       { realm: '渡劫', dmg: 680, rate: 1.4, range: 3.9, upgradeCost: 450, aoeRadius: 1.7, crit: 0.20 },
+      { realm: '大乘', dmg: 1360, rate: 1.6, range: 4.2, upgradeCost: 660, aoeRadius: 1.8, crit: 0.25 },
+      { realm: '飞升', dmg: 2720, rate: 1.8, range: 4.5, upgradeCost: 950, aoeRadius: 2.0, crit: 0.30 },
     ],
   },
   thunder_mage: {
@@ -78,6 +88,8 @@ export const TOWERS: Record<string, TowerConfig> = {
       { realm: '元婴', dmg: 210, rate: 1.0, range: 3.4, upgradeCost: 210, chainRange: 2.3, chainCount: 4, crit: 0.10 },
       { realm: '化神', dmg: 360, rate: 1.1, range: 3.6, upgradeCost: 320, chainRange: 2.4, chainCount: 5, crit: 0.15 },
       { realm: '渡劫', dmg: 720, rate: 1.3, range: 3.9, upgradeCost: 480, chainRange: 2.5, chainCount: 6, crit: 0.20 },
+      { realm: '大乘', dmg: 1440, rate: 1.5, range: 4.2, upgradeCost: 700, chainRange: 2.6, chainCount: 7, crit: 0.25 },
+      { realm: '飞升', dmg: 2880, rate: 1.7, range: 4.5, upgradeCost: 1000, chainRange: 2.8, chainCount: 8, crit: 0.30 },
     ],
   },
   ice_mage: {
@@ -91,6 +103,8 @@ export const TOWERS: Record<string, TowerConfig> = {
       { realm: '元婴', dmg: 90, rate: 1.5, range: 3.4, upgradeCost: 190, slow: { mul: 0.35, duration: 2.8 } },
       { realm: '化神', dmg: 160, rate: 1.6, range: 3.6, upgradeCost: 300, slow: { mul: 0.3, duration: 3.0 } },
       { realm: '渡劫', dmg: 320, rate: 1.8, range: 3.9, upgradeCost: 450, slow: { mul: 0.25, duration: 3.5 } },
+      { realm: '大乘', dmg: 640, rate: 2.0, range: 4.2, upgradeCost: 660, slow: { mul: 0.2, duration: 4.0 } },
+      { realm: '飞升', dmg: 1280, rate: 2.2, range: 4.5, upgradeCost: 950, slow: { mul: 0.15, duration: 5.0 } },
     ],
   },
 };

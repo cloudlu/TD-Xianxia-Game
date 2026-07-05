@@ -225,6 +225,16 @@
     .tower-btn.disabled .cost { color: #ff6b6b !important; text-decoration: line-through; }
     #hint { font-size: 15px; color: #8b8ba0; min-width: 1280px; text-align: center; }
 
+    /* 难度选择器 */
+    .diff-bar { display: flex; gap: 6px; justify-content: center; margin-bottom: 14px; }
+    .diff-btn {
+      background: #1f2a4a; border: 2px solid #2a3450; border-radius: 6px;
+      padding: 6px 18px; cursor: pointer; color: #8b8ba0; font-size: 14px; letter-spacing: 2px;
+      transition: border-color 0.12s, color 0.12s;
+    }
+    .diff-btn:hover { border-color: #5fd3ff; color: #ccc; }
+    .diff-btn.active { border-color: #ffd93d; color: #ffd93d; background: #2a3a5a; }
+
     /* 下一波预告 */
     #wavePreview {
       min-width: 1280px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
@@ -306,6 +316,7 @@
     <h1>仙 侠 塔 防</h1>
     <div class="sub" id="lsSub">护 阵 长 老 · 守 卫 宗 门</div>
     <div class="progress" id="lsProgress"></div>
+    <div class="diff-bar" id="diffBar"></div>
     <div class="ls-list" id="lsList"></div>
     <button id="metaBtn">宗 门</button>
     <button id="switchBtn" style="margin-top:10px;background:transparent;color:#8b8ba0;border:1px solid #3a4a6a;padding:6px 16px;border-radius:4px;cursor:pointer;font-size:13px;letter-spacing:2px;margin-left:10px;">切换修士</button>

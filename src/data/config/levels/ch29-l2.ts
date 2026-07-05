@@ -1,0 +1,34 @@
+import type { LevelConfig } from '../../../types';
+import { buildableFromPaths } from './buildable';
+
+// 第 29 章 第 2 关 · 终极考验（双路径）
+const P = [
+  [{ x: 0, y: 2 }, { x: 15, y: 2 }],
+  [{ x: 0, y: 5 }, { x: 15, y: 5 }],
+];
+
+export const CH29_L2: LevelConfig = {
+  id: 'ch29-l2', name: '终极考验',
+  startStones: 1140, lives: 50,
+  cols: 16, rows: 8,
+  paths: P,
+  buildable: buildableFromPaths(16, 8, P),
+  hpMul: 3.9,
+  waves: [
+    { spawns: [{ enemy: 'void_devourer', count: 8, gap: 1.4, delay: 0 }, { enemy: 'chaos_beast', count: 12, gap: 1.2, delay: 1 }, { enemy: 'void_walker', count: 22, gap: 0.4, delay: 0 }], clearBonus: 680 },
+    { spawns: [{ enemy: 'law_enforcer', count: 16, gap: 0.7, delay: 0 }, { enemy: 'celestial_demon', count: 16, gap: 0.7, delay: 1 }, { enemy: 'void_devourer', count: 6, gap: 1.6, delay: 2 }], clearBonus: 720 },
+    { spawns: [{ enemy: 'chaos_beast', count: 14, gap: 1.0, delay: 0 }, { enemy: 'void_devourer', count: 8, gap: 1.4, delay: 1 }, { enemy: 'law_enforcer', count: 14, gap: 0.8, delay: 0 }, { enemy: 'ghost_cultivator', count: 22, gap: 0.4, delay: 2 }], clearBonus: 780 },
+  ],
+  story: {
+    intro: {
+      chapter: '第 二 十 九 章', title: '终 极 考 验',
+      lines: ['天道以终极之兵相迎——这是它给每一位飞升者设下的最后考题。', '答错了，便化为它的一部分。'],
+      btn: '应 考 验',
+    },
+    outro: {
+      chapter: '考 验', title: '通 关 在 望',
+      lines: ['终极之兵尽数折损，天道的考题你已答完。', '只剩最后一道门，与门后那个存在……'],
+      btn: '继 续',
+    },
+  },
+};

@@ -117,8 +117,9 @@ export class Game {
   private mods: ModifierSet;          // 玩家加成（装备/VIP/meta 天赋，设计文档 §9）
   private segs: Segment[][];   // 每条路径的折线段
   private pathLens: number[];  // 每条路径总长
-  private hpMul: number;       // 敌人血量缩放（来自关卡配置）
-  private towerMul: number;    // 塔伤害/攻速缩放（自动 sqrt(hpMul)）
+  private hpMul: number;       // 敌人血量缩放（关卡 hpMul × 难度倍率）
+  private towerMul: number;    // 塔伤害/攻速缩放（自动 sqrt(关卡 hpMul)，不含难度）
+  private difficultyBountyMul: number;  // 难度赏金倍率（独立于 sqrt(hpMul)）
 
   private enemies: EnemyR[] = [];
   private towers: TowerR[] = [];
@@ -140,7 +141,11 @@ export class Game {
 
   private emit(e: GameEvent): void { this.onEvent?.(e); }
 
-  constructor(level: LevelConfig, reg: ConfigLookup, seed = 12345, strategies?: AttackStrategyRegistry, mods: ModifierSet = ModifierSet.empty) {
+  constructor(
+    level: LevelConfig, reg: ConfigLookup, seed = 12345,
+    strategies?: AttackStrategyRegistry, mods: ModifierSet = ModifierSet.empty,
+    difficultyHpMul = 1, difficultyBountyMul = 1,
+  ) {
     this.level = level;
     this.reg = reg;
     this.strategies = strategies ?? defaultAttackRegistry();
@@ -150,8 +155,9 @@ export class Game {
     this.lives = level.lives;
     this.segs = level.paths.map((p) => buildSegments(p));
     this.pathLens = this.segs.map((s) => totalLength(s));
-    this.hpMul = level.hpMul ?? 1;
-    this.towerMul = towerMulFrom(this.hpMul);
+    this.hpMul = (level.hpMul ?? 1) * difficultyHpMul;       // 关卡缩放 × 难度缩放
+    this.towerMul = towerMulFrom(level.hpMul ?? 1);          // 塔缩放只跟关卡 hpMul，不含难度
+    this.difficultyBountyMul = difficultyBountyMul;
     this.msg = `布阵完毕后，点击「开始第 1 波」迎敌。`;   // 首波手动开始
   }
 
@@ -351,6 +357,7 @@ export class Game {
   private damage(e: CombatEnemy, raw: number): void {
     if (e.dead) return;
     const enemy = e as EnemyR;
+    if (enemy.def.dodge && this.rng() < enemy.def.dodge) return;   // 闪避判定
     const before = enemy.hp + enemy.shield;
     const r = resolveHit(enemy.hp, enemy.maxHp, enemy.shield, raw, enemy.def.armor, enemy.def.lifestealHp ?? 0);
     enemy.hp = r.hp;
@@ -362,7 +369,7 @@ export class Game {
     }
     if (enemy.hp <= 0) {
       enemy.dead = true;
-      this.stones += enemy.bounty * this.mods.bountyMul();   // 赏金走玩家经济加成（bounty 已含章节缩放）
+      this.stones += enemy.bounty * this.mods.bountyMul() * this.difficultyBountyMul;
       this.effects.push({ kind: 'poof', x: enemy.x, y: enemy.y, color: enemy.def.color, life: 0.35, maxLife: 0.35, vy: 0 });
       if (enemy.def.split) {                                      // 死亡分裂：生崽（子体赏金 0）
         for (let i = 0; i < enemy.def.split.count; i++) {

@@ -1,7 +1,7 @@
 // 玩家进度存取（设计文档 §12 SaveRepo 雏形 / §8.6 星级 / §8.2 解锁）
 // 接口 + 本地实现 + 纯函数；联网后换 RemoteSaveRepo，调用方不动。
 
-import type { ManifestEntry, EquipSlot } from '../types';
+import type { ManifestEntry, EquipSlot, Difficulty } from '../types';
 
 export interface LevelResult { stars: number; }
 
@@ -17,6 +17,7 @@ export interface Progression {
   ownedSkins: string[];        // 已拥有的皮肤 id
   equippedSkins: Record<string, string>; // towerId → skinId
   talents: Record<string, number>;       // talentId → 等级（meta 天赋树）
+  difficulty: Difficulty;               // 难度模式（默认 normal）
 }
 
 export interface SaveRepo {
@@ -38,6 +39,7 @@ export function withDefaults(raw: Partial<Progression>): Progression {
     ownedSkins: raw.ownedSkins ?? [],
     equippedSkins: raw.equippedSkins ?? {},
     talents: raw.talents ?? {},
+    difficulty: (raw as Record<string, unknown>).difficulty as Difficulty ?? 'normal',
   };
 }
 
@@ -80,6 +82,11 @@ export function recordResult(p: Progression, levelId: string, stars: number): Pr
 /** 关卡通关产出宗门贡献：基础 + 星级加成（设计文档 §10.2） */
 export function awardContribution(p: Progression, stars: number, base = 20, perStar = 10): Progression {
   return { ...p, contribution: p.contribution + base + stars * perStar };
+}
+
+/** 设置难度模式 */
+export function setDifficulty(p: Progression, difficulty: Difficulty): Progression {
+  return { ...p, difficulty };
 }
 
 /** 购买装备：扣除贡献、加入拥有列表（幂等：已拥有则不扣费） */
