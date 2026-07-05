@@ -14,6 +14,7 @@ export const CH5_L1: LevelConfig = {
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
+  hpMul: 1.5,
   waves: [
     { spawns: [
       { enemy: 'wolf', count: 12, gap: 0.5, delay: 0, path: 0 },
@@ -30,6 +31,17 @@ export const CH5_L1: LevelConfig = {
       { enemy: 'magic_puppet', count: 2, gap: 3, delay: 1, path: 1 },
       { enemy: 'shadow_fox', count: 6, gap: 1, delay: 0, path: 2 },
     ], clearBonus: 220 },
+    { spawns: [
+      { enemy: 'magic_minion', count: 8, gap: 0.9, delay: 0, path: 0 },
+      { enemy: 'bat', count: 14, gap: 0.35, delay: 1, path: 1 },
+      { enemy: 'bull', count: 1, gap: 1, delay: 0, path: 2 },
+    ], clearBonus: 240 },
+    { spawns: [
+      { enemy: 'blood_cultist', count: 6, gap: 1, delay: 0, path: 0 },
+      { enemy: 'splitter', count: 8, gap: 1, delay: 0, path: 1 },
+      { enemy: 'shadow_fox', count: 8, gap: 1, delay: 1, path: 2 },
+      { enemy: 'magic_puppet', count: 2, gap: 3, delay: 0, path: 0 },
+    ], clearBonus: 270 },
   ],
   story: {
     intro: {

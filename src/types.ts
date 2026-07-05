@@ -20,6 +20,7 @@ export interface TowerLevelConfig {
   chainRange?: number;    // 链电跳跃范围（chain 行为用）
   chainCount?: number;    // 链电跳跃次数（chain 行为用）
   auraBuff?: { dmgMul: number; rateMul: number }; // 光环加成（aura 行为用）
+  slow?: { mul: number; duration: number };        // 减速（命中后敌人移速 ×mul，持续 duration 秒）
 }
 
 export interface TowerConfig {
@@ -104,6 +105,8 @@ export interface LevelConfig {
   story?: LevelStory;
   /** 本关允许的塔最高境界索引（0=炼气...4=化神）；缺省=不限制 */
   maxTowerLevel?: number;
+  /** 敌人血量缩放（默认 1.0）；towerMul/bountyMul 自动推导为 sqrt(hpMul) */
+  hpMul?: number;
 }
 
 /** 章节清单条目（设计文档 §8.2 manifest） */

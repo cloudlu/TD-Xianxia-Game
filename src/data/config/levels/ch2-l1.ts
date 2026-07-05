@@ -13,11 +13,13 @@ export const CH2_L1: LevelConfig = {
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
+  hpMul: 1.1,
   waves: [
     { spawns: [{ enemy: 'wolf', count: 10, gap: 0.8, delay: 0, path: 0 }, { enemy: 'wolf', count: 8, gap: 0.9, delay: 0, path: 1 }], clearBonus: 80 },
     { spawns: [{ enemy: 'wolf', count: 12, gap: 0.6, delay: 0, path: 0 }, { enemy: 'boar', count: 3, gap: 2, delay: 1, path: 1 }], clearBonus: 100 },
+    { spawns: [{ enemy: 'bat', count: 10, gap: 0.5, delay: 0, path: 0 }, { enemy: 'wolf', count: 10, gap: 0.6, delay: 0, path: 1 }], clearBonus: 120 },
     // 末波：南北各一头蛮牛，撞塔逼玩家分散布防
-    { spawns: [{ enemy: 'bull', count: 1, gap: 1, delay: 1, path: 0 }, { enemy: 'wolf', count: 10, gap: 0.6, delay: 0, path: 1 }, { enemy: 'bull', count: 1, gap: 1, delay: 3, path: 1 }], clearBonus: 140 },
+    { spawns: [{ enemy: 'bull', count: 1, gap: 1, delay: 1, path: 0 }, { enemy: 'wolf', count: 12, gap: 0.5, delay: 0, path: 1 }, { enemy: 'bull', count: 1, gap: 1, delay: 3, path: 1 }], clearBonus: 150 },
   ],
   story: {
     intro: {

@@ -14,6 +14,7 @@ export const CH5_L2: LevelConfig = {
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
+  hpMul: 1.5,
   waves: [
     { spawns: [
       { enemy: 'blood_cultist', count: 6, gap: 1.1, delay: 0, path: 0 },
@@ -30,6 +31,17 @@ export const CH5_L2: LevelConfig = {
       { enemy: 'blood_cultist', count: 6, gap: 1, delay: 0, path: 0 },
       { enemy: 'magic_puppet', count: 3, gap: 2.5, delay: 1, path: 2 },
     ], clearBonus: 250 },
+    { spawns: [
+      { enemy: 'shadow_fox', count: 8, gap: 1, delay: 0, path: 0 },
+      { enemy: 'splitter', count: 10, gap: 0.9, delay: 0, path: 1 },
+      { enemy: 'bull', count: 1, gap: 1, delay: 2, path: 2 },
+    ], clearBonus: 270 },
+    { spawns: [
+      { enemy: 'blood_cultist', count: 8, gap: 0.9, delay: 0, path: 0 },
+      { enemy: 'magic_puppet', count: 4, gap: 2, delay: 0, path: 1 },
+      { enemy: 'shadow_fox', count: 10, gap: 0.9, delay: 1, path: 2 },
+      { enemy: 'mage_lord', count: 1, gap: 1, delay: 3, path: 1 },
+    ], clearBonus: 300 },
   ],
   story: {
     intro: {

@@ -26,6 +26,16 @@ export function enrageMul(
 ): number {
   return enrageBelow && hpRatio < enrageBelow.hpPct ? enrageBelow.speedMul : 1;
 }
+
+/** 章节缩放：敌人 HP × hpMul，赏金 × sqrt(hpMul)（经济适度跟上） */
+export function scaleEnemy(baseHp: number, baseBounty: number, hpMul: number): { hp: number; bounty: number } {
+  return { hp: Math.round(baseHp * hpMul), bounty: Math.round(baseBounty * Math.sqrt(hpMul)) };
+}
+
+/** 塔位缩放：自动从 hpMul 推导为 sqrt(hpMul)，与赏金同步保证经济-战力平衡 */
+export function towerMulFrom(hpMul: number): number {
+  return Math.sqrt(hpMul);
+}
 export function absorbShield(shield: number, rawDamage: number): { shield: number; remain: number } {
   if (shield <= 0) return { shield: 0, remain: Math.max(0, rawDamage) };
   const absorbed = Math.min(shield, rawDamage);

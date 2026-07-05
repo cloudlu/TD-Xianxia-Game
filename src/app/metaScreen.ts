@@ -194,6 +194,9 @@ function renderSkinTab(): void {
   }; });
 }
 
+// 测试密码（仅开发测试用，防止试玩者随意充值）
+const DEV_PASSWORD = 'td2026';
+
 function renderRechargeTab(): void {
   updateBalance();
   const el = document.getElementById('metaContent')!;
@@ -202,7 +205,7 @@ function renderRechargeTab(): void {
     { jade: 50, contrib: 450 },
     { jade: 100, contrib: 1000 },
   ];
-  let html = `<div class="eq-desc">演示版充值：点击即发放仙玉（mock 支付）。联网后接入真实支付。</div>
+  let html = `<div class="eq-desc">充值功能（测试版，需开发密码）。</div>
     <div class="eq-grid">`;
   for (const p of iap.getProducts()) {
     html += `<div class="eq-card"><div class="eq-name">${p.label}</div>
@@ -210,7 +213,7 @@ function renderRechargeTab(): void {
       <button data-iap="${p.id}">充值</button></div>`;
   }
   html += `</div>`;
-  html += `<div class="eq-desc" style="margin-top:14px">仙玉兑换宗门贡献（付费加速养成）：</div><div class="eq-grid">`;
+  html += `<div class="eq-desc" style="margin-top:14px">仙玉兑换宗门贡献：</div><div class="eq-grid">`;
   for (const r of RATES) {
     html += `<div class="eq-card"><div class="eq-name">${r.contrib} 贡献</div>
       <div class="eq-desc">消耗 ${r.jade} 仙玉</div>
@@ -218,6 +221,8 @@ function renderRechargeTab(): void {
   }
   el.innerHTML = `${html}</div>`;
   el.querySelectorAll('[data-iap]').forEach((b) => { (b as HTMLElement).onclick = async () => {
+    const pwd = prompt('请输入开发测试密码：');
+    if (pwd !== DEV_PASSWORD) { if (pwd !== null) alert('密码错误'); return; }   // 密码错误或取消，不发放
     const r = await iap.purchase((b as HTMLElement).dataset.iap!);
     if (r.jade > 0) { app.progression = grantJade(app.progression, r.jade); persist(); renderRechargeTab(); }
   }; });

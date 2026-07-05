@@ -237,7 +237,19 @@
       background: #0f1320; border: 1px solid #3a4a6a; border-radius: 4px; padding: 2px 8px; color: #e0e0e0;
     }
     #wavePreview .wv-ico { font-weight: bold; }
+    #wavePreview .wv-name { font-size: 13px; color: #e0e0e0; }
     #wavePreview .wv-count { color: #ffd93d; font-size: 13px; }
+    #wavePreview .wv-chip { position: relative; }
+    #wavePreview .wv-tip {
+      display: none; position: absolute; bottom: 140%; left: 50%; transform: translateX(-50%);
+      background: #1c2238; border: 1px solid #3a4a6a; border-radius: 6px; padding: 8px 14px;
+      white-space: nowrap; z-index: 20; font-size: 12px; color: #e0e0e0; line-height: 1.8;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5); pointer-events: none;
+    }
+    #wavePreview .wv-chip:hover .wv-tip { display: block; }
+    #wavePreview .wv-tip b { color: #ffe9b8; }
+    #wavePreview .wv-tip .wv-stat { color: #5fd3ff; }
+    #wavePreview .wv-tip .wv-trait { color: #ff9b6b; }
 
     /* 剧情弹窗 */
     #storyOverlay {
@@ -303,6 +315,7 @@
     <div class="tp-head"><span class="tp-title" id="tpTitle"></span><button class="tp-close" id="tpClose">×</button></div>
     <div class="tp-row"><span>境界</span><span class="tp-small" id="tpRealm"></span></div>
     <div class="tp-row"><span>目标</span><button class="tp-small" id="tpTarget" style="background:none;border:none;cursor:pointer;color:#5fd3ff;"></button></div>
+    <div class="tp-row" style="border-top:1px solid #3a4a6a;padding-top:6px;margin-top:4px;"><span>属性</span><span class="tp-small" id="tpStats" style="color:#5fd3ff;font-size:12px;text-align:right;line-height:1.5;"></span></div>
     <button class="act" id="tpUpgrade">突破</button>
     <button class="act danger" id="tpSell">出售</button>
   </div>

@@ -13,15 +13,19 @@ export const CH2_L3: LevelConfig = {
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
+  hpMul: 1.1,
   waves: [
     { spawns: [{ enemy: 'wolf', count: 12, gap: 0.6, delay: 0, path: 0 }, { enemy: 'bat', count: 8, gap: 0.5, delay: 1, path: 1 }], clearBonus: 100 },
     { spawns: [{ enemy: 'boar', count: 5, gap: 1.6, delay: 0, path: 0 }, { enemy: 'wolf', count: 12, gap: 0.5, delay: 0, path: 1 }], clearBonus: 120 },
+    { spawns: [{ enemy: 'bull', count: 1, gap: 1, delay: 1, path: 0 }, { enemy: 'bat', count: 12, gap: 0.4, delay: 0, path: 1 }], clearBonus: 140 },
+    { spawns: [{ enemy: 'boar', count: 4, gap: 1.8, delay: 0, path: 1 }, { enemy: 'bat', count: 12, gap: 0.4, delay: 0, path: 0 }], clearBonus: 160 },
     // 末波：蛮牛+蝙蝠+狼三路齐攻
     { spawns: [
       { enemy: 'bull', count: 1, gap: 1, delay: 1, path: 0 },
       { enemy: 'bat', count: 14, gap: 0.4, delay: 0, path: 1 },
       { enemy: 'wolf', count: 12, gap: 0.5, delay: 2, path: 0 },
-    ], clearBonus: 160 },
+      { enemy: 'boar', count: 3, gap: 2, delay: 1, path: 1 },
+    ], clearBonus: 200 },
   ],
   story: {
     intro: {

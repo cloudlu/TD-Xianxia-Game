@@ -10,9 +10,11 @@ export const CH4_L3: LevelConfig = {
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
+  hpMul: 1.3,
   waves: [
     { spawns: [{ enemy: 'shadow_fox', count: 4, gap: 1.4, delay: 0 }], clearBonus: 140 },
     { spawns: [{ enemy: 'splitter', count: 6, gap: 1.2, delay: 0 }, { enemy: 'shadow_fox', count: 4, gap: 1.4, delay: 1 }], clearBonus: 170 },
+    { spawns: [{ enemy: 'shadow_fox', count: 6, gap: 1.2, delay: 0 }, { enemy: 'splitter', count: 8, gap: 1, delay: 1 }], clearBonus: 200 },
     // 末波：九尾天狐降临（周期魅惑+召唤狐妖）+ 杂兵压场
     { spawns: [
       { enemy: 'nine_tails', count: 1, gap: 1, delay: 2 },

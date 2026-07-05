@@ -13,10 +13,12 @@ export const CH2_L2: LevelConfig = {
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
+  hpMul: 1.1,
   waves: [
     { spawns: [{ enemy: 'wolf', count: 10, gap: 0.7, delay: 0, path: 0 }, { enemy: 'bat', count: 8, gap: 0.5, delay: 1, path: 1 }], clearBonus: 90 },
     { spawns: [{ enemy: 'bat', count: 14, gap: 0.4, delay: 0, path: 1 }, { enemy: 'boar', count: 3, gap: 2, delay: 0, path: 0 }], clearBonus: 110 },
-    { spawns: [{ enemy: 'wolf', count: 12, gap: 0.6, delay: 0, path: 0 }, { enemy: 'bat', count: 12, gap: 0.4, delay: 1, path: 1 }], clearBonus: 140 },
+    { spawns: [{ enemy: 'wolf', count: 12, gap: 0.5, delay: 0, path: 0 }, { enemy: 'bat', count: 10, gap: 0.4, delay: 0, path: 1 }], clearBonus: 130 },
+    { spawns: [{ enemy: 'bat', count: 16, gap: 0.35, delay: 0, path: 1 }, { enemy: 'boar', count: 4, gap: 1.8, delay: 0, path: 0 }, { enemy: 'wolf', count: 10, gap: 0.6, delay: 1, path: 0 }], clearBonus: 150 },
   ],
   story: {
     intro: {

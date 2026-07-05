@@ -35,6 +35,25 @@ export const EQUIPMENT: Record<string, EquipmentConfig> = {
     id: 'spirit_flame', name: '灵火珠', desc: '法术伤害 +15%（火法/雷法）', slot: 'weapon',
     price: 70, mods: [{ stat: 'magicDmg', op: 'mul_pct', value: 0.15 } as Modifier],
   },
+  // —— 通用法宝（增幅全塔，适合混搭流）——
+  hunyuan_pearl: {
+    id: 'hunyuan_pearl', name: '混元珠', desc: '全体伤害 +10%（全流派通用）', slot: 'weapon',
+    price: 100, mods: [{ stat: 'dmg', op: 'mul_pct', value: 0.10 } as Modifier],
+  },
+  qiankun_mirror: {
+    id: 'qiankun_mirror', name: '乾坤镜', desc: '全体射程 +0.5，暴击 +5%', slot: 'weapon',
+    price: 150, mods: [
+      { stat: 'range', op: 'add', value: 0.5 } as Modifier,
+      { stat: 'crit', op: 'add', value: 0.05 } as Modifier,
+    ],
+  },
+  xuantian_blade: {
+    id: 'xuantian_blade', name: '玄天剑', desc: '全体伤害 +8%，攻速 +5%（通用混合）', slot: 'weapon',
+    price: 180, mods: [
+      { stat: 'dmg', op: 'mul_pct', value: 0.08 } as Modifier,
+      { stat: 'rate', op: 'mul_pct', value: 0.05 } as Modifier,
+    ],
+  },
   // —— 护体法衣（护甲槽：通用生存/输出）——
   spirit_vest: {
     id: 'spirit_vest', name: '聚灵法衣', desc: '全体攻速 +10%', slot: 'armor',

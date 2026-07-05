@@ -5,6 +5,7 @@ import type { Progression } from '../../repo/progress';
 /** 头衔阶梯（按"已通关章节数"晋升） */
 export const TITLES = [
   '外门弟子', '内门弟子', '护阵执事', '护阵长老', '传功长老', '太上长老',
+  '域外使', '镇域使', '域主',
 ] as const;
 
 export interface TitleStatus {

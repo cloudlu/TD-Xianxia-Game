@@ -13,11 +13,13 @@ export const CH4_L2: LevelConfig = {
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
+  hpMul: 1.3,
   waves: [
     { spawns: [{ enemy: 'splitter', count: 4, gap: 1.8, delay: 0, path: 0 }, { enemy: 'wolf', count: 10, gap: 0.6, delay: 0, path: 1 }], clearBonus: 130 },
     { spawns: [{ enemy: 'splitter', count: 6, gap: 1.4, delay: 0, path: 0 }, { enemy: 'shadow_fox', count: 4, gap: 1.6, delay: 1, path: 1 }], clearBonus: 150 },
     // 末波：大量分身妖（每个死分裂2子体）+ 山猪妖压场
     { spawns: [{ enemy: 'splitter', count: 8, gap: 1.2, delay: 0, path: 0 }, { enemy: 'boar', count: 4, gap: 2, delay: 1, path: 1 }], clearBonus: 180 },
+    { spawns: [{ enemy: 'shadow_fox', count: 8, gap: 1, delay: 0, path: 0 }, { enemy: 'splitter', count: 8, gap: 1, delay: 1, path: 1 }], clearBonus: 200 },
   ],
   story: {
     intro: {

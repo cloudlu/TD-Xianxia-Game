@@ -13,10 +13,12 @@ export const CH4_L1: LevelConfig = {
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
+  hpMul: 1.3,
   waves: [
     { spawns: [{ enemy: 'shadow_fox', count: 4, gap: 1.6, delay: 0, path: 0 }, { enemy: 'wolf', count: 10, gap: 0.6, delay: 0, path: 1 }], clearBonus: 120 },
     { spawns: [{ enemy: 'shadow_fox', count: 6, gap: 1.3, delay: 0, path: 0 }, { enemy: 'splitter', count: 3, gap: 2, delay: 1, path: 1 }], clearBonus: 140 },
     { spawns: [{ enemy: 'shadow_fox', count: 5, gap: 1.2, delay: 0, path: 0 }, { enemy: 'wolf', count: 12, gap: 0.5, delay: 0, path: 1 }], clearBonus: 170 },
+    { spawns: [{ enemy: 'splitter', count: 8, gap: 1.2, delay: 0, path: 0 }, { enemy: 'shadow_fox', count: 6, gap: 1.2, delay: 1, path: 1 }], clearBonus: 190 },
   ],
   story: {
     intro: {

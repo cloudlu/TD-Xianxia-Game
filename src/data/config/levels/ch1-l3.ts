@@ -15,11 +15,13 @@ export const CH1_L3: LevelConfig = {
   maxTowerLevel: 4,   // 章末 BOSS 战：放开到 化神
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
+  hpMul: 1.0,
   waves: [
     { spawns: [{ enemy: 'wolf', count: 12, gap: 0.7, delay: 0 }], clearBonus: 70 },
-    { spawns: [{ enemy: 'wolf', count: 10, gap: 0.6, delay: 1 }, { enemy: 'boar', count: 3, gap: 2, delay: 2 }], clearBonus: 90 },
+    { spawns: [{ enemy: 'wolf', count: 10, gap: 0.6, delay: 0 }, { enemy: 'boar', count: 3, gap: 2, delay: 1 }], clearBonus: 85 },
+    { spawns: [{ enemy: 'boar', count: 5, gap: 1.4, delay: 0 }, { enemy: 'wolf', count: 10, gap: 0.6, delay: 1 }], clearBonus: 100 },
     // 末波：山猪王率众来犯
-    { spawns: [{ enemy: 'boar', count: 4, gap: 1.6, delay: 1 }, { enemy: 'boar_king', count: 1, gap: 1, delay: 4 }], clearBonus: 150 },
+    { spawns: [{ enemy: 'boar', count: 4, gap: 1.6, delay: 0 }, { enemy: 'wolf', count: 12, gap: 0.5, delay: 1 }, { enemy: 'boar_king', count: 1, gap: 1, delay: 4 }], clearBonus: 150 },
   ],
   story: {
     intro: {

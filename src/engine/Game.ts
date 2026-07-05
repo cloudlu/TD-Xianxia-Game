@@ -10,7 +10,7 @@ import type { LevelConfig, TowerConfig, EnemyConfig, TargetPolicy } from '../typ
 import { mulberry32 } from './PRNG';
 import { buildSegments, positionAt, totalLength, type Segment } from './pure/path';
 import { WaveDirector } from './WaveDirector';
-import { canHitFlying, resolveHit, enrageMul } from './pure/combat';
+import { canHitFlying, resolveHit, enrageMul, scaleEnemy, towerMulFrom } from './pure/combat';
 import { targetPriorityKey } from './pure/targeting';
 import { investedCost, sellRefund as computeSellRefund, nextUpgradeCost } from './pure/economy';
 import {
@@ -53,6 +53,9 @@ interface EnemyR {
   abilityTimer: number; // BOSS 周期技能倒计时
   speedMul: number;     // 速度倍率（BOSS 狂暴用，默认 1）
   hitFlash: number;     // 受击闪白剩余秒数（战斗打击感）
+  bounty: number;       // 运行时赏金（经章节缩放后，死时发放）
+  slowFactor: number;   // 减速倍率（1=正常，0.5=半速）
+  slowUntil: number;    // 减速到期时间戳（elapsed）
   dead: boolean;
   leaked: boolean;
 }
@@ -75,6 +78,8 @@ interface ProjectileR {
   dmg: number;         // 已含暴击的最终伤害（pierce 视觉弹道为 0）
   color: string;
   dead: boolean;
+  slowMul?: number;
+  slowDuration?: number;
 }
 
 /** 瞬时视觉特效（飘字伤害 / 死亡消散），由战斗结算产生、Board 渲染 */
@@ -112,6 +117,8 @@ export class Game {
   private mods: ModifierSet;          // 玩家加成（装备/VIP/meta 天赋，设计文档 §9）
   private segs: Segment[][];   // 每条路径的折线段
   private pathLens: number[];  // 每条路径总长
+  private hpMul: number;       // 敌人血量缩放（来自关卡配置）
+  private towerMul: number;    // 塔伤害/攻速缩放（自动 sqrt(hpMul)）
 
   private enemies: EnemyR[] = [];
   private towers: TowerR[] = [];
@@ -143,7 +150,9 @@ export class Game {
     this.lives = level.lives;
     this.segs = level.paths.map((p) => buildSegments(p));
     this.pathLens = this.segs.map((s) => totalLength(s));
-    this.msg = `第 1 波将于 ${PREP_FIRST} 秒后袭来，速速布阵！`;
+    this.hpMul = level.hpMul ?? 1;
+    this.towerMul = towerMulFrom(this.hpMul);
+    this.msg = `布阵完毕后，点击「开始第 1 波」迎敌。`;   // 首波手动开始
   }
 
   private posAt(pathIndex: number, dist: number): { x: number; y: number } {
@@ -163,9 +172,11 @@ export class Game {
   private update(dt: number): void {
     this.elapsed += dt;
     if (this.status === 'prep') {
-      // 自动波次：倒计时归零自动开始下一波
-      this.nextWaveIn -= dt;
-      if (this.nextWaveIn <= 0) this.startWave();
+      // 首波手动开始（给足布阵时间）；后续波自动倒计时
+      if (this.waveIndex > 0) {
+        this.nextWaveIn -= dt;
+        if (this.nextWaveIn <= 0) this.startWave();
+      }
     }
     if (this.waveActive) this.updateWave(dt);
     this.applyKnockback();
@@ -194,7 +205,8 @@ export class Game {
   private updateWave(dt: number): void {
     this.waveDir.update(dt, (id, pathIndex) => this.spawnEnemy(id, pathIndex));
     for (const e of this.enemies) {
-      e.dist += e.def.speed * e.speedMul * dt;
+      const slowMul = (this.elapsed < e.slowUntil) ? e.slowFactor : 1;
+      e.dist += e.def.speed * e.speedMul * slowMul * dt;
       const pathLen = this.pathLens[e.pathIndex] ?? 0;
       if (e.dist >= pathLen) {
         e.leaked = true;
@@ -231,11 +243,13 @@ export class Game {
     const def = this.reg.enemy(enemyId);
     if (!def) return;
     const p = this.posAt(pathIndex, dist);
+    const scaled = scaleEnemy(def.hp, def.bounty, this.hpMul);
     this.enemies.push({
-      uid: this.uidSeq++, def, hp: def.hp, maxHp: def.hp,
-      shield: def.shield ?? 0, pathIndex, dist,
+      uid: this.uidSeq++, def, hp: scaled.hp, maxHp: scaled.hp,
+      shield: (def.shield ?? 0) * this.hpMul, pathIndex, dist,
       x: p.x, y: p.y, abilityTimer: def.bossAbility?.interval ?? 0,
-      speedMul: 1, hitFlash: 0, dead: false, leaked: false,
+      speedMul: 1, hitFlash: 0, bounty: scaled.bounty, slowFactor: 1, slowUntil: 0,
+      dead: false, leaked: false,
     });
   }
 
@@ -303,8 +317,8 @@ export class Game {
   private effectiveStats(t: CombatTower): TowerStats {
     const aura = this.auraBuff(t);
     const school = t.def.school ?? 'sword';
-    const dmgMul = (1 + aura.dmgMul) * this.mods.damageMul(damageStatsFor(school));
-    const rateMul = (1 + aura.rateMul) * this.mods.rateMul();
+    const dmgMul = (1 + aura.dmgMul) * this.mods.damageMul(damageStatsFor(school)) * this.towerMul;
+    const rateMul = (1 + aura.rateMul) * this.mods.rateMul() * this.towerMul;
     return { dmgMul, rateMul, rangeAdd: this.mods.rangeAdd(), critBonus: this.mods.critBonus() };
   }
 
@@ -348,7 +362,7 @@ export class Game {
     }
     if (enemy.hp <= 0) {
       enemy.dead = true;
-      this.stones += enemy.def.bounty * this.mods.bountyMul();   // 赏金走玩家经济加成
+      this.stones += enemy.bounty * this.mods.bountyMul();   // 赏金走玩家经济加成（bounty 已含章节缩放）
       this.effects.push({ kind: 'poof', x: enemy.x, y: enemy.y, color: enemy.def.color, life: 0.35, maxLife: 0.35, vy: 0 });
       if (enemy.def.split) {                                      // 死亡分裂：生崽（子体赏金 0）
         for (let i = 0; i < enemy.def.split.count; i++) {
@@ -369,6 +383,10 @@ export class Game {
       if (dist <= step) {
         p.x = target.x; p.y = target.y;
         if (p.dmg > 0) this.damage(target, p.dmg);
+        if (p.slowMul !== undefined && p.slowDuration !== undefined) {
+          target.slowFactor = p.slowMul;
+          target.slowUntil = this.elapsed + p.slowDuration;
+        }
         p.dead = true;
       } else {
         p.x += (dx / dist) * step;
@@ -452,6 +470,24 @@ export class Game {
   auraBuffFor(uid: number): { dmgMul: number; rateMul: number } | null {
     const t = this.towers.find((x) => x.uid === uid);
     return t ? this.auraBuff(t) : null;
+  }
+
+  /** UI 用于显示某塔有效属性（含装备/天赋/VIP/光环/章节缩放后的实际数值） */
+  getEffectiveStats(uid: number): { dps: number; baseDps: number; buffPct: number; range: number; rate: number; crit: number } | null {
+    const t = this.towers.find((x) => x.uid === uid);
+    if (!t) return null;
+    const lv = t.def.levels[t.level];
+    const stats = this.effectiveStats(t);
+    const baseDps = lv.dmg * lv.rate;
+    const totalMul = stats.dmgMul * stats.rateMul;
+    return {
+      dps: Math.round(baseDps * totalMul),
+      baseDps: Math.round(baseDps),
+      buffPct: Math.round((totalMul - 1) * 100),
+      range: Math.round((lv.range + stats.rangeAdd) * 10) / 10,
+      rate: Math.round(lv.rate * stats.rateMul * 10) / 10,
+      crit: Math.round(Math.min(0.6, (lv.crit ?? 0) + stats.critBonus) * 100),
+    };
   }
 
   // ---------- 玩家操作 ----------
@@ -548,7 +584,7 @@ export class Game {
       status: this.status, stones: Math.floor(this.stones), lives: this.lives,
       waveIndex: this.waveIndex, totalWaves: this.level.waves.length,
       waveActive: this.waveActive,
-      nextWaveIn: this.status === 'prep' ? Math.max(0, this.nextWaveIn) : -1,
+      nextWaveIn: (this.status === 'prep' && this.waveIndex > 0) ? Math.max(0, this.nextWaveIn) : -1,
       elapsed: this.elapsed,
       enemies: this.enemies.map((e) => ({ ...e })),
       towers: this.towers.map((t) => ({ ...t })),
@@ -568,7 +604,10 @@ export class Game {
 
   /** 推进战斗特效（飘字上浮/衰减、闪白衰减） */
   private updateEffects(dt: number): void {
-    for (const e of this.enemies) if (e.hitFlash > 0) e.hitFlash = Math.max(0, e.hitFlash - dt);
+    for (const e of this.enemies) {
+      if (e.hitFlash > 0) e.hitFlash = Math.max(0, e.hitFlash - dt);
+      if (e.slowUntil > 0 && this.elapsed >= e.slowUntil) e.slowFactor = 1;  // 减速到期恢复
+    }
     for (const fx of this.effects) { fx.life -= dt; fx.y += fx.vy * dt; }
     this.effects = this.effects.filter((fx) => fx.life > 0);
   }

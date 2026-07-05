@@ -47,4 +47,14 @@ export const ENEMIES: Record<string, EnemyConfig> = {
       enrageBelow: { hpPct: 0.4, speedMul: 1.6, summonCount: 4 },
     },
   },
+
+  // —— 第六章 · 域外篇 ——
+  sand_scorpion: { id: 'sand_scorpion', name: '沙蝎', icon: '蝎', hp: 280, speed: 0.9, armor: 20, bounty: 28, color: '#d4a017' },
+  barbarian: { id: 'barbarian', name: '域外蛮修', icon: '蛮', hp: 450, speed: 0.6, armor: 0, bounty: 45, color: '#8b4513', shield: 80 },
+  mist_wraith: { id: 'mist_wraith', name: '雾妖', icon: '雾', hp: 350, speed: 1.0, armor: 25, bounty: 35, color: '#b0bec5' },
+  rift_lord: {
+    id: 'rift_lord', name: '裂隙领主', icon: '裂', hp: 6000, speed: 0.6, armor: 15, bounty: 0, color: '#ff6f00', elite: true, shield: 200,
+    bossAbility: { interval: 10, summon: { enemy: 'sand_scorpion', count: 3 } },
+    split: { child: 'mist_wraith', count: 2 },
+  },
 };

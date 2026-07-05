@@ -79,7 +79,7 @@ describe('ProjectileStrategy', () => {
 });
 
 describe('PierceStrategy', () => {
-  it('immediately damages all pierced targets and emits a zero-dmg visual', () => {
+  it('sweeps all enemies in range and emits a zero-dmg visual', () => {
     const damaged: number[] = [];
     const visuals: number[] = [];
     const inRange = [enemy(2, 1), enemy(3, 9), enemy(4, 7), enemy(5, 3)];
@@ -90,9 +90,9 @@ describe('PierceStrategy', () => {
       spawnProjectile: (p) => { visuals.push(p.dmg); },
       enemiesInRange: () => inRange,
     });
-    // 长枪 炼气 pierce 2
+    // 长枪 扫荡：范围内全部敌人都受伤
     new PierceStrategy().execute(towerOf('spear', 0), enemy(1, 5), ctx);
-    expect(damaged).toHaveLength(2);            // 穿透 2 个
+    expect(damaged).toHaveLength(4);            // 范围内 4 个全中
     expect(visuals).toEqual([0]);               // 视觉弹道 dmg=0
   });
 

@@ -234,11 +234,15 @@ export class Board {
     ctx.textBaseline = 'middle';
     ctx.fillText(icon, (t.col + 0.5) * CELL, (t.row + 0.5) * CELL);
 
-    // 境界等级 pips（level+1 个点）
+    // 境界等级 pips（level+1 个点，加深色底圈保证在任何塔色上都可见）
     for (let i = 0; i <= t.level; i++) {
+      ctx.fillStyle = '#000a';
+      ctx.beginPath();
+      ctx.arc(x + 11 + i * 10, y + 11, 5, 0, Math.PI * 2);
+      ctx.fill();
       ctx.fillStyle = '#ffd93d';
       ctx.beginPath();
-      ctx.arc(x + 11 + i * 10, y + 11, 4, 0, Math.PI * 2);
+      ctx.arc(x + 11 + i * 10, y + 11, 3, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -300,6 +304,13 @@ export class Board {
       ctx.beginPath();
       ctx.arc(cx, cy, rad + 4, 0, Math.PI * 2);
       ctx.stroke();
+    }
+    // 减速效果（冰蓝光环）
+    if (e.slowFactor < 1) {
+      ctx.fillStyle = 'rgba(100,200,255,0.25)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, rad + 6, 0, Math.PI * 2);
+      ctx.fill();
     }
     // 图标字
     ctx.fillStyle = '#fff';

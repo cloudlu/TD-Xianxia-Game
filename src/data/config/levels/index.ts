@@ -14,6 +14,9 @@ import { CH4_L3 } from './ch4-l3';
 import { CH5_L1 } from './ch5-l1';
 import { CH5_L2 } from './ch5-l2';
 import { CH5_L3 } from './ch5-l3';
+import { CH6_L1 } from './ch6-l1';
+import { CH6_L2 } from './ch6-l2';
+import { CH6_L3 } from './ch6-l3';
 
 // 所有关卡按 id 索引（Registry 按 id 查询）
 export const LEVELS: Record<string, LevelConfig> = {
@@ -32,6 +35,9 @@ export const LEVELS: Record<string, LevelConfig> = {
   [CH5_L1.id]: CH5_L1,
   [CH5_L2.id]: CH5_L2,
   [CH5_L3.id]: CH5_L3,
+  [CH6_L1.id]: CH6_L1,
+  [CH6_L2.id]: CH6_L2,
+  [CH6_L3.id]: CH6_L3,
 };
 
 // 章节清单（顺序即解锁顺序；第 N 关解锁 = 第 N-1 关通关）—— 设计文档 §8.2
@@ -51,4 +57,7 @@ export const MANIFEST: ManifestEntry[] = [
   { levelId: 'ch5-l1', chapterId: 'ch5', chapterTitle: '第五章 · 血煞魔尊' },
   { levelId: 'ch5-l2', chapterId: 'ch5', chapterTitle: '第五章 · 血煞魔尊' },
   { levelId: 'ch5-l3', chapterId: 'ch5', chapterTitle: '第五章 · 血煞魔尊' },
+  { levelId: 'ch6-l1', chapterId: 'ch6', chapterTitle: '第六章 · 域外篇' },
+  { levelId: 'ch6-l2', chapterId: 'ch6', chapterTitle: '第六章 · 域外篇' },
+  { levelId: 'ch6-l3', chapterId: 'ch6', chapterTitle: '第六章 · 域外篇' },
 ];

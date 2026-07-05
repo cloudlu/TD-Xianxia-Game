@@ -30,6 +30,8 @@ export interface SpawnedProjectile {
   dmg: number;
   color: string;
   dead: boolean;
+  slowMul?: number;       // 命中减速倍率（0.5=半速），undefined=不减速
+  slowDuration?: number;   // 减速持续秒数
 }
 
 /** 塔结算后的有效属性（光环 + 玩家加成合并、封顶后的最终值） */
@@ -87,11 +89,12 @@ export class ProjectileStrategy implements AttackStrategy {
     const dmg = rollDamage(lv.dmg, stats.dmgMul, critChance, ctx.rng);
     ctx.spawnProjectile({
       x: tower.x, y: tower.y, targetUid: primary.uid, dmg, color: tower.def.color, dead: false,
+      slowMul: lv.slow?.mul, slowDuration: lv.slow?.duration,
     });
   }
 }
 
-/** 即时穿透攻击：主目标 + 范围内最近若干敌人 */
+/** 扫荡攻击：范围内全部敌人（横扫，克密集虫群/分裂） */
 export class PierceStrategy implements AttackStrategy {
   execute(tower: CombatTower, primary: CombatEnemy, ctx: CombatContext): void {
     const lv = tower.def.levels[tower.level];
@@ -99,7 +102,7 @@ export class PierceStrategy implements AttackStrategy {
     const critChance = Math.min(CRIT_CAP, (lv.crit ?? 0) + stats.critBonus);
     const dmg = rollDamage(lv.dmg, stats.dmgMul, critChance, ctx.rng);
     const range = lv.range + stats.rangeAdd;
-    const hits = pickPierceTargets(primary, ctx.enemiesInRange(tower, range), lv.pierce ?? 1);
+    const hits = ctx.enemiesInRange(tower, range);   // 范围内全部敌人（扫荡）
     for (const e of hits) ctx.damage(e, dmg);
     // 视觉弹道（伤害已即时结算，dmg=0）
     ctx.spawnProjectile({

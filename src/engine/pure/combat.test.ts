@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { armorMultiplier, applyDamage, canHitFlying, absorbShield, resolveHit, enrageMul } from './combat';
+import { armorMultiplier, applyDamage, canHitFlying, absorbShield, resolveHit, enrageMul, scaleEnemy, towerMulFrom } from './combat';
 
 describe('armorMultiplier', () => {
   it('returns 1.0 when armor is 0', () => {
@@ -94,5 +94,27 @@ describe('enrageMul', () => {
   });
   it('returns 1 when no enrage config is present', () => {
     expect(enrageMul(0.1, undefined)).toBe(1);
+  });
+});
+
+describe('scaleEnemy (chapter scaling)', () => {
+  it('scales HP linearly but bounty as sqrt (economy keeps up partially)', () => {
+    const s = scaleEnemy(100, 10, 4);   // hpMul=4
+    expect(s.hp).toBe(400);             // 100 × 4
+    expect(s.bounty).toBe(20);          // 10 × sqrt(4) = 10 × 2
+  });
+  it('is identity at hpMul=1', () => {
+    expect(scaleEnemy(60, 6, 1)).toEqual({ hp: 60, bounty: 6 });
+  });
+  it('keeps bounty=0 enemies at 0 (bosses)', () => {
+    expect(scaleEnemy(8000, 0, 4)).toEqual({ hp: 32000, bounty: 0 });
+  });
+});
+
+describe('towerMulFrom', () => {
+  it('derives towerMul as sqrt(hpMul) to match economy-tower balance', () => {
+    expect(towerMulFrom(1)).toBe(1);
+    expect(towerMulFrom(4)).toBeCloseTo(2, 5);
+    expect(towerMulFrom(1.5)).toBeCloseTo(1.2247, 3);
   });
 });

@@ -14,6 +14,7 @@ export const CH5_L3: LevelConfig = {
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
+  hpMul: 1.5,
   waves: [
     { spawns: [
       { enemy: 'shadow_fox', count: 5, gap: 1.2, delay: 0, path: 0 },
@@ -24,6 +25,16 @@ export const CH5_L3: LevelConfig = {
       { enemy: 'splitter', count: 6, gap: 1.2, delay: 0, path: 2 },
       { enemy: 'bat', count: 12, gap: 0.4, delay: 1, path: 1 },
     ], clearBonus: 230 },
+    { spawns: [
+      { enemy: 'magic_minion', count: 8, gap: 0.9, delay: 0, path: 0 },
+      { enemy: 'splitter', count: 8, gap: 1, delay: 0, path: 2 },
+      { enemy: 'bat', count: 14, gap: 0.35, delay: 1, path: 1 },
+    ], clearBonus: 260 },
+    { spawns: [
+      { enemy: 'blood_cultist', count: 8, gap: 0.9, delay: 0, path: 0 },
+      { enemy: 'shadow_fox', count: 10, gap: 0.9, delay: 0, path: 2 },
+      { enemy: 'magic_puppet', count: 3, gap: 2.5, delay: 1, path: 1 },
+    ], clearBonus: 300 },
     // 终波：魔尊血煞降临（多阶段：厚盾→狂暴加速+多召唤血修）+ 两侧持续施压
     { spawns: [
       { enemy: 'blood_lord', count: 1, gap: 1, delay: 3, path: 1 },
