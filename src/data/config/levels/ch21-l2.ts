@@ -15,9 +15,9 @@ export const CH21_L2: LevelConfig = {
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.1,
   waves: [
-    { spawns: [{ enemy: 'void_walker', count: 12, gap: 0.7, delay: 0 }, { enemy: 'bat', count: 10, gap: 0.4, delay: 0 }], clearBonus: 420 },
-    { spawns: [{ enemy: 'celestial_demon', count: 5, gap: 1.8, delay: 0 }, { enemy: 'void_walker', count: 10, gap: 0.8, delay: 1 }], clearBonus: 450 },
-    { spawns: [{ enemy: 'celestial_demon', count: 8, gap: 1.4, delay: 0 }, { enemy: 'void_walker', count: 14, gap: 0.5, delay: 0 }, { enemy: 'blood_cultist', count: 5, gap: 1.2, delay: 1 }], clearBonus: 480 },
+    { spawns: [{ enemy: 'void_walker', count: 12, gap: 0.7, delay: 0, path: 0 }, { enemy: 'bat', count: 10, gap: 0.4, delay: 0, path: 1 }], clearBonus: 420 },
+    { spawns: [{ enemy: 'celestial_demon', count: 5, gap: 1.8, delay: 0, path: 0 }, { enemy: 'void_walker', count: 10, gap: 0.8, delay: 1, path: 1 }], clearBonus: 450 },
+    { spawns: [{ enemy: 'celestial_demon', count: 8, gap: 1.4, delay: 0, path: 0 }, { enemy: 'void_walker', count: 14, gap: 0.5, delay: 0, path: 1 }, { enemy: 'blood_cultist', count: 5, gap: 1.2, delay: 1, path: 0 }], clearBonus: 480 },
   ],
   story: {
     intro: {

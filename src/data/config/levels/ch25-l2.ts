@@ -3,9 +3,9 @@ import { buildableFromPaths } from './buildable';
 
 // 第 25 章 第 2 关 · 天劫之威（三路径）
 const P = [
-  [{ x: 0, y: 1 }, { x: 15, y: 1 }],
-  [{ x: 0, y: 4 }, { x: 15, y: 4 }],
-  [{ x: 0, y: 6 }, { x: 15, y: 6 }],
+  [{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 5, y: 4 }, { x: 10, y: 4 }, { x: 10, y: 7 }, { x: 15, y: 7 }],
+  [{ x: 0, y: 4 }, { x: 5, y: 4 }, { x: 5, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 4 }, { x: 15, y: 4 }],
+  [{ x: 0, y: 7 }, { x: 5, y: 7 }, { x: 5, y: 4 }, { x: 10, y: 4 }, { x: 10, y: 0 }, { x: 15, y: 0 }],
 ];
 
 export const CH25_L2: LevelConfig = {
@@ -16,9 +16,9 @@ export const CH25_L2: LevelConfig = {
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.5,
   waves: [
-    { spawns: [{ enemy: 'celestial_demon', count: 18, gap: 0.7, delay: 0 }, { enemy: 'void_walker', count: 22, gap: 0.4, delay: 0 }], clearBonus: 560 },
-    { spawns: [{ enemy: 'chaos_larva', count: 24, gap: 0.4, delay: 0 }, { enemy: 'celestial_demon', count: 16, gap: 0.7, delay: 1 }], clearBonus: 590 },
-    { spawns: [{ enemy: 'void_walker', count: 26, gap: 0.3, delay: 0 }, { enemy: 'celestial_demon', count: 20, gap: 0.6, delay: 0 }, { enemy: 'ghost_cultivator', count: 10, gap: 0.9, delay: 1 }], clearBonus: 620 },
+    { spawns: [{ enemy: 'celestial_demon', count: 18, gap: 0.7, delay: 0, path: 0 }, { enemy: 'void_walker', count: 22, gap: 0.4, delay: 0, path: 1 }], clearBonus: 560 },
+    { spawns: [{ enemy: 'chaos_larva', count: 24, gap: 0.4, delay: 0, path: 2 }, { enemy: 'celestial_demon', count: 16, gap: 0.7, delay: 1, path: 0 }], clearBonus: 590 },
+    { spawns: [{ enemy: 'void_walker', count: 26, gap: 0.3, delay: 0, path: 1 }, { enemy: 'celestial_demon', count: 20, gap: 0.6, delay: 0, path: 2 }, { enemy: 'ghost_cultivator', count: 10, gap: 0.9, delay: 1, path: 0 }], clearBonus: 620 },
   ],
   story: {
     intro: {

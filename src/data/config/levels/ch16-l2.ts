@@ -15,9 +15,9 @@ export const CH16_L2: LevelConfig = {
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 2.6,
   waves: [
-    { spawns: [{ enemy: 'dragon_young', count: 8, gap: 1.2, delay: 0 }, { enemy: 'ghost_cultivator', count: 5, gap: 1.6, delay: 1 }], clearBonus: 320 },
-    { spawns: [{ enemy: 'ghost_cultivator', count: 8, gap: 1.0, delay: 0 }, { enemy: 'dragon_young', count: 8, gap: 1.0, delay: 1 }, { enemy: 'shadow_fox', count: 6, gap: 1.0, delay: 0 }], clearBonus: 360 },
-    { spawns: [{ enemy: 'dragon_young', count: 12, gap: 0.8, delay: 0 }, { enemy: 'ghost_cultivator', count: 10, gap: 0.8, delay: 1 }, { enemy: 'demon_knight', count: 6, gap: 1.4, delay: 0 }], clearBonus: 400 },
+    { spawns: [{ enemy: 'dragon_young', count: 8, gap: 1.2, delay: 0, path: 0 }, { enemy: 'ghost_cultivator', count: 5, gap: 1.6, delay: 1, path: 1 }], clearBonus: 320 },
+    { spawns: [{ enemy: 'ghost_cultivator', count: 8, gap: 1.0, delay: 0, path: 0 }, { enemy: 'dragon_young', count: 8, gap: 1.0, delay: 1, path: 1 }, { enemy: 'shadow_fox', count: 6, gap: 1.0, delay: 0, path: 0 }], clearBonus: 360 },
+    { spawns: [{ enemy: 'dragon_young', count: 12, gap: 0.8, delay: 0, path: 1 }, { enemy: 'ghost_cultivator', count: 10, gap: 0.8, delay: 1, path: 0 }, { enemy: 'demon_knight', count: 6, gap: 1.4, delay: 0, path: 1 }], clearBonus: 400 },
   ],
   story: {
     intro: {

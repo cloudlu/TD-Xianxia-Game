@@ -3,7 +3,9 @@ import { buildableFromPaths } from './buildable';
 
 // 第 26 章 第 1 关 · 天外天（L 形单路径，引入混沌古兽 + 执法者）
 const P = [[
-  { x: 0, y: 3 }, { x: 7, y: 3 }, { x: 7, y: 6 }, { x: 15, y: 6 },
+  { x: 0, y: 0 }, { x: 3, y: 0 }, { x: 3, y: 2 },
+  { x: 13, y: 2 }, { x: 13, y: 5 }, { x: 3, y: 5 },
+  { x: 3, y: 7 }, { x: 15, y: 7 },
 ]];
 
 export const CH26_L1: LevelConfig = {

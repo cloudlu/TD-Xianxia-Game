@@ -3,8 +3,8 @@ import { buildableFromPaths } from './buildable';
 
 // 第 23 章 第 2 关 · 灵气紊乱（双路径）
 const P = [
-  [{ x: 0, y: 2 }, { x: 15, y: 2 }],
-  [{ x: 0, y: 5 }, { x: 15, y: 5 }],
+  [{ x: 0, y: 1 }, { x: 9, y: 1 }, { x: 9, y: 4 }, { x: 15, y: 4 }],
+  [{ x: 0, y: 6 }, { x: 9, y: 6 }, { x: 9, y: 4 }, { x: 15, y: 4 }],
 ];
 
 export const CH23_L2: LevelConfig = {
@@ -15,9 +15,9 @@ export const CH23_L2: LevelConfig = {
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.3,
   waves: [
-    { spawns: [{ enemy: 'ghost_cultivator', count: 8, gap: 1.0, delay: 0 }, { enemy: 'void_walker', count: 10, gap: 0.6, delay: 0 }], clearBonus: 480 },
-    { spawns: [{ enemy: 'celestial_demon', count: 10, gap: 0.9, delay: 0 }, { enemy: 'chaos_larva', count: 12, gap: 0.5, delay: 1 }], clearBonus: 510 },
-    { spawns: [{ enemy: 'void_walker', count: 16, gap: 0.5, delay: 0 }, { enemy: 'celestial_demon', count: 12, gap: 0.8, delay: 0 }, { enemy: 'magic_minion', count: 8, gap: 0.7, delay: 1 }], clearBonus: 540 },
+    { spawns: [{ enemy: 'ghost_cultivator', count: 8, gap: 1.0, delay: 0, path: 0 }, { enemy: 'void_walker', count: 10, gap: 0.6, delay: 0, path: 1 }], clearBonus: 480 },
+    { spawns: [{ enemy: 'celestial_demon', count: 10, gap: 0.9, delay: 0, path: 0 }, { enemy: 'chaos_larva', count: 12, gap: 0.5, delay: 1, path: 1 }], clearBonus: 510 },
+    { spawns: [{ enemy: 'void_walker', count: 16, gap: 0.5, delay: 0, path: 0 }, { enemy: 'celestial_demon', count: 12, gap: 0.8, delay: 0, path: 1 }, { enemy: 'magic_minion', count: 8, gap: 0.7, delay: 1, path: 0 }], clearBonus: 540 },
   ],
   story: {
     intro: {

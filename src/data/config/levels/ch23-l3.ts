@@ -16,9 +16,9 @@ export const CH23_L3: LevelConfig = {
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.3,
   waves: [
-    { spawns: [{ enemy: 'celestial_demon', count: 14, gap: 0.8, delay: 0 }, { enemy: 'void_walker', count: 16, gap: 0.5, delay: 0 }], clearBonus: 500 },
-    { spawns: [{ enemy: 'chaos_larva', count: 18, gap: 0.5, delay: 0 }, { enemy: 'dragon_young', count: 5, gap: 1.6, delay: 1 }], clearBonus: 530 },
-    { spawns: [{ enemy: 'demon_general', count: 1, gap: 0, delay: 0 }, { enemy: 'celestial_demon', count: 12, gap: 0.9, delay: 1 }, { enemy: 'shadow_assassin', count: 6, gap: 1.4, delay: 1 }], clearBonus: 570 },
+    { spawns: [{ enemy: 'celestial_demon', count: 14, gap: 0.8, delay: 0, path: 0 }, { enemy: 'void_walker', count: 16, gap: 0.5, delay: 0, path: 1 }], clearBonus: 500 },
+    { spawns: [{ enemy: 'chaos_larva', count: 18, gap: 0.5, delay: 0, path: 2 }, { enemy: 'dragon_young', count: 5, gap: 1.6, delay: 1, path: 0 }], clearBonus: 530 },
+    { spawns: [{ enemy: 'demon_general', count: 1, gap: 0, delay: 0, path: 1 }, { enemy: 'celestial_demon', count: 12, gap: 0.9, delay: 1, path: 2 }, { enemy: 'shadow_assassin', count: 6, gap: 1.4, delay: 1, path: 0 }], clearBonus: 570 },
   ],
   story: {
     intro: {

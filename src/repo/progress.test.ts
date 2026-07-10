@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   withDefaults, buyEquipment, equipItem, upgradeEquip, redeemJade, upgradeVip,
-  buySkin, equipSkin, upgradeTalent, computeStars, recordResult, isUnlocked,
+  buySkin, equipSkin, upgradeTalent, computeStars, recordResult, isUnlocked, clearedKey, isClearedOn,
 } from './progress';
 import type { Progression } from './progress';
 import type { ManifestEntry } from '../types';
@@ -92,23 +92,37 @@ describe('skins & talents (pure)', () => {
   });
 });
 
-describe('level result & unlock (pure)', () => {
+describe('level result & unlock (per difficulty)', () => {
   it('computeStars: 3 at full lives, 2 at >=60%, 1 otherwise', () => {
     expect(computeStars(20, 20)).toBe(3);
-    expect(computeStars(13, 20)).toBe(2);   // 65%
+    expect(computeStars(13, 20)).toBe(2);
     expect(computeStars(5, 20)).toBe(1);
   });
-  it('recordResult keeps the historical max stars', () => {
+  it('recordResult keys by difficulty, keeps historical max stars', () => {
     let p = fresh();
-    p = recordResult(p, 'a', 2);
-    p = recordResult(p, 'a', 1);            // 更低星不覆盖
-    expect(p.cleared.a.stars).toBe(2);
-    p = recordResult(p, 'a', 3);            // 更高星覆盖
-    expect(p.cleared.a.stars).toBe(3);
+    p = recordResult(p, 'a', 'simple', 2);
+    expect(p.cleared[clearedKey('a', 'simple')].stars).toBe(2);
+    p = recordResult(p, 'a', 'simple', 1);
+    expect(p.cleared[clearedKey('a', 'simple')].stars).toBe(2);  // 低星不覆盖
+    p = recordResult(p, 'a', 'normal', 3);
+    expect(p.cleared[clearedKey('a', 'normal')].stars).toBe(3);  // 高星覆盖
+    expect(p.cleared[clearedKey('a', 'simple')].stars).toBe(2);  // 不影响简单
   });
-  it('isUnlocked: first always, rest needs previous cleared', () => {
-    expect(isUnlocked(manifest, 0, fresh())).toBe(true);
-    expect(isUnlocked(manifest, 1, fresh())).toBe(false);
-    expect(isUnlocked(manifest, 1, recordResult(fresh(), 'a', 3))).toBe(true);
+  it('isClearedOn checks per-difficulty key', () => {
+    const p = recordResult(fresh(), 'a', 'normal', 3);
+    expect(isClearedOn(p, 'a', 'normal')).toBe(true);
+    expect(isClearedOn(p, 'a', 'simple')).toBe(false);
+  });
+  it('isUnlocked: chain within difficulty + difficulty gating', () => {
+    // 简单：首关恒解锁，链式推进
+    expect(isUnlocked(manifest, 0, fresh(), 'simple')).toBe(true);
+    expect(isUnlocked(manifest, 1, fresh(), 'simple')).toBe(false);
+    const p1 = recordResult(fresh(), 'a', 'simple', 3);
+    expect(isUnlocked(manifest, 1, p1, 'simple')).toBe(true);
+    // 普通：需要该关简单已通关 + 链式
+    expect(isUnlocked(manifest, 0, p1, 'normal')).toBe(true);   // a 简单通关 → a 普通解锁
+    expect(isUnlocked(manifest, 1, p1, 'normal')).toBe(false);  // b 简单未通 → b 普通不解锁
+    const p2 = recordResult(recordResult(p1, 'a', 'normal', 3), 'b', 'simple', 3);
+    expect(isUnlocked(manifest, 1, p2, 'normal')).toBe(true);   // b 简单通 + a 普通通 → b 普通解锁
   });
 });

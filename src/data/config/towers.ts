@@ -63,7 +63,7 @@ export const TOWERS: Record<string, TowerConfig> = {
     ],
   },
   fire_mage: {
-    id: 'fire_mage', name: '火法修士', icon: '火', color: '#ff7043', school: 'magic',
+    id: 'fire_mage', name: '火法修士', icon: '火', color: '#ff7043', school: 'fire',
     cost: 130, sellRatio: 0.6, behavior: 'aoe', targetPolicy: 'strongest', hitsAir: true,
     desc: '范围溅射·法修',
     levels: [
@@ -78,7 +78,7 @@ export const TOWERS: Record<string, TowerConfig> = {
     ],
   },
   thunder_mage: {
-    id: 'thunder_mage', name: '雷法修士', icon: '雷', color: '#7986cb', school: 'magic',
+    id: 'thunder_mage', name: '雷法修士', icon: '雷', color: '#7986cb', school: 'thunder',
     cost: 150, sellRatio: 0.6, behavior: 'chain', targetPolicy: 'first', hitsAir: true,
     desc: '链电跳跃·法修',
     levels: [

@@ -8,10 +8,11 @@ import { registry } from '../data/Registry';
 import { app, iap, persist } from './state';
 import {
   buyEquipment, equipItem, grantJade, upgradeVip, buySkin, equipSkin, upgradeTalent,
-  redeemJade, upgradeEquip,
+  redeemJade, upgradeEquip, applyDraw, craftEquip,
 } from '../repo/progress';
+import { drawGacha, FRAG_COST } from '../data/config/gacha';
 
-type MetaTab = '法宝' | '天命' | '天赋' | '皮肤' | '充值';
+type MetaTab = '法宝' | '天命' | '天赋' | '皮肤' | '寻仙' | '充值';
 let metaTab: MetaTab = '法宝';
 const metaCard = document.getElementById('metaCard')!;
 const metaOverlay = document.getElementById('metaOverlay')!;
@@ -35,6 +36,7 @@ export function renderMeta(): void {
       <button data-tab="天命" class="${metaTab === '天命' ? 'active' : ''}">天命阶</button>
       <button data-tab="天赋" class="${metaTab === '天赋' ? 'active' : ''}">天赋</button>
       <button data-tab="皮肤" class="${metaTab === '皮肤' ? 'active' : ''}">皮肤</button>
+      <button data-tab="寻仙" class="${metaTab === '寻仙' ? 'active' : ''}">寻仙</button>
       <button data-tab="充值" class="${metaTab === '充值' ? 'active' : ''}">充值</button>
     </div>
     <div class="meta-balance" id="metaBalance">仙玉 <b style="color:#ffd93d">${app.progression.jade}</b>　·　贡献 <b style="color:#5fd3ff">${app.progression.contribution}</b></div>
@@ -48,6 +50,7 @@ export function renderMeta(): void {
   else if (metaTab === '天命') renderVipTab();
   else if (metaTab === '天赋') renderTalentTab();
   else if (metaTab === '皮肤') renderSkinTab();
+  else if (metaTab === '寻仙') renderGachaTab();
   else renderRechargeTab();
 }
 
@@ -196,6 +199,99 @@ function renderSkinTab(): void {
 
 // 测试密码（仅开发测试用，防止试玩者随意充值）
 const DEV_PASSWORD = 'td2026';
+
+let gachaRng = mulberry32(Date.now());
+
+function renderGachaTab(): void {
+  updateBalance();
+  const el = document.getElementById('metaContent')!;
+  const p = app.progression;
+  const frags = p.equipFragments;
+  const canCraft = frags >= FRAG_COST;
+  app.progression = p;  // trigger re-render if needed
+
+  const html = `<div class="eq-desc" style="text-align:center;margin-bottom:10px;">
+    仙魂碎片 <b style="color:#ffd93d">${p.soulShards}</b>（每5个 +1% 全体伤害）　·
+    天命符 <b style="color:#ffd93d">${p.destinyScrolls}</b>（消耗1张 = 下关 +15% 伤害）　·
+    装备碎片 <b style="color:#ffd93d">${frags}/${FRAG_COST}</b>
+    ${canCraft ? '<br><button id="craftBtn" style="margin-top:6px;">合成随机限定法宝（消耗 ' + FRAG_COST + ' 碎片）</button>' : ''}
+  </div>
+  <div class="eq-grid">
+    <div class="eq-card" style="text-align:center;">
+      <div class="eq-name">单抽</div>
+      <div class="eq-desc">120 贡献</div>
+      <button id="singleDraw" ${p.contribution < 120 ? 'disabled' : ''}>寻 仙</button>
+    </div>
+    <div class="eq-card" style="text-align:center;">
+      <div class="eq-name">十连</div>
+      <div class="eq-desc">1000 贡献 · 保底稀有</div>
+      <button id="tenDraw" ${p.contribution < 1000 ? 'disabled' : ''}>十 连 寻 仙</button>
+    </div>
+  </div>
+  <div id="drawResult" style="text-align:center;margin-top:10px;font-size:14px;color:#ffd93d;min-height:20px;"></div>`;
+
+  el.innerHTML = html;
+
+  // 合成
+  const craftBtn = document.getElementById('craftBtn');
+  if (craftBtn) craftBtn.onclick = () => {
+    if (frags < FRAG_COST) return;
+    const ids = EQUIPMENT_IDS;
+    const pick = ids[Math.floor(gachaRng() * ids.length)];
+    const next = craftEquip(app.progression, pick);
+    if (next) { app.progression = next; persist(); renderGachaTab(); }
+  };
+
+  // 单抽
+  document.getElementById('singleDraw')!.onclick = () => {
+    if (p.contribution < 120) return;
+    const res = drawGacha(p.gachaPity, () => { gachaRng = mulberry32(gachaRng() * 1e9 | 0); return gachaRng(); });
+    const next = applyDraw(app.progression, 120, res.result, res.newPity);
+    if (next) { app.progression = next; persist(); showDrawResult(res.result); renderGachaTab(); }
+  };
+
+  // 十连
+  document.getElementById('tenDraw')!.onclick = () => {
+    if (p.contribution < 1000) return;
+    let cur = app.progression;
+    let pity = cur.gachaPity;
+    const results: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      const res = drawGacha(pity, () => { gachaRng = mulberry32(gachaRng() * 1e9 | 0); return gachaRng(); });
+      const next = applyDraw(cur, i === 0 ? 1000 : 0, res.result, res.newPity);  // first deducts, rest free
+      if (!next) break;
+      cur = next;
+      pity = res.newPity;
+      results.push(prizeLabel(res.result));
+    }
+    app.progression = cur; persist();
+    showDrawResultText(`十连：${results.join(' · ')}`);
+    renderGachaTab();
+  };
+}
+
+function prizeLabel(r: import('../data/config/gacha').DrawResult): string {
+  if (r.contributionGain) return `+${r.contributionGain}贡献`;
+  if (r.soulShards) return `${r.soulShards}仙魂`;
+  if (r.destinyScrolls) return `天命+${r.destinyScrolls}`;
+  if (r.frags) return `${r.frags}碎片`;
+  return '';
+}
+
+function showDrawResult(r: import('../data/config/gacha').DrawResult): void {
+  showDrawResultText(`${prizeLabel(r)}${r.pityTriggered ? ' · 保底！' : ''}`);
+}
+
+function showDrawResultText(text: string): void {
+  const el = document.getElementById('drawResult');
+  if (el) el.textContent = text;
+}
+
+/** 仅供寻仙用的简易随机 */
+function mulberry32(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => { s = (s + 0x6d2b79f5) >>> 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
 
 function renderRechargeTab(): void {
   updateBalance();

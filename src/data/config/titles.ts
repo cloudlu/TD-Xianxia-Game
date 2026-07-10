@@ -39,7 +39,9 @@ export function completedChapters(manifest: ReadonlyArray<ManifestEntry>, p: Pro
   for (const e of manifest) {
     const c = byChapter.get(e.chapterId) ?? { total: 0, cleared: 0 };
     c.total += 1;
-    if (p.cleared[e.levelId]) c.cleared += 1;
+    // 新 key 格式为 `${levelId}:${difficulty}`；任意难度通关即算已通关该关
+    const anyClear = Object.keys(p.cleared).some((k) => k.startsWith(`${e.levelId}:`));
+    if (anyClear) c.cleared += 1;
     byChapter.set(e.chapterId, c);
   }
   let n = 0;

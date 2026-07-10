@@ -175,6 +175,16 @@
     .eq-card button.equip, .eq-card button.upgrade { background: linear-gradient(180deg,#3a5a3a,#2a4a2a); border-color: #5a8a5a; }
     .meta-card .close-row { text-align: right; margin-top: 18px; }
 
+    /* 图鉴 */
+    #bestiaryOverlay {
+      position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.75); z-index: 65; backdrop-filter: blur(3px);
+    }
+    #bestiaryOverlay.show { display: flex; }
+    .bestiary-grid { grid-template-columns: 1fr 1fr 1fr !important; }
+    .bestiary-card { cursor: pointer; transition: transform 0.1s; }
+    .bestiary-card:hover { transform: translateY(-2px); }
+
     /* 档案选择 */
     #profileSelect {
       position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
@@ -320,8 +330,11 @@
     <div class="ls-list" id="lsList"></div>
     <button id="metaBtn">宗 门</button>
     <button id="switchBtn" style="margin-top:10px;background:transparent;color:#8b8ba0;border:1px solid #3a4a6a;padding:6px 16px;border-radius:4px;cursor:pointer;font-size:13px;letter-spacing:2px;margin-left:10px;">切换修士</button>
+    <button id="bestiaryBtn" style="margin-top:10px;background:transparent;color:#8b8ba0;border:1px solid #3a4a6a;padding:6px 16px;border-radius:4px;cursor:pointer;font-size:13px;letter-spacing:2px;margin-left:6px;">妖 兽 录</button>
+    <button id="endlessBtn" style="margin-top:10px;background:linear-gradient(180deg,#c0392b,#96281b);color:#fff;border:1px solid #c0392b;padding:8px 22px;border-radius:4px;cursor:pointer;font-size:14px;letter-spacing:3px;margin-left:6px;">无 尽 试 炼</button>
   </div></div>
   <div id="metaOverlay"><div class="meta-card" id="metaCard"></div></div>
+  <div id="bestiaryOverlay"><div class="meta-card" id="bestiaryCard"></div></div>
   <div id="towerPanel">
     <div class="tp-head"><span class="tp-title" id="tpTitle"></span><button class="tp-close" id="tpClose">×</button></div>
     <div class="tp-row"><span>境界</span><span class="tp-small" id="tpRealm"></span></div>

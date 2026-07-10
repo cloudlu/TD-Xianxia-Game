@@ -2,12 +2,14 @@
 import { Game } from '../engine/Game';
 import { registry } from '../data/Registry';
 import { resolveTitle, completedChapters } from '../data/config';
-import type { StoryBeat, Difficulty } from '../types';
+import type { StoryBeat, Difficulty, LevelConfig } from '../types';
 import { DIFFICULTY_MUL } from '../types';
 import { audio } from '../audio/AudioManager';
 import { app, buildMods, lookup, persist } from './state';
 import { showStory, hideStory } from './storyModal';
-import { isUnlocked, computeStars, recordResult, awardContribution, setDifficulty } from '../repo/progress';
+import { isUnlocked, computeStars, recordResult, awardContribution, setDifficulty, clearedKey, isClearedOn, recordEndless, awardMilestones, consumeDestiny } from '../repo/progress';
+import { generateWave, endlessHpMul, endlessContrib, MILESTONES, ENDLESS_PATHS, prepTime } from '../engine/EndlessMode';
+import { buildableFromPaths } from '../data/config/levels/buildable';
 
 const levelSelect = document.getElementById('levelSelect')!;
 const lsList = document.getElementById('lsList')!;
@@ -22,8 +24,15 @@ export function renderLevelSelect(): void {
   const total = manifest.length;
   let cleared = 0, stars = 0;
   for (const entry of manifest) {
-    const r = app.progression.cleared[entry.levelId];
-    if (r) { cleared += 1; stars += r.stars; }
+    // 任意难度通关即算已通该关
+    const keys = Object.keys(app.progression.cleared);
+    const anyClear = keys.some((k) => k.startsWith(`${entry.levelId}:`));
+    if (anyClear) cleared += 1;
+    // 总星数取各难度最高星之和
+    ([ 'simple', 'normal', 'hard' ] as Difficulty[]).forEach((d) => {
+      const r = app.progression.cleared[clearedKey(entry.levelId, d)];
+      if (r) stars += r.stars;
+    });
   }
   // 动态头衔（修真地位）：随通关章节晋升
   const title = resolveTitle(completedChapters(manifest, app.progression));
@@ -50,8 +59,8 @@ export function renderLevelSelect(): void {
   manifest.forEach((entry, i) => {
     const lvl = registry.level(entry.levelId);
     if (!lvl) return;
-    const unlocked = isUnlocked(manifest, i, app.progression);
-    const lvlStars = app.progression.cleared[entry.levelId]?.stars ?? 0;
+    const unlocked = isUnlocked(manifest, i, app.progression, curDiff);
+    const lvlStars = app.progression.cleared[clearedKey(entry.levelId, curDiff)]?.stars ?? 0;
     const row = document.createElement('div');
     row.className = 'level-row' + (unlocked ? '' : ' locked');
     row.innerHTML = `
@@ -84,8 +93,14 @@ export function startLevel(id: string): void {
 
   audio.init(); audio.resume(); audio.startMusic();   // 用户手势内初始化音频
 
+  // 天命符加成：消耗 1 张，本关 +15% 伤害
+  const { progression: p2, boosted } = consumeDestiny(app.progression);
+  app.progression = p2;
+  app.destinyBoost = boosted ? 1.15 : 1;
+  persist();
+
   const diff = DIFFICULTY_MUL[app.progression.difficulty] ?? DIFFICULTY_MUL.normal;
-  app.game = new Game(lvl, lookup, 12345, undefined, buildMods(), diff.hp, diff.bounty);
+  app.game = new Game(lvl, lookup, 12345, undefined, buildMods(), diff.hp, diff.bounty, app.destinyBoost);
   app.game.onEvent = onGameEvent;
 
   app.selectedUid = null;
@@ -135,7 +150,8 @@ export function settleWin(livesRemaining: number, startLives: number, levelId: s
   const manifest = registry.manifest();
   const before = resolveTitle(completedChapters(manifest, app.progression)).index;
   const stars = computeStars(livesRemaining, startLives);
-  app.progression = recordResult(app.progression, levelId, stars);
+  const diff = app.progression.difficulty ?? 'normal';
+  app.progression = recordResult(app.progression, levelId, diff, stars);
   app.progression = awardContribution(app.progression, stars);
   const after = resolveTitle(completedChapters(manifest, app.progression));
   persist();
@@ -166,3 +182,89 @@ function showPromotion(newTitle: string, onClose: () => void): void {
     onClose,
   );
 }
+
+// ---------- 无尽模式 ----------
+let endlessWaveSeed = Date.now();
+
+export function startEndless(): void {
+  const board = app.board; if (!board) return;
+  const cols = 16, rows = 8;
+  // 构造无尽关卡
+  const level: LevelConfig = {
+    id: 'endless', name: '无尽试炼', startStones: 600, lives: 40,
+    cols, rows, paths: ENDLESS_PATHS,
+    buildable: buildableFromPaths(cols, rows, ENDLESS_PATHS),
+    hpMul: 1, waves: [],
+  };
+  app.currentLevel = level;
+  levelSelect.style.display = 'none';
+  board.configure(cols, rows, ENDLESS_PATHS);
+
+  audio.init(); audio.resume(); audio.startMusic();
+  const diff = DIFFICULTY_MUL[app.progression.difficulty ?? 'normal'];
+  app.game = new Game(level, lookup, 12345, undefined, buildMods(), diff.hp, diff.bounty, app.destinyBoost);
+  app.game.onEvent = onGameEvent;
+
+  // 生成首波
+  endlessWaveSeed = Date.now();
+  const w0 = generateWave(0, endlessWaveSeed);
+  app.game.addWave(w0);
+  app.game.startWave();
+
+  app.selectedUid = null;
+  app.speedMul = 1;
+  resetSpeedUI();
+  app.prevStatus = 'prep';
+  app.paused = true;
+  app.last = performance.now();
+  showStory({
+    chapter: '无 尽 试 炼', title: '守 到 最 后',
+    lines: ['无尽妖兽涌来，一波比一波更强。', '守到不能再守为止。你的最高波次将载入宗门记录。'],
+    btn: '迎 战',
+  }, () => { app.paused = false; });
+}
+
+/** 无尽模式每波清空后自动推进（main 帧循环调用） */
+export function tickEndless(): void {
+  if (!app.game || !app.currentLevel || app.currentLevel.id !== 'endless') return;
+  if (app.game.status !== 'prep') return;
+  const wave = app.game.waveIndex;
+  // 自动生成下一波
+  app.game.setHpMul(endlessHpMul(wave));
+  const w = generateWave(wave, endlessWaveSeed);
+  app.game.addWave(w);
+  // 自动开始（不需要玩家点）
+  app.game.startWave();
+}
+
+/** 无尽模式结算 */
+export function settleEndless(): void {
+  if (!app.game) return;
+  const wave = app.game.clearedWaves;
+  const score = app.game.endlessScore;
+  const contrib = endlessContrib(score);
+
+  // 高分存档
+  const { progression: p1, isNewBest } = recordEndless(app.progression, wave, score);
+  // 里程碑
+  const { progression: p2, newMilestones } = awardMilestones(p1, wave);
+  // 贡献
+  let bonusContrib = 0;
+  for (const m of newMilestones) bonusContrib += MILESTONES.get(m)?.contrib ?? 0;
+  const totalContrib = isNewBest ? Math.round(contrib * 1.2) + bonusContrib : contrib + bonusContrib;
+  app.progression = awardContribution(p2, 0, 0);  // placeholder—we'll add custom amount
+  app.progression = { ...app.progression, contribution: app.progression.contribution + totalContrib };
+  persist();
+
+  const bestTxt = isNewBest ? ' · 新纪录！+20% 贡献' : '';
+  const mileTxt = newMilestones.length > 0 ? ` · 里程碑 wave ${newMilestones.join(',')} +${bonusContrib} 贡献` : '';
+  const titles = newMilestones.map((m) => MILESTONES.get(m)?.title).filter(Boolean).join('、');
+  const titleTxt = titles ? `\n获得称号：${titles}` : '';
+
+  showStory({
+    chapter: '无 尽 试 炼', title: '试 炼 结 束',
+    lines: [`你守到了第 ${wave} 波。`, `贡献 +${totalContrib}${bestTxt}${mileTxt}${titleTxt}`],
+    btn: '返 回 选 关',
+  }, returnToSelect);
+}
+

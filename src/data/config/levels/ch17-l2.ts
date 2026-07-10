@@ -15,9 +15,9 @@ export const CH17_L2: LevelConfig = {
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 2.7,
   waves: [
-    { spawns: [{ enemy: 'ghost_cultivator', count: 12, gap: 0.7, delay: 0 }, { enemy: 'shadow_assassin', count: 10, gap: 0.8, delay: 1 }], clearBonus: 360 },
-    { spawns: [{ enemy: 'shadow_assassin', count: 16, gap: 0.5, delay: 0 }, { enemy: 'ghost_cultivator', count: 14, gap: 0.7, delay: 1 }, { enemy: 'shadow_fox', count: 10, gap: 0.8, delay: 0 }], clearBonus: 400 },
-    { spawns: [{ enemy: 'ghost_cultivator', count: 18, gap: 0.6, delay: 0 }, { enemy: 'shadow_assassin', count: 18, gap: 0.5, delay: 1 }, { enemy: 'dragon_young', count: 8, gap: 1.2, delay: 0 }], clearBonus: 460 },
+    { spawns: [{ enemy: 'ghost_cultivator', count: 12, gap: 0.7, delay: 0, path: 0 }, { enemy: 'shadow_assassin', count: 10, gap: 0.8, delay: 1, path: 1 }], clearBonus: 360 },
+    { spawns: [{ enemy: 'shadow_assassin', count: 16, gap: 0.5, delay: 0, path: 0 }, { enemy: 'ghost_cultivator', count: 14, gap: 0.7, delay: 1, path: 1 }, { enemy: 'shadow_fox', count: 10, gap: 0.8, delay: 0, path: 0 }], clearBonus: 400 },
+    { spawns: [{ enemy: 'ghost_cultivator', count: 18, gap: 0.6, delay: 0, path: 1 }, { enemy: 'shadow_assassin', count: 18, gap: 0.5, delay: 1, path: 0 }, { enemy: 'dragon_young', count: 8, gap: 1.2, delay: 0, path: 1 }], clearBonus: 460 },
   ],
   story: {
     intro: {

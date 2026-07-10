@@ -3,7 +3,9 @@ import { buildableFromPaths } from './buildable';
 
 // 第 18 章 第 1 关 · 龙脊山脉（L 形路径，dragon_young + demon_knight heavy）
 const PATHS = [[
-  { x: 0, y: 3 }, { x: 7, y: 3 }, { x: 7, y: 6 }, { x: 15, y: 6 },
+  { x: 0, y: 0 }, { x: 3, y: 0 }, { x: 3, y: 2 },
+  { x: 13, y: 2 }, { x: 13, y: 5 }, { x: 3, y: 5 },
+  { x: 3, y: 7 }, { x: 15, y: 7 },
 ]];
 
 export const CH18_L1: LevelConfig = {

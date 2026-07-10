@@ -29,14 +29,14 @@ describe('resolveTitle', () => {
 });
 
 describe('completedChapters', () => {
-  it('counts a chapter only when all its levels cleared', () => {
+  it('counts a chapter only when all its levels cleared (any difficulty)', () => {
     let p = withDefaults({});
     expect(completedChapters(manifest, p)).toBe(0);
-    p = recordResult(p, 'a1', 3);                 // c1 部分通关
-    expect(completedChapters(manifest, p)).toBe(0);
-    p = recordResult(p, 'a2', 3);                 // c1 全通关
-    expect(completedChapters(manifest, p)).toBe(1);
-    p = recordResult(p, 'b1', 3);                 // c2 全通关
-    expect(completedChapters(manifest, p)).toBe(2);
+    p = recordResult(p, 'a1', 'normal', 3);
+    expect(completedChapters(manifest, p)).toBe(0);   // c1 部分通关
+    p = recordResult(p, 'a2', 'normal', 3);
+    expect(completedChapters(manifest, p)).toBe(1);   // c1 全通关
+    p = recordResult(p, 'b1', 'normal', 3);
+    expect(completedChapters(manifest, p)).toBe(2);   // c2 全通关
   });
 });

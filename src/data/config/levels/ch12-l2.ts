@@ -15,9 +15,9 @@ export const CH12_L2: LevelConfig = {
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 2.2,
   waves: [
-    { spawns: [{ enemy: 'shadow_assassin', count: 10, gap: 0.9, delay: 0 }, { enemy: 'demon_serpent', count: 4, gap: 2.2, delay: 1 }], clearBonus: 340 },
-    { spawns: [{ enemy: 'shadow_assassin', count: 12, gap: 0.8, delay: 0 }, { enemy: 'demon_knight', count: 6, gap: 1.8, delay: 1 }], clearBonus: 380 },
-    { spawns: [{ enemy: 'demon_serpent', count: 8, gap: 1.4, delay: 0 }, { enemy: 'shadow_assassin', count: 12, gap: 0.8, delay: 1 }, { enemy: 'bat', count: 16, gap: 0.3, delay: 0 }], clearBonus: 440 },
+    { spawns: [{ enemy: 'shadow_assassin', count: 10, gap: 0.9, delay: 0, path: 0 }, { enemy: 'demon_serpent', count: 4, gap: 2.2, delay: 1, path: 1 }], clearBonus: 340 },
+    { spawns: [{ enemy: 'shadow_assassin', count: 12, gap: 0.8, delay: 0, path: 0 }, { enemy: 'demon_knight', count: 6, gap: 1.8, delay: 1, path: 1 }], clearBonus: 380 },
+    { spawns: [{ enemy: 'demon_serpent', count: 8, gap: 1.4, delay: 0, path: 0 }, { enemy: 'shadow_assassin', count: 12, gap: 0.8, delay: 1, path: 1 }, { enemy: 'bat', count: 16, gap: 0.3, delay: 0, path: 0 }], clearBonus: 440 },
   ],
   story: {
     intro: {

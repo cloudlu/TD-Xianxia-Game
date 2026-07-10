@@ -2,10 +2,10 @@ import type { LevelConfig } from '../../../types';
 import { buildableFromPaths } from './buildable';
 
 // 第 20 章 第 1 关 · 天妖先锋（双路径，heavy dragon_young + ghost_cultivator）
-const PATHS = [
-  [{ x: 0, y: 2 }, { x: 15, y: 2 }],
-  [{ x: 0, y: 5 }, { x: 15, y: 5 }],
-];
+const PATHS = [[
+  { x: 0, y: 3 }, { x: 5, y: 3 }, { x: 5, y: 1 },
+  { x: 10, y: 1 }, { x: 10, y: 5 }, { x: 15, y: 5 },
+]];
 
 export const CH20_L1: LevelConfig = {
   id: 'ch20-l1', name: '天妖先锋',
@@ -15,9 +15,9 @@ export const CH20_L1: LevelConfig = {
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 3.0,
   waves: [
-    { spawns: [{ enemy: 'dragon_young', count: 16, gap: 0.6, delay: 0 }, { enemy: 'ghost_cultivator', count: 16, gap: 0.5, delay: 1 }], clearBonus: 460 },
-    { spawns: [{ enemy: 'ghost_cultivator', count: 20, gap: 0.4, delay: 0 }, { enemy: 'dragon_young', count: 18, gap: 0.5, delay: 1 }, { enemy: 'shadow_assassin', count: 16, gap: 0.5, delay: 0 }], clearBonus: 500 },
-    { spawns: [{ enemy: 'dragon_young', count: 22, gap: 0.5, delay: 0 }, { enemy: 'ghost_cultivator', count: 22, gap: 0.4, delay: 1 }, { enemy: 'demon_knight', count: 14, gap: 0.7, delay: 0 }], clearBonus: 560 },
+    { spawns: [{ enemy: 'dragon_young', count: 16, gap: 0.6, delay: 0, path: 0 }, { enemy: 'ghost_cultivator', count: 16, gap: 0.5, delay: 1, path: 0 }], clearBonus: 460 },
+    { spawns: [{ enemy: 'ghost_cultivator', count: 20, gap: 0.4, delay: 0, path: 0 }, { enemy: 'dragon_young', count: 18, gap: 0.5, delay: 1, path: 0 }, { enemy: 'shadow_assassin', count: 16, gap: 0.5, delay: 0, path: 0 }], clearBonus: 500 },
+    { spawns: [{ enemy: 'dragon_young', count: 22, gap: 0.5, delay: 0, path: 0 }, { enemy: 'ghost_cultivator', count: 22, gap: 0.4, delay: 1, path: 0 }, { enemy: 'demon_knight', count: 14, gap: 0.7, delay: 0, path: 0 }], clearBonus: 560 },
   ],
   story: {
     intro: {

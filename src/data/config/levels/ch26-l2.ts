@@ -15,9 +15,9 @@ export const CH26_L2: LevelConfig = {
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.6,
   waves: [
-    { spawns: [{ enemy: 'chaos_larva', count: 24, gap: 0.4, delay: 0 }, { enemy: 'law_enforcer', count: 4, gap: 1.8, delay: 1 }], clearBonus: 540 },
-    { spawns: [{ enemy: 'chaos_beast', count: 5, gap: 2.0, delay: 0 }, { enemy: 'void_walker', count: 14, gap: 0.5, delay: 1 }, { enemy: 'celestial_demon', count: 8, gap: 1.0, delay: 0 }], clearBonus: 580 },
-    { spawns: [{ enemy: 'law_enforcer', count: 8, gap: 1.2, delay: 0 }, { enemy: 'chaos_beast', count: 6, gap: 1.8, delay: 1 }, { enemy: 'ghost_cultivator', count: 16, gap: 0.5, delay: 0 }], clearBonus: 640 },
+    { spawns: [{ enemy: 'chaos_larva', count: 24, gap: 0.4, delay: 0, path: 0 }, { enemy: 'law_enforcer', count: 4, gap: 1.8, delay: 1, path: 1 }], clearBonus: 540 },
+    { spawns: [{ enemy: 'chaos_beast', count: 5, gap: 2.0, delay: 0, path: 0 }, { enemy: 'void_walker', count: 14, gap: 0.5, delay: 1, path: 1 }, { enemy: 'celestial_demon', count: 8, gap: 1.0, delay: 0, path: 0 }], clearBonus: 580 },
+    { spawns: [{ enemy: 'law_enforcer', count: 8, gap: 1.2, delay: 0, path: 1 }, { enemy: 'chaos_beast', count: 6, gap: 1.8, delay: 1, path: 0 }, { enemy: 'ghost_cultivator', count: 16, gap: 0.5, delay: 0, path: 1 }], clearBonus: 640 },
   ],
   story: {
     intro: {

@@ -7,9 +7,10 @@ import { audio } from './audio/AudioManager';
 import { app, buildMods } from './app/state';
 import { damageStatsFor } from './data/Modifier';
 import { showStory } from './app/storyModal';
-import { returnToSelect, settleWin } from './app/levelSelect';
+import { returnToSelect, settleWin, startEndless, tickEndless, settleEndless } from './app/levelSelect';
 import { renderProfileSelect, switchProfile } from './app/profileScreen';
 import './app/metaScreen';   // 模块加载时绑定 metaBtn 等
+import { renderBestiary } from './app/bestiary';
 import type { Game } from './engine/Game';
 
 // ---------- 棋盘 ----------
@@ -323,8 +324,16 @@ function frame(now: number): void {
       settleWin(s.lives, app.currentLevel.lives, app.currentLevel.id, app.currentLevel.story?.outro);
     } else if (s.status === 'lost') {
       audio.stopMusic();
-      showStory(FAILED_STORY, returnToSelect);
+      if (app.currentLevel.id === 'endless') {
+        settleEndless();
+      } else {
+        showStory(FAILED_STORY, returnToSelect);
+      }
     }
+  }
+  // 无尽模式：自动推进到下一波
+  if (app.currentLevel.id === 'endless' && s.status === 'prep' && app.game) {
+    tickEndless();
   }
   app.prevStatus = s.status;
 
@@ -334,4 +343,11 @@ function frame(now: number): void {
 // ---------- 启动 ----------
 renderProfileSelect();   // 先选玩家档案（多存档隔离）
 document.getElementById('switchBtn')!.onclick = switchProfile;
+document.getElementById('bestiaryBtn')!.onclick = () => {
+  const card = document.getElementById('bestiaryCard')!;
+  card.innerHTML = renderBestiary() + `<div class="close-row"><button id="bestiaryClose">返 回 选 关</button></div>`;
+  document.getElementById('bestiaryClose')!.onclick = () => document.getElementById('bestiaryOverlay')!.classList.remove('show');
+  document.getElementById('bestiaryOverlay')!.classList.add('show');
+};
+document.getElementById('endlessBtn')!.onclick = startEndless;
 requestAnimationFrame(frame);

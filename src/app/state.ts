@@ -30,6 +30,7 @@ export const app = {
   leakFlashAmt: 0,
   prevStatus: 'prep' as string,
   last: 0,
+  destinyBoost: 1 as number,     // 天命符加成的 DPS 乘数（1.15 → 消耗后下一关有效）
   // —— 档案与持久状态 ——
   profileId: null as string | null,
   profileName: '' as string,
@@ -50,15 +51,15 @@ export function persist(): void {
   app.save?.save(app.progression);
 }
 
-/** 由"装备(三槽) + 天命阶 + 天赋"合并构建 ModifierSet（多来源走同一条管线，设计文档 §9） */
+/** 由"装备(三槽) + 天命阶 + 天赋 + 仙魂"合并构建 ModifierSet（多来源走同一条管线，设计文档 §9） */
 export function buildMods(): ModifierSet {
   const p = app.progression;
   const sources: Modifier[][] = [];
-  for (const slot of SLOTS) {                              // 遍历武器/护甲/饰品三槽
+  for (const slot of SLOTS) {
     const id = p.equipped[slot.key];
     if (id && EQUIPMENT[id]) {
       const lvl = p.equipLevels[id] ?? 0;
-      const scale = 1 + lvl * 0.15;                         // 每级强化 +15% 该件数值
+      const scale = 1 + lvl * 0.15;
       sources.push(EQUIPMENT[id].mods.map((m) => ({ ...m, value: m.value * scale })));
     }
   }
@@ -66,6 +67,9 @@ export function buildMods(): ModifierSet {
   if (vip.length) sources.push([...vip]);
   const tm = talentMods(p.talents);
   if (tm.length) sources.push(tm);
+  // 仙魂碎片：每 5 个 +1% 全体伤害（走 Modifier 管线，和装备/天赋/VIP 加法叠加、统一封顶）
+  const soulDmg = Math.floor(p.soulShards / 5) * 0.01;
+  if (soulDmg > 0) sources.push([{ stat: 'dmg', op: 'mul_pct' as const, value: soulDmg }]);
   return ModifierSet.merge(sources);
 }
 

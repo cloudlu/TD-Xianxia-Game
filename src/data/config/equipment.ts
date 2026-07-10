@@ -32,8 +32,12 @@ export const EQUIPMENT: Record<string, EquipmentConfig> = {
     price: 60, mods: [{ stat: 'spearDmg', op: 'mul_pct', value: 0.15 } as Modifier],
   },
   spirit_flame: {
-    id: 'spirit_flame', name: '灵火珠', desc: '法术伤害 +15%（火法/雷法）', slot: 'weapon',
-    price: 70, mods: [{ stat: 'magicDmg', op: 'mul_pct', value: 0.15 } as Modifier],
+    id: 'spirit_flame', name: '灵火珠', desc: '火法伤害 +15%', slot: 'weapon',
+    price: 70, mods: [{ stat: 'fireDmg', op: 'mul_pct', value: 0.15 } as Modifier],
+  },
+  thunder_orb: {
+    id: 'thunder_orb', name: '雷灵珠', desc: '雷法伤害 +15%', slot: 'weapon',
+    price: 70, mods: [{ stat: 'thunderDmg', op: 'mul_pct', value: 0.15 } as Modifier],
   },
   // —— 通用法宝（增幅全塔，适合混搭流）——
   hunyuan_pearl: {

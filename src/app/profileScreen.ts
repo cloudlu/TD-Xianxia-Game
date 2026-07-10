@@ -16,7 +16,7 @@ export function renderProfileSelect(): void {
   }
   for (const p of profiles) {
     const prog = saveRepoFor(p.id).load();
-    const cleared = Object.keys(prog.cleared).length;
+    const cleared = new Set(Object.keys(prog.cleared).map((k) => k.split(':')[0])).size;
     const row = document.createElement('div');
     row.className = 'profile-row';
     row.innerHTML = `

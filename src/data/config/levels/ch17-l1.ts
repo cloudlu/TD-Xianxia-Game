@@ -3,7 +3,8 @@ import { buildableFromPaths } from './buildable';
 
 // 第 17 章 第 1 关 · 古战场（直路径，ghost_cultivator heavy + dragon_young）
 const PATHS = [[
-  { x: 0, y: 4 }, { x: 15, y: 4 },
+  { x: 0, y: 1 }, { x: 4, y: 1 }, { x: 4, y: 5 },
+  { x: 10, y: 5 }, { x: 10, y: 1 }, { x: 15, y: 1 },
 ]];
 
 export const CH17_L1: LevelConfig = {

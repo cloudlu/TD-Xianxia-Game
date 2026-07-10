@@ -15,9 +15,9 @@ export const CH14_L2: LevelConfig = {
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 2.4,
   waves: [
-    { spawns: [{ enemy: 'demon_knight', count: 12, gap: 1.0, delay: 0 }, { enemy: 'demon_serpent', count: 8, gap: 1.4, delay: 1 }], clearBonus: 400 },
-    { spawns: [{ enemy: 'shadow_assassin', count: 14, gap: 0.7, delay: 0 }, { enemy: 'blood_cultist', count: 10, gap: 1.0, delay: 1 }], clearBonus: 440 },
-    { spawns: [{ enemy: 'demon_knight', count: 14, gap: 0.9, delay: 0 }, { enemy: 'magic_puppet', count: 12, gap: 0.9, delay: 1 }, { enemy: 'demon_serpent', count: 8, gap: 1.4, delay: 0 }], clearBonus: 500 },
+    { spawns: [{ enemy: 'demon_knight', count: 12, gap: 1.0, delay: 0, path: 0 }, { enemy: 'demon_serpent', count: 8, gap: 1.4, delay: 1, path: 1 }], clearBonus: 400 },
+    { spawns: [{ enemy: 'shadow_assassin', count: 14, gap: 0.7, delay: 0, path: 0 }, { enemy: 'blood_cultist', count: 10, gap: 1.0, delay: 1, path: 1 }], clearBonus: 440 },
+    { spawns: [{ enemy: 'demon_knight', count: 14, gap: 0.9, delay: 0, path: 0 }, { enemy: 'magic_puppet', count: 12, gap: 0.9, delay: 1, path: 1 }, { enemy: 'demon_serpent', count: 8, gap: 1.4, delay: 0, path: 0 }], clearBonus: 500 },
   ],
   story: {
     intro: {

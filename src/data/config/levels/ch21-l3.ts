@@ -16,9 +16,9 @@ export const CH21_L3: LevelConfig = {
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.1,
   waves: [
-    { spawns: [{ enemy: 'void_walker', count: 16, gap: 0.6, delay: 0 }, { enemy: 'celestial_demon', count: 4, gap: 2, delay: 1 }], clearBonus: 440 },
-    { spawns: [{ enemy: 'celestial_demon', count: 8, gap: 1.4, delay: 0 }, { enemy: 'magic_puppet', count: 8, gap: 0.8, delay: 1 }], clearBonus: 470 },
-    { spawns: [{ enemy: 'void_walker', count: 18, gap: 0.5, delay: 0 }, { enemy: 'celestial_demon', count: 10, gap: 1.0, delay: 0 }, { enemy: 'shadow_fox', count: 6, gap: 1.2, delay: 1 }], clearBonus: 500 },
+    { spawns: [{ enemy: 'void_walker', count: 16, gap: 0.6, delay: 0, path: 0 }, { enemy: 'celestial_demon', count: 4, gap: 2, delay: 1, path: 1 }], clearBonus: 440 },
+    { spawns: [{ enemy: 'celestial_demon', count: 8, gap: 1.4, delay: 0, path: 2 }, { enemy: 'magic_puppet', count: 8, gap: 0.8, delay: 1, path: 0 }], clearBonus: 470 },
+    { spawns: [{ enemy: 'void_walker', count: 18, gap: 0.5, delay: 0, path: 1 }, { enemy: 'celestial_demon', count: 10, gap: 1.0, delay: 0, path: 2 }, { enemy: 'shadow_fox', count: 6, gap: 1.2, delay: 1, path: 0 }], clearBonus: 500 },
   ],
   story: {
     intro: {

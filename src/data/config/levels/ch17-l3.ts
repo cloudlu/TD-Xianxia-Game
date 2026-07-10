@@ -16,9 +16,9 @@ export const CH17_L3: LevelConfig = {
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 2.7,
   waves: [
-    { spawns: [{ enemy: 'dragon_young', count: 10, gap: 0.9, delay: 0 }, { enemy: 'ghost_cultivator', count: 12, gap: 0.7, delay: 1 }, { enemy: 'demon_knight', count: 10, gap: 0.9, delay: 0 }], clearBonus: 400 },
-    { spawns: [{ enemy: 'shadow_assassin', count: 14, gap: 0.6, delay: 0 }, { enemy: 'blood_cultist', count: 12, gap: 0.8, delay: 1 }, { enemy: 'magic_puppet', count: 12, gap: 0.8, delay: 0 }], clearBonus: 440 },
-    { spawns: [{ enemy: 'mage_lord', count: 1, gap: 0, delay: 0 }, { enemy: 'ghost_cultivator', count: 16, gap: 0.6, delay: 1 }, { enemy: 'dragon_young', count: 12, gap: 0.8, delay: 0 }, { enemy: 'shadow_assassin', count: 14, gap: 0.6, delay: 2 }], clearBonus: 560 },
+    { spawns: [{ enemy: 'dragon_young', count: 10, gap: 0.9, delay: 0, path: 0 }, { enemy: 'ghost_cultivator', count: 12, gap: 0.7, delay: 1, path: 1 }, { enemy: 'demon_knight', count: 10, gap: 0.9, delay: 0, path: 2 }], clearBonus: 400 },
+    { spawns: [{ enemy: 'shadow_assassin', count: 14, gap: 0.6, delay: 0, path: 0 }, { enemy: 'blood_cultist', count: 12, gap: 0.8, delay: 1, path: 1 }, { enemy: 'magic_puppet', count: 12, gap: 0.8, delay: 0, path: 2 }], clearBonus: 440 },
+    { spawns: [{ enemy: 'mage_lord', count: 1, gap: 0, delay: 0, path: 0 }, { enemy: 'ghost_cultivator', count: 16, gap: 0.6, delay: 1, path: 1 }, { enemy: 'dragon_young', count: 12, gap: 0.8, delay: 0, path: 2 }, { enemy: 'shadow_assassin', count: 14, gap: 0.6, delay: 2, path: 0 }], clearBonus: 560 },
   ],
   story: {
     intro: {

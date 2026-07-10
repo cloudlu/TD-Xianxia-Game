@@ -6,7 +6,7 @@
 // - 固定步长 update(fixedDt)，主循环用累加器消化实际帧时间
 // - 随机走种子化 PRNG，保证确定性（为未来服务端重放校验铺路）
 
-import type { LevelConfig, TowerConfig, EnemyConfig, TargetPolicy } from '../types';
+import type { LevelConfig, TowerConfig, EnemyConfig, TargetPolicy, WaveConfig } from '../types';
 import { mulberry32 } from './PRNG';
 import { buildSegments, positionAt, totalLength, type Segment } from './pure/path';
 import { WaveDirector } from './WaveDirector';
@@ -117,9 +117,11 @@ export class Game {
   private mods: ModifierSet;          // 玩家加成（装备/VIP/meta 天赋，设计文档 §9）
   private segs: Segment[][];   // 每条路径的折线段
   private pathLens: number[];  // 每条路径总长
-  private hpMul: number;       // 敌人血量缩放（关卡 hpMul × 难度倍率）
-  private towerMul: number;    // 塔伤害/攻速缩放（自动 sqrt(关卡 hpMul)，不含难度）
+  private hpMul: number;       // 敌人血量缩放（关卡 hpMul × 难度倍率 × 无尽波次倍率）
+  private towerMul: number;    // 塔伤害/攻速缩放（自动 sqrt(关卡 hpMul)，不含无尽波次）
   private difficultyBountyMul: number;  // 难度赏金倍率（独立于 sqrt(hpMul)）
+  private destinyBoost: number; // 天命符加成（1.0=无，1.15=boost）
+  private waves: WaveConfig[]; // 波次数组（可追加，无尽模式 addWave 用）
 
   private enemies: EnemyR[] = [];
   private towers: TowerR[] = [];
@@ -145,6 +147,7 @@ export class Game {
     level: LevelConfig, reg: ConfigLookup, seed = 12345,
     strategies?: AttackStrategyRegistry, mods: ModifierSet = ModifierSet.empty,
     difficultyHpMul = 1, difficultyBountyMul = 1,
+    destinyBoost = 1,
   ) {
     this.level = level;
     this.reg = reg;
@@ -155,9 +158,11 @@ export class Game {
     this.lives = level.lives;
     this.segs = level.paths.map((p) => buildSegments(p));
     this.pathLens = this.segs.map((s) => totalLength(s));
+    this.waves = level.waves.slice();                         // 可追加（无尽模式 addWave）
     this.hpMul = (level.hpMul ?? 1) * difficultyHpMul;       // 关卡缩放 × 难度缩放
     this.towerMul = towerMulFrom(level.hpMul ?? 1);          // 塔缩放只跟关卡 hpMul，不含难度
     this.difficultyBountyMul = difficultyBountyMul;
+    this.destinyBoost = destinyBoost;
     this.msg = `布阵完毕后，点击「开始第 1 波」迎敌。`;   // 首波手动开始
   }
 
@@ -201,8 +206,8 @@ export class Game {
   // ---------- 波次 ----------
   startWave(): void {
     if (this.status !== 'prep') return;
-    if (this.waveIndex >= this.level.waves.length) return;
-    this.waveDir.start(this.level.waves[this.waveIndex]);
+    if (this.waveIndex >= this.waves.length) return;
+    this.waveDir.start(this.waves[this.waveIndex]);
     this.waveActive = true;
     this.status = 'wave';
     this.msg = `第 ${this.waveIndex + 1} 波来袭！`;
@@ -224,11 +229,11 @@ export class Game {
       }
     }
     if (this.waveDir.done && this.enemies.length === 0) {
-      const wave = this.level.waves[this.waveIndex];
+      const wave = this.waves[this.waveIndex];
       this.stones += wave.clearBonus;
       this.waveActive = false;
       this.waveIndex += 1;
-      if (this.waveIndex >= this.level.waves.length) {
+      if (this.waveIndex >= this.waves.length) {
         this.status = 'won';
         this.msg = '守阵成功！山门无恙。';
         this.emit({ type: 'win' });
@@ -323,7 +328,7 @@ export class Game {
   private effectiveStats(t: CombatTower): TowerStats {
     const aura = this.auraBuff(t);
     const school = t.def.school ?? 'sword';
-    const dmgMul = (1 + aura.dmgMul) * this.mods.damageMul(damageStatsFor(school)) * this.towerMul;
+    const dmgMul = (1 + aura.dmgMul) * this.mods.damageMul(damageStatsFor(school)) * this.towerMul * this.destinyBoost;
     const rateMul = (1 + aura.rateMul) * this.mods.rateMul() * this.towerMul;
     return { dmgMul, rateMul, rangeAdd: this.mods.rangeAdd(), critBonus: this.mods.critBonus() };
   }
@@ -497,6 +502,21 @@ export class Game {
     };
   }
 
+  // ---------- 无尽模式接口 ----------
+  /** 动态更新 hpMul（每波递增），自动重新计算 towerMul（tower 基础不变） */
+  setHpMul(hpMul: number): void { this.hpMul = hpMul; }
+
+  /** 追加一波（无尽模式动态生成），波次数组可增长 */
+  addWave(wave: WaveConfig): void { this.waves.push(wave); }
+
+  /** 当前已清波数（无尽模式计分用） */
+  get clearedWaves(): number { return this.waveIndex; }
+
+  /** 无尽模式分数：波次分 + 击杀分 */
+  get endlessScore(): number {
+    return this.waveIndex * 100 + this.clearedWaves * 100 + Math.floor(this.stones / 10);
+  }
+
   // ---------- 玩家操作 ----------
   canPlace(col: number, row: number): boolean {
     if (col < 0 || row < 0 || col >= this.level.cols || row >= this.level.rows) return false;
@@ -589,7 +609,7 @@ export class Game {
   snapshot(): GameState {
     return {
       status: this.status, stones: Math.floor(this.stones), lives: this.lives,
-      waveIndex: this.waveIndex, totalWaves: this.level.waves.length,
+      waveIndex: this.waveIndex, totalWaves: this.waves.length,
       waveActive: this.waveActive,
       nextWaveIn: (this.status === 'prep' && this.waveIndex > 0) ? Math.max(0, this.nextWaveIn) : -1,
       elapsed: this.elapsed,
@@ -605,8 +625,8 @@ export class Game {
   /** 下一波敌人配置（prep 时为当前波，wave 时为再下一波）；无则 undefined */
   private peekNextWave(): ReadonlyArray<{ enemy: string; count: number; path?: number }> | undefined {
     const idx = this.waveActive ? this.waveIndex + 1 : this.waveIndex;
-    if (idx >= this.level.waves.length) return undefined;
-    return this.level.waves[idx].spawns;
+    if (idx >= this.waves.length) return undefined;
+    return this.waves[idx].spawns;
   }
 
   /** 推进战斗特效（飘字上浮/衰减、闪白衰减） */

@@ -15,9 +15,9 @@ export const CH22_L2: LevelConfig = {
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.2,
   waves: [
-    { spawns: [{ enemy: 'celestial_demon', count: 10, gap: 1.0, delay: 0 }, { enemy: 'void_walker', count: 12, gap: 0.6, delay: 0 }], clearBonus: 460 },
-    { spawns: [{ enemy: 'chaos_larva', count: 12, gap: 0.7, delay: 0 }, { enemy: 'shadow_assassin', count: 5, gap: 1.6, delay: 1 }], clearBonus: 490 },
-    { spawns: [{ enemy: 'celestial_demon', count: 12, gap: 0.9, delay: 0 }, { enemy: 'chaos_larva', count: 14, gap: 0.6, delay: 0 }, { enemy: 'mist_wraith', count: 5, gap: 1.4, delay: 1 }], clearBonus: 520 },
+    { spawns: [{ enemy: 'celestial_demon', count: 10, gap: 1.0, delay: 0, path: 0 }, { enemy: 'void_walker', count: 12, gap: 0.6, delay: 0, path: 1 }], clearBonus: 460 },
+    { spawns: [{ enemy: 'chaos_larva', count: 12, gap: 0.7, delay: 0, path: 0 }, { enemy: 'shadow_assassin', count: 5, gap: 1.6, delay: 1, path: 1 }], clearBonus: 490 },
+    { spawns: [{ enemy: 'celestial_demon', count: 12, gap: 0.9, delay: 0, path: 0 }, { enemy: 'chaos_larva', count: 14, gap: 0.6, delay: 0, path: 1 }, { enemy: 'mist_wraith', count: 5, gap: 1.4, delay: 1, path: 0 }], clearBonus: 520 },
   ],
   story: {
     intro: {

@@ -3,8 +3,8 @@ import { buildableFromPaths } from './buildable';
 
 // 第 24 章 第 2 关 · 虚空深处（双路径）
 const P = [
-  [{ x: 0, y: 2 }, { x: 15, y: 2 }],
-  [{ x: 0, y: 5 }, { x: 15, y: 5 }],
+  [{ x: 0, y: 1 }, { x: 8, y: 1 }, { x: 8, y: 6 }, { x: 15, y: 6 }],
+  [{ x: 0, y: 6 }, { x: 8, y: 6 }, { x: 8, y: 1 }, { x: 15, y: 1 }],
 ];
 
 export const CH24_L2: LevelConfig = {
@@ -15,9 +15,9 @@ export const CH24_L2: LevelConfig = {
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.4,
   waves: [
-    { spawns: [{ enemy: 'void_walker', count: 16, gap: 0.5, delay: 0 }, { enemy: 'celestial_demon', count: 10, gap: 1.0, delay: 1 }], clearBonus: 520 },
-    { spawns: [{ enemy: 'chaos_larva', count: 18, gap: 0.5, delay: 0 }, { enemy: 'celestial_demon', count: 10, gap: 0.9, delay: 1 }], clearBonus: 550 },
-    { spawns: [{ enemy: 'void_walker', count: 20, gap: 0.4, delay: 0 }, { enemy: 'celestial_demon', count: 14, gap: 0.7, delay: 0 }, { enemy: 'nine_tails', count: 1, gap: 0, delay: 1 }], clearBonus: 580 },
+    { spawns: [{ enemy: 'void_walker', count: 16, gap: 0.5, delay: 0, path: 0 }, { enemy: 'celestial_demon', count: 10, gap: 1.0, delay: 1, path: 1 }], clearBonus: 520 },
+    { spawns: [{ enemy: 'chaos_larva', count: 18, gap: 0.5, delay: 0, path: 0 }, { enemy: 'celestial_demon', count: 10, gap: 0.9, delay: 1, path: 1 }], clearBonus: 550 },
+    { spawns: [{ enemy: 'void_walker', count: 20, gap: 0.4, delay: 0, path: 0 }, { enemy: 'celestial_demon', count: 14, gap: 0.7, delay: 0, path: 1 }, { enemy: 'nine_tails', count: 1, gap: 0, delay: 1, path: 0 }], clearBonus: 580 },
   ],
   story: {
     intro: {

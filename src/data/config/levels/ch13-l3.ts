@@ -16,9 +16,9 @@ export const CH13_L3: LevelConfig = {
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 2.3,
   waves: [
-    { spawns: [{ enemy: 'demon_knight', count: 10, gap: 1.0, delay: 0 }, { enemy: 'shadow_assassin', count: 10, gap: 0.8, delay: 1 }, { enemy: 'wolf', count: 18, gap: 0.3, delay: 0 }], clearBonus: 400 },
-    { spawns: [{ enemy: 'demon_serpent', count: 10, gap: 1.2, delay: 0 }, { enemy: 'blood_cultist', count: 10, gap: 1.0, delay: 1 }, { enemy: 'magic_puppet', count: 10, gap: 1.0, delay: 0 }], clearBonus: 440 },
-    { spawns: [{ enemy: 'rift_lord', count: 1, gap: 0, delay: 0 }, { enemy: 'demon_knight', count: 10, gap: 1.2, delay: 1 }, { enemy: 'shadow_assassin', count: 12, gap: 0.8, delay: 0 }], clearBonus: 500 },
+    { spawns: [{ enemy: 'demon_knight', count: 10, gap: 1.0, delay: 0, path: 0 }, { enemy: 'shadow_assassin', count: 10, gap: 0.8, delay: 1, path: 1 }, { enemy: 'wolf', count: 18, gap: 0.3, delay: 0, path: 2 }], clearBonus: 400 },
+    { spawns: [{ enemy: 'demon_serpent', count: 10, gap: 1.2, delay: 0, path: 0 }, { enemy: 'blood_cultist', count: 10, gap: 1.0, delay: 1, path: 1 }, { enemy: 'magic_puppet', count: 10, gap: 1.0, delay: 0, path: 2 }], clearBonus: 440 },
+    { spawns: [{ enemy: 'rift_lord', count: 1, gap: 0, delay: 0, path: 0 }, { enemy: 'demon_knight', count: 10, gap: 1.2, delay: 1, path: 1 }, { enemy: 'shadow_assassin', count: 12, gap: 0.8, delay: 0, path: 2 }], clearBonus: 500 },
   ],
   story: {
     intro: {
