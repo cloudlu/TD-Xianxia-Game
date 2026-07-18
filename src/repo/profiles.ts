@@ -1,13 +1,12 @@
 // 本地玩家档案（多存档隔离）：每个 profile 一个独立 localStorage key。
 // 联网后这套被 RemoteSaveRepo（按 accountId 服务端存）取代，调用方不变。
 
-import { LocalSaveRepo } from './progress';
 import type { SaveRepo } from './progress';
+import { RemoteSaveRepo } from './RemoteSaveRepo';
 
 export interface Profile { id: string; name: string; }
 
 const PROFILES_KEY = 'xianxia-td:profiles';
-const saveKey = (id: string) => `xianxia-td:progress-${id}`;
 
 export function listProfiles(): Profile[] {
   try { return JSON.parse(localStorage.getItem(PROFILES_KEY) ?? '[]') as Profile[]; }
@@ -31,10 +30,10 @@ export function createProfile(name: string): Profile {
 /** 删除档案及其存档 */
 export function deleteProfile(id: string): void {
   saveProfiles(listProfiles().filter((p) => p.id !== id));
-  localStorage.removeItem(saveKey(id));
+  fetch(`/api/profiles/${id}`, { method: 'DELETE' }).catch(() => {});
 }
 
 /** 该档案对应的存档 Repo（命名空间隔离） */
 export function saveRepoFor(id: string): SaveRepo {
-  return new LocalSaveRepo(saveKey(id));
+  return new RemoteSaveRepo(id);
 }

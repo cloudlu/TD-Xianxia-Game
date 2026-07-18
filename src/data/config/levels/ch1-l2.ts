@@ -10,17 +10,17 @@ const PATHS = [[
 
 export const CH1_L2: LevelConfig = {
   id: 'ch1-l2', name: '松林小径',
-  startStones: 280, lives: 20,
+  startStones: 280, lives: 3,
   cols: 16, rows: 8,
   maxTowerLevel: 3,   // 本关最高可升至 元婴
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 1.0,
   waves: [
-    { spawns: [{ enemy: 'wolf', count: 10, gap: 0.8, delay: 0 }], clearBonus: 60 },
-    { spawns: [{ enemy: 'wolf', count: 10, gap: 0.6, delay: 0 }, { enemy: 'boar', count: 2, gap: 2.5, delay: 1 }], clearBonus: 75 },
-    { spawns: [{ enemy: 'boar', count: 4, gap: 1.6, delay: 0 }, { enemy: 'wolf', count: 8, gap: 0.7, delay: 1 }], clearBonus: 85 },
-    { spawns: [{ enemy: 'wolf', count: 12, gap: 0.5, delay: 0 }, { enemy: 'boar', count: 3, gap: 2, delay: 1 }], clearBonus: 100 },
+    { spawns: [{ enemy: 'wolf', count: 11, gap: 0.8, delay: 0 }], clearBonus: 60 },
+    { spawns: [{ enemy: 'wolf', count: 11, gap: 0.6, delay: 0 }, { enemy: 'boar', count: 22, gap: 2.5, delay: 1 }], clearBonus: 75 },
+    { spawns: [{ enemy: 'boar', count: 44, gap: 1.6, delay: 0 }, { enemy: 'wolf', count: 9, gap: 0.7, delay: 1 }], clearBonus: 85 },
+    { spawns: [{ enemy: 'wolf', count: 13, gap: 0.5, delay: 0 }, { enemy: 'boar', count: 33, gap: 2, delay: 1 }], clearBonus: 100 },
   ],
   story: {
     intro: {

@@ -9,15 +9,15 @@ const P = [
 
 export const CH23_L2: LevelConfig = {
   id: 'ch23-l2', name: '灵气紊乱',
-  startStones: 920, lives: 44,
+  startStones: 920, lives: 3,
   cols: 16, rows: 8,
   paths: P,
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.3,
   waves: [
-    { spawns: [{ enemy: 'ghost_cultivator', count: 8, gap: 1.0, delay: 0, path: 0 }, { enemy: 'void_walker', count: 10, gap: 0.6, delay: 0, path: 1 }], clearBonus: 480 },
-    { spawns: [{ enemy: 'celestial_demon', count: 10, gap: 0.9, delay: 0, path: 0 }, { enemy: 'chaos_larva', count: 12, gap: 0.5, delay: 1, path: 1 }], clearBonus: 510 },
-    { spawns: [{ enemy: 'void_walker', count: 16, gap: 0.5, delay: 0, path: 0 }, { enemy: 'celestial_demon', count: 12, gap: 0.8, delay: 0, path: 1 }, { enemy: 'magic_minion', count: 8, gap: 0.7, delay: 1, path: 0 }], clearBonus: 540 },
+    { spawns: [{ enemy: 'ghost_cultivator', count: 11, gap: 1.0, delay: 0, path: 0 }, { enemy: 'void_walker', count: 14, gap: 0.6, delay: 0, path: 1 }], clearBonus: 480 },
+    { spawns: [{ enemy: 'celestial_demon', count: 14, gap: 0.9, delay: 0, path: 0 }, { enemy: 'chaos_larva', count: 17, gap: 0.5, delay: 1, path: 1 }], clearBonus: 510 },
+    { spawns: [{ enemy: 'void_walker', count: 22, gap: 0.5, delay: 0, path: 0 }, { enemy: 'celestial_demon', count: 17, gap: 0.8, delay: 0, path: 1 }, { enemy: 'magic_minion', count: 11, gap: 0.7, delay: 1, path: 0 }], clearBonus: 540 },
   ],
   story: {
     intro: {

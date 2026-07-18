@@ -9,15 +9,15 @@ const P = [
 
 export const CH28_L2: LevelConfig = {
   id: 'ch28-l2', name: '吞噬者',
-  startStones: 1100, lives: 48,
+  startStones: 1100, lives: 3,
   cols: 16, rows: 8,
   paths: P,
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.8,
   waves: [
-    { spawns: [{ enemy: 'void_devourer', count: 5, gap: 1.8, delay: 0, path: 0 }, { enemy: 'void_walker', count: 22, gap: 0.4, delay: 1, path: 1 }], clearBonus: 620 },
-    { spawns: [{ enemy: 'chaos_beast', count: 10, gap: 1.4, delay: 0, path: 0 }, { enemy: 'law_enforcer', count: 10, gap: 1.0, delay: 1, path: 1 }, { enemy: 'void_devourer', count: 4, gap: 2.2, delay: 2, path: 0 }], clearBonus: 660 },
-    { spawns: [{ enemy: 'void_devourer', count: 7, gap: 1.6, delay: 0, path: 1 }, { enemy: 'celestial_demon', count: 14, gap: 0.8, delay: 1, path: 0 }, { enemy: 'chaos_larva', count: 28, gap: 0.4, delay: 0, path: 1 }, { enemy: 'void_walker', count: 18, gap: 0.5, delay: 2, path: 0 }], clearBonus: 720 },
+    { spawns: [{ enemy: 'void_devourer', count: 7, gap: 1.8, delay: 0, path: 0 }, { enemy: 'void_walker', count: 31, gap: 0.4, delay: 1, path: 1 }], clearBonus: 620 },
+    { spawns: [{ enemy: 'chaos_beast', count: 14, gap: 1.4, delay: 0, path: 0 }, { enemy: 'law_enforcer', count: 14, gap: 1.0, delay: 1, path: 1 }, { enemy: 'void_devourer', count: 6, gap: 2.2, delay: 2, path: 0 }], clearBonus: 660 },
+    { spawns: [{ enemy: 'void_devourer', count: 10, gap: 1.6, delay: 0, path: 1 }, { enemy: 'celestial_demon', count: 20, gap: 0.8, delay: 1, path: 0 }, { enemy: 'chaos_larva', count: 39, gap: 0.4, delay: 0, path: 1 }, { enemy: 'void_walker', count: 25, gap: 0.5, delay: 2, path: 0 }], clearBonus: 720 },
   ],
   story: {
     intro: {

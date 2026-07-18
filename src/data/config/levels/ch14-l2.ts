@@ -9,15 +9,15 @@ const PATHS = [
 
 export const CH14_L2: LevelConfig = {
   id: 'ch14-l2', name: '最后防线',
-  startStones: 740, lives: 38,
+  startStones: 740, lives: 3,
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 2.4,
   waves: [
-    { spawns: [{ enemy: 'demon_knight', count: 12, gap: 1.0, delay: 0, path: 0 }, { enemy: 'demon_serpent', count: 8, gap: 1.4, delay: 1, path: 1 }], clearBonus: 400 },
-    { spawns: [{ enemy: 'shadow_assassin', count: 14, gap: 0.7, delay: 0, path: 0 }, { enemy: 'blood_cultist', count: 10, gap: 1.0, delay: 1, path: 1 }], clearBonus: 440 },
-    { spawns: [{ enemy: 'demon_knight', count: 14, gap: 0.9, delay: 0, path: 0 }, { enemy: 'magic_puppet', count: 12, gap: 0.9, delay: 1, path: 1 }, { enemy: 'demon_serpent', count: 8, gap: 1.4, delay: 0, path: 0 }], clearBonus: 500 },
+    { spawns: [{ enemy: 'demon_knight', count: 16, gap: 1.0, delay: 0, path: 0 }, { enemy: 'demon_serpent', count: 10, gap: 1.4, delay: 1, path: 1 }], clearBonus: 400 },
+    { spawns: [{ enemy: 'shadow_assassin', count: 18, gap: 0.7, delay: 0, path: 0 }, { enemy: 'blood_cultist', count: 13, gap: 1.0, delay: 1, path: 1 }], clearBonus: 440 },
+    { spawns: [{ enemy: 'demon_knight', count: 18, gap: 0.9, delay: 0, path: 0 }, { enemy: 'magic_puppet', count: 16, gap: 0.9, delay: 1, path: 1 }, { enemy: 'demon_serpent', count: 10, gap: 1.4, delay: 0, path: 0 }], clearBonus: 500 },
   ],
   story: {
     intro: {

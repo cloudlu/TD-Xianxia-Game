@@ -8,15 +8,15 @@ const PATHS = [[
 
 export const CH11_L1: LevelConfig = {
   id: 'ch11-l1', name: '联盟前线',
-  startStones: 600, lives: 34,
+  startStones: 600, lives: 3,
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 2.1,
   waves: [
-    { spawns: [{ enemy: 'wolf', count: 16, gap: 0.5, delay: 0 }, { enemy: 'demon_knight', count: 4, gap: 2.2, delay: 1 }], clearBonus: 280 },
-    { spawns: [{ enemy: 'shadow_assassin', count: 6, gap: 1.4, delay: 0 }, { enemy: 'sand_scorpion', count: 8, gap: 1.0, delay: 1 }], clearBonus: 300 },
-    { spawns: [{ enemy: 'demon_knight', count: 6, gap: 1.8, delay: 0 }, { enemy: 'shadow_assassin', count: 6, gap: 1.2, delay: 1 }, { enemy: 'wolf', count: 14, gap: 0.4, delay: 0 }], clearBonus: 340 },
+    { spawns: [{ enemy: 'wolf', count: 21, gap: 0.5, delay: 0 }, { enemy: 'demon_knight', count: 5, gap: 2.2, delay: 1 }], clearBonus: 280 },
+    { spawns: [{ enemy: 'shadow_assassin', count: 8, gap: 1.4, delay: 0 }, { enemy: 'sand_scorpion', count: 10, gap: 1.0, delay: 1 }], clearBonus: 300 },
+    { spawns: [{ enemy: 'demon_knight', count: 8, gap: 1.8, delay: 0 }, { enemy: 'shadow_assassin', count: 8, gap: 1.2, delay: 1 }, { enemy: 'wolf', count: 18, gap: 0.4, delay: 0 }], clearBonus: 340 },
   ],
   story: {
     intro: {

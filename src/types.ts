@@ -97,6 +97,18 @@ export interface StoryBeat {
   btn: string;
 }
 
+/** 挑战玩法：速通/单流派/禁升级/禁光环/经济约束（选关时可选） */
+export type ChallengeKind = 'speed' | 'mono_school' | 'no_upgrade' | 'no_aura' | 'budget';
+
+export interface ChallengeDef {
+  id: string;
+  name: string;
+  desc: string;
+  kind: ChallengeKind;
+  params?: Record<string, number | string>;
+  rewardContrib: number;
+}
+
 /** 关卡剧情：开场/结局 */
 export interface LevelStory {
   intro?: StoryBeat;
@@ -118,6 +130,8 @@ export interface LevelConfig {
   maxTowerLevel?: number;
   /** 敌人血量缩放（默认 1.0）；towerMul/bountyMul 自动推导为 sqrt(hpMul) */
   hpMul?: number;
+  /** 此处可选的挑战列表（选关时显示供玩家选一个） */
+  challenges?: ChallengeDef[];
 }
 
 /** 章节清单条目（设计文档 §8.2 manifest） */

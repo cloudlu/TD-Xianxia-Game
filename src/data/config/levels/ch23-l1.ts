@@ -8,15 +8,15 @@ const P = [[
 
 export const CH23_L1: LevelConfig = {
   id: 'ch23-l1', name: '万族联盟',
-  startStones: 900, lives: 44,
+  startStones: 900, lives: 3,
   cols: 16, rows: 8,
   paths: P,
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.3,
   waves: [
-    { spawns: [{ enemy: 'wolf', count: 16, gap: 0.4, delay: 0 }, { enemy: 'void_walker', count: 8, gap: 0.8, delay: 1 }], clearBonus: 460 },
-    { spawns: [{ enemy: 'celestial_demon', count: 10, gap: 1.0, delay: 0 }, { enemy: 'bull', count: 5, gap: 1.8, delay: 1 }], clearBonus: 490 },
-    { spawns: [{ enemy: 'void_walker', count: 14, gap: 0.5, delay: 0 }, { enemy: 'celestial_demon', count: 10, gap: 0.9, delay: 0 }, { enemy: 'dragon_young', count: 4, gap: 1.8, delay: 1 }], clearBonus: 520 },
+    { spawns: [{ enemy: 'wolf', count: 22, gap: 0.4, delay: 0 }, { enemy: 'void_walker', count: 11, gap: 0.8, delay: 1 }], clearBonus: 460 },
+    { spawns: [{ enemy: 'celestial_demon', count: 14, gap: 1.0, delay: 0 }, { enemy: 'bull', count: 7, gap: 1.8, delay: 1 }], clearBonus: 490 },
+    { spawns: [{ enemy: 'void_walker', count: 20, gap: 0.5, delay: 0 }, { enemy: 'celestial_demon', count: 14, gap: 0.9, delay: 0 }, { enemy: 'dragon_young', count: 6, gap: 1.8, delay: 1 }], clearBonus: 520 },
   ],
   story: {
     intro: {

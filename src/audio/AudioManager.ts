@@ -5,7 +5,7 @@
 //
 // 注意：音频属反馈层，不参与引擎确定性模拟（引擎不调用音频），故可自由用 Math.random。
 
-type SfxType = 'place' | 'upgrade' | 'sell' | 'kill' | 'leak' | 'wave' | 'win' | 'lose' | 'promote';
+type SfxType = 'place' | 'upgrade' | 'sell' | 'kill' | 'leak' | 'wave' | 'win' | 'lose' | 'promote' | 'click' | 'boss';
 
 class AudioManager {
   private ctx: AudioContext | null = null;
@@ -44,18 +44,55 @@ class AudioManager {
     }
   }
 
+  setMusicVolume(v: number): void {
+    if (this.musicGain && this.ctx) {
+      this.musicGain.gain.setTargetAtTime(v, this.ctx.currentTime, 0.05);
+    }
+  }
+
+  setSfxVolume(v: number): void {
+    if (this.sfxGain && this.ctx) {
+      this.sfxGain.gain.setTargetAtTime(v, this.ctx.currentTime, 0.05);
+    }
+  }
+
   // ---------- 背景乐 ----------
+  private musicTension: 'prep' | 'wave' | 'boss' = 'prep';
+
+  setMusicTension(tension: 'prep' | 'wave' | 'boss'): void {
+    if (tension === this.musicTension) return;
+    this.musicTension = tension;
+    if (!this.ctx || !this.musicGain || this.musicTimer === null) return;
+    // 调整 drone 音量：wave/boss 更厚重
+    const droneVol = tension === 'prep' ? 0.06 : tension === 'boss' ? 0.12 : 0.09;
+    try { (this.droneOsc?.frequency as any) && (this.droneOsc!.frequency.value = tension === 'boss' ? 98 : 130.81); } catch { /* noop */ }
+    if (this.droneGain) this.droneGain.gain.setTargetAtTime(droneVol, this.ctx.currentTime, 0.3);
+    // 重新调度让下一轮 step 使用新参数
+  }
+
   startMusic(): void {
     if (!this.ctx || this.musicTimer !== null) return;
-    this.startDrone(130.81);   // C3 drone
-    const scale = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33]; // C 五声
+    this.startDrone(130.81);
     const step = () => {
+      const t = this.musicTension;
+      const scale = t === 'prep'
+        ? [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33]
+        : t === 'boss'
+          ? [196, 220, 261.63, 311.13, 392.0, 466.16, 523.25]
+          : [261.63, 311.13, 392.0, 440.0, 523.25, 587.33, 659.25];
       const f = scale[Math.floor(Math.random() * scale.length)];
-      this.playNote(f, 'triangle', 1.9, 0.10);
-      if (Math.random() < 0.3) this.playNote(f * 2, 'sine', 1.5, 0.05);
+      const waveType: OscillatorType = t === 'prep' ? 'triangle' : t === 'boss' ? 'sawtooth' : 'square';
+      const dur = t === 'prep' ? 1.9 : t === 'boss' ? 0.9 : 1.3;
+      const vol = t === 'prep' ? 0.10 : t === 'boss' ? 0.18 : 0.14;
+      this.playNote(f, waveType, dur, vol);
+      if (t !== 'prep' && Math.random() < 0.4) {
+        this.playNote(f * (t === 'boss' ? 1.5 : 2), 'sine', dur * 0.6, vol * 0.4);
+      }
     };
     step();
-    this.musicTimer = window.setInterval(step, 1700);
+    const interval = this.musicTension === 'prep' ? 1700 : this.musicTension === 'boss' ? 800 : 1200;
+    if (this.musicTimer !== null) clearInterval(this.musicTimer);
+    this.musicTimer = window.setInterval(step, interval);
   }
 
   stopMusic(): void {
@@ -63,6 +100,8 @@ class AudioManager {
     try { this.droneOsc?.stop(); } catch { /* noop */ }
     this.droneOsc = null;
   }
+
+  private droneGain: GainNode | null = null;
 
   private startDrone(freq: number): void {
     if (!this.ctx || !this.musicGain) return;
@@ -74,6 +113,7 @@ class AudioManager {
     osc.connect(g); g.connect(this.musicGain);
     osc.start();
     this.droneOsc = osc;
+    this.droneGain = g;
   }
 
   private playNote(freq: number, type: OscillatorType, dur: number, vol: number): void {
@@ -107,9 +147,10 @@ class AudioManager {
         break;
       case 'kill': {
         const t = this.ctx.currentTime;
-        if (t - this.lastKill < 0.05) break;   // 节流，防密集击杀爆音
+        if (t - this.lastKill < 0.05) break;
         this.lastKill = t;
-        this.sweep(440, 180, 0.13, 'triangle', 0.16);
+        const semitone = Math.pow(2, (Math.random() - 0.5) * 2 / 12);
+        this.sweep(440 * semitone, 180 * semitone, 0.13, 'triangle', 0.16);
         break;
       }
       case 'leak':
@@ -123,15 +164,29 @@ class AudioManager {
       case 'win':
         [523, 659, 784, 1046].forEach((f, i) =>
           window.setTimeout(() => this.blip(f, 0.32, 'triangle', 0.25), i * 140));
+        window.setTimeout(() => {
+          this.blip(1046, 0.8, 'triangle', 0.12);
+          this.blip(1318, 0.6, 'triangle', 0.08);
+        }, 560);
         break;
       case 'lose':
         [392, 330, 262, 196].forEach((f, i) =>
           window.setTimeout(() => this.blip(f, 0.45, 'sine', 0.25), i * 180));
+        window.setTimeout(() => {
+          this.blip(165, 1.6, 'sawtooth', 0.06);
+          this.blip(130, 2.2, 'sine', 0.04);
+        }, 720);
         break;
       case 'promote':
-        // 晋升号角：明亮上行琶音 + 高音延音，庆典感
         [523, 659, 784, 1046, 1318].forEach((f, i) =>
           window.setTimeout(() => this.blip(f, 0.5, 'triangle', 0.22), i * 110));
+        break;
+      case 'boss':
+        this.blip(110, 0.8, 'sawtooth', 0.15);
+        this.blip(55, 1.0, 'sine', 0.08);
+        break;
+      case 'click':
+        this.blip(880, 0.04, 'sine', 0.10);
         break;
     }
   }

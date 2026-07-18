@@ -9,16 +9,16 @@ const PATHS = [
 
 export const CH6_L2: LevelConfig = {
   id: 'ch6-l2', name: '迷雾沼泽',
-  startStones: 440, lives: 28,
+  startStones: 440, lives: 3,
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 1.6,
   waves: [
-    { spawns: [{ enemy: 'mist_wraith', count: 4, gap: 1.8, delay: 0, path: 0 }, { enemy: 'sand_scorpion', count: 6, gap: 1.0, delay: 0, path: 1 }], clearBonus: 160 },
-    { spawns: [{ enemy: 'mist_wraith', count: 6, gap: 1.4, delay: 0, path: 0 }, { enemy: 'barbarian', count: 3, gap: 2.5, delay: 1, path: 1 }], clearBonus: 180 },
-    { spawns: [{ enemy: 'bat', count: 14, gap: 0.4, delay: 0, path: 1 }, { enemy: 'mist_wraith', count: 5, gap: 1.4, delay: 0, path: 0 }], clearBonus: 200 },
-    { spawns: [{ enemy: 'mist_wraith', count: 8, gap: 1.0, delay: 0, path: 0 }, { enemy: 'barbarian', count: 4, gap: 2, delay: 1, path: 1 }, { enemy: 'sand_scorpion', count: 8, gap: 0.8, delay: 0, path: 0 }], clearBonus: 220 },
+    { spawns: [{ enemy: 'mist_wraith', count: 5, gap: 1.8, delay: 0, path: 0 }, { enemy: 'sand_scorpion', count: 8, gap: 1.0, delay: 0, path: 1 }], clearBonus: 160 },
+    { spawns: [{ enemy: 'mist_wraith', count: 8, gap: 1.4, delay: 0, path: 0 }, { enemy: 'barbarian', count: 4, gap: 2.5, delay: 1, path: 1 }], clearBonus: 180 },
+    { spawns: [{ enemy: 'bat', count: 18, gap: 0.4, delay: 0, path: 1 }, { enemy: 'mist_wraith', count: 7, gap: 1.4, delay: 0, path: 0 }], clearBonus: 200 },
+    { spawns: [{ enemy: 'mist_wraith', count: 10, gap: 1.0, delay: 0, path: 0 }, { enemy: 'barbarian', count: 5, gap: 2, delay: 1, path: 1 }, { enemy: 'sand_scorpion', count: 10, gap: 0.8, delay: 0, path: 0 }], clearBonus: 220 },
   ],
   story: {
     intro: {

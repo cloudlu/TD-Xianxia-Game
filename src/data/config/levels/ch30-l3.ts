@@ -10,15 +10,15 @@ const P = [
 
 export const CH30_L3: LevelConfig = {
   id: 'ch30-l3', name: '道祖魔影',
-  startStones: 1500, lives: 55,
+  startStones: 1500, lives: 3,
   cols: 16, rows: 8,
   paths: P,
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 4.0,
   waves: [
-    { spawns: [{ enemy: 'chaos_beast', count: 18, gap: 0.8, delay: 0, path: 0 }, { enemy: 'void_devourer', count: 12, gap: 1.0, delay: 1, path: 1 }, { enemy: 'law_enforcer', count: 16, gap: 0.7, delay: 0, path: 2 }, { enemy: 'void_walker', count: 28, gap: 0.4, delay: 2, path: 0 }], clearBonus: 900 },
-    { spawns: [{ enemy: 'celestial_demon', count: 20, gap: 0.6, delay: 0, path: 1 }, { enemy: 'chaos_larva', count: 40, gap: 0.3, delay: 1, path: 2 }, { enemy: 'chaos_beast', count: 18, gap: 0.8, delay: 2, path: 0 }, { enemy: 'void_devourer', count: 12, gap: 1.0, delay: 0, path: 1 }, { enemy: 'ghost_cultivator', count: 24, gap: 0.4, delay: 1, path: 2 }], clearBonus: 950 },
-    { spawns: [{ enemy: 'dao_ancestor', count: 1, gap: 0, delay: 0, path: 0 }, { enemy: 'chaos_beast', count: 20, gap: 0.8, delay: 1, path: 1 }, { enemy: 'void_devourer', count: 14, gap: 1.0, delay: 1, path: 2 }, { enemy: 'law_enforcer', count: 18, gap: 0.6, delay: 0, path: 0 }, { enemy: 'celestial_demon', count: 18, gap: 0.7, delay: 2, path: 1 }, { enemy: 'void_walker', count: 30, gap: 0.4, delay: 1, path: 2 }], clearBonus: 1000 },
+    { spawns: [{ enemy: 'chaos_beast', count: 25, gap: 0.8, delay: 0, path: 0 }, { enemy: 'void_devourer', count: 17, gap: 1.0, delay: 1, path: 1 }, { enemy: 'law_enforcer', count: 22, gap: 0.7, delay: 0, path: 2 }, { enemy: 'void_walker', count: 39, gap: 0.4, delay: 2, path: 0 }], clearBonus: 900 },
+    { spawns: [{ enemy: 'celestial_demon', count: 28, gap: 0.6, delay: 0, path: 1 }, { enemy: 'chaos_larva', count: 56, gap: 0.3, delay: 1, path: 2 }, { enemy: 'chaos_beast', count: 25, gap: 0.8, delay: 2, path: 0 }, { enemy: 'void_devourer', count: 17, gap: 1.0, delay: 0, path: 1 }, { enemy: 'ghost_cultivator', count: 34, gap: 0.4, delay: 1, path: 2 }], clearBonus: 950 },
+    { spawns: [{ enemy: 'dao_ancestor', count: 11, gap: 0, delay: 0, path: 0 }, { enemy: 'chaos_beast', count: 28, gap: 0.8, delay: 1, path: 1 }, { enemy: 'void_devourer', count: 20, gap: 1.0, delay: 1, path: 2 }, { enemy: 'law_enforcer', count: 25, gap: 0.6, delay: 0, path: 0 }, { enemy: 'celestial_demon', count: 25, gap: 0.7, delay: 2, path: 1 }, { enemy: 'void_walker', count: 42, gap: 0.4, delay: 1, path: 2 }], clearBonus: 1000 },
   ],
   story: {
     intro: {

@@ -8,15 +8,15 @@ const PATHS = [[
 
 export const CH19_L1: LevelConfig = {
   id: 'ch19-l1', name: '天妖前哨',
-  startStones: 820, lives: 42,
+  startStones: 820, lives: 3,
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 2.9,
   waves: [
-    { spawns: [{ enemy: 'dragon_young', count: 14, gap: 0.8, delay: 0 }, { enemy: 'ghost_cultivator', count: 12, gap: 0.7, delay: 1 }], clearBonus: 400 },
-    { spawns: [{ enemy: 'blood_cultist', count: 16, gap: 0.6, delay: 0 }, { enemy: 'demon_knight', count: 12, gap: 0.8, delay: 1 }, { enemy: 'shadow_assassin', count: 14, gap: 0.6, delay: 0 }], clearBonus: 440 },
-    { spawns: [{ enemy: 'dragon_young', count: 18, gap: 0.6, delay: 0 }, { enemy: 'ghost_cultivator', count: 18, gap: 0.5, delay: 1 }, { enemy: 'magic_puppet', count: 12, gap: 0.8, delay: 0 }], clearBonus: 500 },
+    { spawns: [{ enemy: 'dragon_young', count: 20, gap: 0.8, delay: 0 }, { enemy: 'ghost_cultivator', count: 17, gap: 0.7, delay: 1 }], clearBonus: 400 },
+    { spawns: [{ enemy: 'blood_cultist', count: 22, gap: 0.6, delay: 0 }, { enemy: 'demon_knight', count: 17, gap: 0.8, delay: 1 }, { enemy: 'shadow_assassin', count: 20, gap: 0.6, delay: 0 }], clearBonus: 440 },
+    { spawns: [{ enemy: 'dragon_young', count: 25, gap: 0.6, delay: 0 }, { enemy: 'ghost_cultivator', count: 25, gap: 0.5, delay: 1 }, { enemy: 'magic_puppet', count: 17, gap: 0.8, delay: 0 }], clearBonus: 500 },
   ],
   story: {
     intro: {

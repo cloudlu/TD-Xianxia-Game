@@ -8,15 +8,15 @@ const P = [[
 
 export const CH24_L1: LevelConfig = {
   id: 'ch24-l1', name: '天劫前兆',
-  startStones: 940, lives: 46,
+  startStones: 940, lives: 3,
   cols: 16, rows: 8,
   paths: P,
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.4,
   waves: [
-    { spawns: [{ enemy: 'void_walker', count: 18, gap: 0.5, delay: 0 }, { enemy: 'celestial_demon', count: 8, gap: 1.2, delay: 1 }], clearBonus: 500 },
-    { spawns: [{ enemy: 'celestial_demon', count: 12, gap: 0.9, delay: 0 }, { enemy: 'chaos_larva', count: 14, gap: 0.5, delay: 1 }], clearBonus: 530 },
-    { spawns: [{ enemy: 'void_walker', count: 20, gap: 0.4, delay: 0 }, { enemy: 'celestial_demon', count: 12, gap: 0.8, delay: 0 }, { enemy: 'ghost_cultivator', count: 8, gap: 1.0, delay: 1 }], clearBonus: 560 },
+    { spawns: [{ enemy: 'void_walker', count: 25, gap: 0.5, delay: 0 }, { enemy: 'celestial_demon', count: 11, gap: 1.2, delay: 1 }], clearBonus: 500 },
+    { spawns: [{ enemy: 'celestial_demon', count: 17, gap: 0.9, delay: 0 }, { enemy: 'chaos_larva', count: 20, gap: 0.5, delay: 1 }], clearBonus: 530 },
+    { spawns: [{ enemy: 'void_walker', count: 28, gap: 0.4, delay: 0 }, { enemy: 'celestial_demon', count: 17, gap: 0.8, delay: 0 }, { enemy: 'ghost_cultivator', count: 11, gap: 1.0, delay: 1 }], clearBonus: 560 },
   ],
   story: {
     intro: {

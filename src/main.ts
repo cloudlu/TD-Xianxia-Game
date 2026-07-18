@@ -4,14 +4,19 @@
 import { Board } from './ui/Board';
 import { TOWERS, FAILED_STORY, SKINS, ENEMIES } from './data/config';
 import { audio } from './audio/AudioManager';
-import { app, buildMods } from './app/state';
+import { app, buildMods, useRemote } from './app/state';
 import { damageStatsFor } from './data/Modifier';
 import { showStory } from './app/storyModal';
 import { returnToSelect, settleWin, startEndless, tickEndless, settleEndless } from './app/levelSelect';
 import { renderProfileSelect, switchProfile } from './app/profileScreen';
 import './app/metaScreen';   // 模块加载时绑定 metaBtn 等
 import { renderBestiary } from './app/bestiary';
+import { validateConfigs } from './data/ConfigLoader';
 import type { Game } from './engine/Game';
+import { telemetry, persist } from './app/state';
+
+// 页面关闭/刷新前保存进度
+window.addEventListener('beforeunload', () => persist());
 
 // ---------- 棋盘 ----------
 const canvas = document.getElementById('board') as HTMLCanvasElement;
@@ -32,13 +37,15 @@ let lastWavePreviewHtml = '';
 const hud = document.getElementById('hud')!;
 hud.insertAdjacentHTML('afterbegin', `
   <div class="stat"><span class="label">灵石</span><span class="val stones" id="h-stones">0</span></div>
-  <div class="stat"><span class="label">血量</span><span class="val lives" id="h-lives">0</span></div>
+  <div class="stat"><span class="label">命</span><span class="val lives" id="h-lives"></span></div>
   <div class="stat"><span class="label">波次</span><span class="val wave" id="h-wave">0/0</span></div>
-  <div class="stat" style="flex:1; justify-content:flex-end;"><span class="val" id="h-status" style="font-size:14px;color:#8b8ba0;"></span></div>`);
+  <div class="stat" style="flex:1; justify-content:flex-end;"><span class="val" id="h-status" style="font-size:14px;color:#8b8ba0;"></span><span id="h-destiny" style="display:none;font-size:13px;color:#ffd93d;margin-left:10px;background:#2a2a1a;border:1px solid #8a7a3a;border-radius:4px;padding:2px 8px;">📜 天命+8%</span><span id="h-challenge" style="display:none;font-size:13px;margin-left:10px;background:#1a2a1a;border:1px solid #5a8a5a;border-radius:4px;padding:2px 8px;"></span></div>`);
 const elStones = document.getElementById('h-stones')!;
 const elLives = document.getElementById('h-lives')!;
 const elWave = document.getElementById('h-wave')!;
 const elStatus = document.getElementById('h-status')!;
+const elDestiny = document.getElementById('h-destiny')!;
+const elChallenge = document.getElementById('h-challenge')!;
 
 const startBtn = document.createElement('button');
 startBtn.id = 'startBtn';
@@ -56,10 +63,19 @@ muteBtn.onclick = () => {
 };
 hud.appendChild(muteBtn);
 
+const volGroup = document.createElement('div');
+volGroup.className = 'vol-group';
+volGroup.innerHTML = `
+  <label class="vol-label">乐<input type="range" min="0" max="1" step="0.05" value="0.5" class="vol-slider" id="vol-music"></label>
+  <label class="vol-label">效<input type="range" min="0" max="1" step="0.05" value="0.9" class="vol-slider" id="vol-sfx"></label>`;
+hud.appendChild(volGroup);
+volGroup.querySelector<HTMLInputElement>('#vol-music')!.oninput = function () { audio.setMusicVolume(+(this as HTMLInputElement).value); };
+volGroup.querySelector<HTMLInputElement>('#vol-sfx')!.oninput = function () { audio.setSfxVolume(+(this as HTMLInputElement).value); };
+
 const speedGroup = document.createElement('div');
 speedGroup.className = 'speed-group';
 const SPEEDS: Array<{ label: string; val: number }> = [
-  { label: '⏸', val: 0 }, { label: '1×', val: 1 }, { label: '2×', val: 2 },
+  { label: '⏸', val: 0 }, { label: '1×', val: 1 }, { label: '2×', val: 2 }, { label: '3×', val: 3 },
 ];
 SPEEDS.forEach((sp) => {
   const b = document.createElement('button');
@@ -70,13 +86,43 @@ SPEEDS.forEach((sp) => {
     speedGroup.querySelectorAll('.speed-btn').forEach((x, i) => {
       (x as HTMLElement).classList.toggle('active', SPEEDS[i].val === app.speedMul);
     });
+    audio.init(); audio.sfx('click');
   };
   speedGroup.appendChild(b);
 });
 hud.appendChild(speedGroup);
 
+// ---------- 全局索敌 ----------
+const TARGET_LABEL: Record<string, string> = {
+  first: '首敌·最前', last: '末敌·最后', strongest: '最强', nearest: '最近',
+};
+const targetGroup = document.createElement('div');
+targetGroup.className = 'speed-group';
+targetGroup.style.marginLeft = '8px';
+const TARGET_KEYS: string[] = ['first', 'last', 'strongest', 'nearest'];
+TARGET_KEYS.forEach((key) => {
+  const b = document.createElement('button');
+  b.className = 'speed-btn';
+  b.textContent = TARGET_LABEL[key];
+  b.title = `全局默认：${TARGET_LABEL[key]}`;
+  b.onclick = () => {
+    if (!app.game) return;
+    audio.init(); audio.sfx('click');
+    (app.game as any).setGlobalTargetPolicy(key as any);
+    targetGroup.querySelectorAll('.speed-btn').forEach((x) => {
+      (x as HTMLElement).classList.toggle('active', (x as HTMLElement).textContent === TARGET_LABEL[key]);
+    });
+  };
+  targetGroup.appendChild(b);
+});
+hud.appendChild(targetGroup);
+
 // ---------- 塔选择栏 ----------
 const panel = document.getElementById('panel')!;
+const statCard = document.createElement('div');
+statCard.id = 'towerStatCard';
+statCard.style.cssText = 'display:none;position:fixed;z-index:35;background:#1c2238;border:1px solid #3a4a6a;border-radius:8px;padding:10px 14px;box-shadow:0 6px 24px rgba(0,0,0,0.5);color:#e0e0e0;pointer-events:none;min-width:180px';
+document.body.appendChild(statCard);
 const towerBtns = new Map<string, HTMLDivElement>();
 function setActiveTower(id: string): void {
   app.activeTowerId = id;
@@ -116,7 +162,29 @@ for (const id of Object.keys(TOWERS)) {
     <span class="cost">${def.cost} 灵石</span>
     <span class="desc">${def.desc}</span>
     <span class="desc stat-line" style="color:#5fd3ff">${statTxt}</span>`;
-  btn.onclick = () => { if (!btn.classList.contains('disabled')) setActiveTower(id); };
+  btn.onclick = () => { if (!btn.classList.contains('disabled')) { audio.init(); audio.sfx('click'); setActiveTower(id); } };
+  // 悬浮属性卡
+  btn.onmouseenter = () => {
+    const rect = btn.getBoundingClientRect();
+    const rows = def.levels.map((lv, i) => {
+      const dps = def.behavior === 'aura' ? '光环' : `${Math.round(lv.dmg * lv.rate)}`;
+      const rng = lv.range;
+      const crit = lv.crit ? `${Math.round(lv.crit * 100)}%` : '—';
+      return `<tr><td>${lv.realm}</td><td>${dps}</td><td>${rng}</td><td>${crit}</td></tr>`;
+    }).join('');
+    statCard.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <strong style="color:#ffe9b8;font-size:16px">${def.icon} ${def.name}</strong>
+        <span style="color:#5fd3ff">${def.cost} 灵石</span>
+      </div>
+      <div style="color:#8b8ba0;font-size:12px;margin-bottom:6px">${def.desc}</div>
+      <div style="font-size:12px;color:#8b8ba0;margin-bottom:4px">${BEHAVIOR_LABEL[def.behavior] ?? def.behavior} · ${def.hitsAir ? '对空+对地' : '仅对地'} · ${def.school}</div>
+      <table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr style="color:#8b8ba0"><th>境界</th><th>DPS</th><th>射程</th><th>暴击</th></tr></thead><tbody>${rows}</tbody></table>`;
+    statCard.style.display = 'block';
+    statCard.style.left = Math.min(rect.right + 8, window.innerWidth - 200) + 'px';
+    statCard.style.top = Math.max(8, Math.min(rect.top, window.innerHeight - 280)) + 'px';
+  };
+  btn.onmouseleave = () => { statCard.style.display = 'none'; };
   panel.appendChild(btn);
   towerBtns.set(id, btn);
 }
@@ -158,9 +226,6 @@ function refreshTowerButtonStats(): void {
 }
 
 // ---------- 塔操作面板 ----------
-const TARGET_LABEL: Record<string, string> = {
-  first: '首敌·最前', last: '末敌·最后', strongest: '最强', nearest: '最近',
-};
 const towerPanel = document.getElementById('towerPanel')!;
 const tpTitle = document.getElementById('tpTitle')!;
 const tpRealm = document.getElementById('tpRealm')!;
@@ -269,6 +334,11 @@ function frame(now: number): void {
     leakFlash.style.opacity = String(app.leakFlashAmt);
   }
 
+  // 遥测：每 ~1s 记录塔 DPS 样本
+  if (app.game && Math.floor(app.game.snapshot().elapsed * 30) % 60 === 0) {
+    app.game.telemetryTowerSample();
+  }
+
   refreshTowerButtonStats();   // 刷新塔按钮的 meta 加成数值
 
   if (!app.game || !app.currentLevel) { requestAnimationFrame(frame); return; }
@@ -278,10 +348,64 @@ function frame(now: number): void {
   const s = app.game.snapshot();
   board.render(s, app.currentLevel.buildable);
 
+  // 自适应音乐分层
+  if (app.game) {
+    const hasBoss = s.enemies.some((e) => !!e.def.bossAbility);
+    const tension: 'prep' | 'wave' | 'boss' = hasBoss ? 'boss' : s.waveActive ? 'wave' : 'prep';
+    audio.setMusicTension(tension);
+  }
+
   elStones.textContent = String(s.stones);
-  elLives.textContent = String(s.lives);
-  elWave.textContent = `${Math.min(s.waveIndex + 1, s.totalWaves)}/${s.totalWaves}`;
+  // 3 心制：实心 ❤ = 存活，空心 ♡ = 已失
+  const maxHearts = 3;
+  let hearts = '';
+  for (let i = 0; i < maxHearts; i++) {
+    hearts += `<span class="heart${i < s.lives ? '' : ' lost'}">${i < s.lives ? '❤' : '♡'}</span>`;
+  }
+  elLives.innerHTML = hearts;
+  // 波次进度条（无尽模式只显示当前波数，主线显示 波数/总数 + 进度条）
+  const isEndless = app.currentLevel?.id === 'endless';
+  if (isEndless) {
+    elWave.innerHTML = `第 ${s.waveIndex + 1} 波`;
+  } else if (s.waveActive && s.waveSpawned > 0) {
+    const pct = Math.min(1, s.waveKilled / s.waveSpawned);
+    elWave.innerHTML = `${Math.min(s.waveIndex + 1, s.totalWaves)}/${s.totalWaves} <span style="display:inline-block;width:60px;height:10px;background:#1a1a2a;border-radius:5px;vertical-align:middle;overflow:hidden;margin-left:4px"><span style="display:block;height:100%;width:${Math.round(pct * 100)}%;background:linear-gradient(90deg,#ffd93d,#ff9b6b);border-radius:5px;transition:width 0.15s"></span></span>`;
+  } else {
+    elWave.textContent = `${Math.min(s.waveIndex + 1, s.totalWaves)}/${s.totalWaves}`;
+  }
   elStatus.textContent = s.msg;
+  elDestiny.style.display = app.destinyBoost > 1 && app.currentLevel?.id !== 'endless' ? '' : 'none';
+  if (s.challengeActive) {
+    elChallenge.style.display = '';
+    const statusTxt = s.challengeFailed ? `❌ ${s.challengeName}` : `⚔ ${s.challengeName}`;
+    let progressTxt = '';
+    if (s.challengeProgress && !s.challengeFailed) {
+      const p = s.challengeProgress;
+      switch (p.kind) {
+        case 'speed':
+          progressTxt = ` — 用时 ${Math.ceil(p.elapsed ?? 0)} / ${p.limit}s`;
+          break;
+        case 'mono_school':
+          progressTxt = ` — ${p.allowed ? `仅允许${p.allowed}流派` : '单流派'}`;
+          break;
+        case 'no_upgrade':
+          progressTxt = p.upgraded ? ` — ❌已升级` : ` — 未升级`;
+          break;
+        case 'no_aura':
+          progressTxt = p.auraTowers && p.auraTowers > 0 ? ` — ❌已放置${p.auraTowers}个光环塔` : ` — 0光环塔`;
+          break;
+        case 'budget':
+          progressTxt = ` — 花费 ${p.totalSpent ?? 0} / ${p.budgetLimit}灵石`;
+          break;
+      }
+    }
+    elChallenge.textContent = statusTxt + progressTxt;
+    elChallenge.style.borderColor = s.challengeFailed ? '#ff6b6b' : '#5a8a5a';
+    elChallenge.style.background = s.challengeFailed ? '#2a1a1a' : '#1a2a1a';
+    elChallenge.title = s.challengeFailed ? s.challengeFailedReason : `挑战「${s.challengeName}」进行中${progressTxt ? ' ' + progressTxt : ''}`;
+  } else {
+    elChallenge.style.display = 'none';
+  }
 
   // 下一波敌人预告（只在内容变化时重建 DOM，避免每帧重建导致 :hover 失效）
   let previewHtml: string;
@@ -318,6 +442,12 @@ function frame(now: number): void {
   else if (s.status === 'lost') startBtn.textContent = '❌ 宗门失守';
   else startBtn.textContent = `第 ${s.waveIndex + 1} 波进行中…`;
 
+  // 全局索敌按钮高亮
+  const gp = app.game?.globalTargetPolicy;
+  targetGroup.querySelectorAll('.speed-btn').forEach((b) => {
+    (b as HTMLElement).classList.toggle('active', gp != null && (b as HTMLElement).textContent === TARGET_LABEL[gp]);
+  });
+
   if (s.status !== app.prevStatus) {
     if (s.status === 'won') {
       audio.stopMusic();
@@ -340,7 +470,66 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 
+// ---------- 遥测调试面板 ----------
+const debugPanel = document.getElementById('debugPanel')!;
+document.getElementById('debugToggle')!.onclick = () => {
+  debugPanel.classList.toggle('show');
+  if (debugPanel.classList.contains('show')) refreshDebugPanel();
+};
+function refreshDebugPanel(): void {
+  const logs = telemetry.getSessionLogs();
+  const kills = logs.filter((l) => l.type === 'kill');
+  const leaks = logs.filter((l) => l.type === 'leak');
+  const econ = logs.filter((l) => l.type === 'economy');
+  const dps = logs.filter((l) => l.type === 'tower_dps');
+
+  const totalKills = kills.length;
+  const totalLeaks = leaks.length;
+  const netEcon = econ.length > 0 ? econ[econ.length - 1].data.balance as number : 0;
+
+  document.getElementById('debugSummary')!.innerHTML = `
+    <div class="summary-item"><div class="num">${totalKills}</div><div class="lbl">击杀</div></div>
+    <div class="summary-item"><div class="num" style="color:${totalLeaks > 0 ? '#ff6b6b' : '#5fd35f'}">${totalLeaks}</div><div class="lbl">漏怪</div></div>
+    <div class="summary-item"><div class="num">${netEcon}</div><div class="lbl">灵石余额</div></div>
+    <div class="summary-item"><div class="num">${econ.length}</div><div class="lbl">经济事件</div></div>
+    <div class="summary-item"><div class="num">${dps.length}</div><div class="lbl">DPS 样本</div></div>`;
+
+  document.getElementById('debugKills')!.innerHTML = kills.slice(-50).reverse().map((l) =>
+    `<tr class="kill"><td>${fmtTime(l.timestamp)}</td><td>${l.data.enemyId as string}</td><td>${l.data.waveIndex as number}</td><td>${l.data.bounty as number}</td></tr>`,
+  ).join('');
+  document.getElementById('debugLeaks')!.innerHTML = leaks.slice(-50).reverse().map((l) =>
+    `<tr class="leak"><td>${fmtTime(l.timestamp)}</td><td>${l.data.enemyId as string}</td><td>${l.data.waveIndex as number}</td><td>${l.data.livesLost as number}</td></tr>`,
+  ).join('');
+  document.getElementById('debugEconomy')!.innerHTML = econ.slice(-100).reverse().map((l) => {
+    const d = l.data.delta as number;
+    return `<tr><td>${(l.data.elapsed as number).toFixed(1)}s</td><td class="${d >= 0 ? 'econ-pos' : 'econ-neg'}">${d >= 0 ? '+' : ''}${d}</td><td>${l.data.reason as string}</td><td>${l.data.balance as number}</td></tr>`;
+  }).join('');
+  document.getElementById('debugDps')!.innerHTML = dps.slice(-50).reverse().map((l) =>
+    `<tr><td>${l.data.towerId as string}</td><td>${Math.round((l.data.totalDmg as number) / Math.max(1, l.data.elapsed as number))}</td><td>${Math.round(l.data.totalDmg as number)}</td><td>${l.data.kills as number}</td><td>${(l.data.elapsed as number).toFixed(1)}s</td></tr>`,
+  ).join('');
+}
+function fmtTime(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`;
+}
+// 面板打开时每 2s 刷新
+setInterval(() => { if (debugPanel.classList.contains('show')) refreshDebugPanel(); }, 2000);
+
 // ---------- 启动 ----------
+// 配置校验（不阻塞启动，仅在控制台输出）
+const configResult = validateConfigs();
+if (!configResult.ok) {
+  console.error('❌ 配置校验失败:');
+  for (const e of configResult.errors) console.error('  ', e);
+  for (const w of configResult.warnings) console.warn('  ⚠', w);
+} else if (configResult.warnings.length > 0) {
+  console.warn('⚠ 配置校验通过，但有警告:');
+  for (const w of configResult.warnings) console.warn('  ⚠', w);
+} else {
+  console.log('✅ 配置校验通过');
+}
+// 远程后端模式（前后端分离）
+useRemote('');
 renderProfileSelect();   // 先选玩家档案（多存档隔离）
 document.getElementById('switchBtn')!.onclick = switchProfile;
 document.getElementById('bestiaryBtn')!.onclick = () => {

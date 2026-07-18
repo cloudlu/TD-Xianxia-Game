@@ -10,15 +10,15 @@ const PATHS = [
 
 export const CH18_L3: LevelConfig = {
   id: 'ch18-l3', name: '万族围攻',
-  startStones: 820, lives: 40,
+  startStones: 820, lives: 3,
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 2.8,
   waves: [
-    { spawns: [{ enemy: 'dragon_young', count: 12, gap: 0.8, delay: 0, path: 0 }, { enemy: 'ghost_cultivator', count: 14, gap: 0.6, delay: 1, path: 1 }, { enemy: 'demon_knight', count: 12, gap: 0.8, delay: 0, path: 2 }], clearBonus: 440 },
-    { spawns: [{ enemy: 'shadow_assassin', count: 16, gap: 0.5, delay: 0, path: 0 }, { enemy: 'blood_cultist', count: 14, gap: 0.7, delay: 1, path: 1 }, { enemy: 'splitter', count: 14, gap: 0.7, delay: 0, path: 2 }], clearBonus: 480 },
-    { spawns: [{ enemy: 'rift_lord', count: 1, gap: 0, delay: 0, path: 0 }, { enemy: 'dragon_young', count: 14, gap: 0.7, delay: 1, path: 1 }, { enemy: 'ghost_cultivator', count: 18, gap: 0.5, delay: 0, path: 2 }, { enemy: 'demon_knight', count: 14, gap: 0.7, delay: 2, path: 0 }], clearBonus: 600 },
+    { spawns: [{ enemy: 'dragon_young', count: 17, gap: 0.8, delay: 0, path: 0 }, { enemy: 'ghost_cultivator', count: 20, gap: 0.6, delay: 1, path: 1 }, { enemy: 'demon_knight', count: 17, gap: 0.8, delay: 0, path: 2 }], clearBonus: 440 },
+    { spawns: [{ enemy: 'shadow_assassin', count: 22, gap: 0.5, delay: 0, path: 0 }, { enemy: 'blood_cultist', count: 20, gap: 0.7, delay: 1, path: 1 }, { enemy: 'splitter', count: 20, gap: 0.7, delay: 0, path: 2 }], clearBonus: 480 },
+    { spawns: [{ enemy: 'rift_lord', count: 11, gap: 0, delay: 0, path: 0 }, { enemy: 'dragon_young', count: 20, gap: 0.7, delay: 1, path: 1 }, { enemy: 'ghost_cultivator', count: 25, gap: 0.5, delay: 0, path: 2 }, { enemy: 'demon_knight', count: 20, gap: 0.7, delay: 2, path: 0 }], clearBonus: 600 },
   ],
   story: {
     intro: {

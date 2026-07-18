@@ -6,17 +6,17 @@ const PATHS = [[{ x: 0, y: 3 }, { x: 15, y: 3 }]];
 // 第 1 章 第 1 关 · 前山门（单路径直线，教学关）
 export const CH1_L1: LevelConfig = {
   id: 'ch1-l1', name: '前山门',
-  startStones: 300, lives: 20,
+  startStones: 300, lives: 3,
   cols: 16, rows: 8,
   maxTowerLevel: 2,   // 本关最高可升至 金丹（教学升级 + 暴击）
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 1.0,
   waves: [
-    { spawns: [{ enemy: 'wolf', count: 8, gap: 0.8, delay: 0 }], clearBonus: 50 },
-    { spawns: [{ enemy: 'wolf', count: 10, gap: 0.6, delay: 1 }], clearBonus: 60 },
-    { spawns: [{ enemy: 'boar', count: 3, gap: 1.8, delay: 1 }], clearBonus: 70 },
-    { spawns: [{ enemy: 'wolf', count: 10, gap: 0.5, delay: 0 }, { enemy: 'boar', count: 2, gap: 2.5, delay: 1 }], clearBonus: 90 },
+    { spawns: [{ enemy: 'wolf', count: 9, gap: 0.8, delay: 0 }], clearBonus: 50 },
+    { spawns: [{ enemy: 'wolf', count: 11, gap: 0.6, delay: 1 }], clearBonus: 60 },
+    { spawns: [{ enemy: 'boar', count: 33, gap: 1.8, delay: 1 }], clearBonus: 70 },
+    { spawns: [{ enemy: 'wolf', count: 11, gap: 0.5, delay: 0 }, { enemy: 'boar', count: 22, gap: 2.5, delay: 1 }], clearBonus: 90 },
   ],
   story: {
     intro: {

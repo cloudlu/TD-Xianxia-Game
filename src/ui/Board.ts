@@ -18,12 +18,12 @@ export class Board {
   private ctx: CanvasRenderingContext2D;
   cols: number;
   rows: number;
-  private paths: GridPoint[][] = [];   // 当前关卡多条路径（画入口/出口用）
-  /** 皮肤解析：towerId → { icon, color, effect? }；由 main 注入，返回 null 用塔默认外观 */
+  private paths: GridPoint[][] = [];
   skinResolver: ((towerId: string) => { icon: string; color: string; effect?: string } | null) | null = null;
   hoverCol = -1;
   hoverRow = -1;
-  activeBuild: string | null = null;   // 当前选中要建的塔 id
+  activeBuild: string | null = null;
+  private ambientParticles: { x: number; y: number; vy: number; size: number; alpha: number; speed: number }[] = [];
 
   constructor(private canvas: HTMLCanvasElement, cols: number, rows: number) {
     this.ctx = canvas.getContext('2d')!;
@@ -86,15 +86,24 @@ export class Board {
     const auraTowers = state.towers.filter((t) => t.def.behavior === 'aura');
     for (const e of state.enemies) this.drawEnemy(e, auraTowers);
 
-    // 弹道（带尾焰光晕）
+    // 弹道（拖尾线段 + 光晕）
     for (const p of state.projectiles) {
-      ctx.fillStyle = p.color + '55';
-      ctx.beginPath(); ctx.arc(p.x * CELL, p.y * CELL, 8, 0, Math.PI * 2); ctx.fill();
+      const cx = p.x * CELL, cy = p.y * CELL;
+      // 拖尾：反向拉一条渐变线段
+      const grad = ctx.createLinearGradient(cx - 12, cy - 12, cx, cy);
+      grad.addColorStop(0, p.color + '00');
+      grad.addColorStop(1, p.color + '88');
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(cx - 10, cy - 10); ctx.lineTo(cx, cy); ctx.stroke();
+      // 核心亮点
       ctx.fillStyle = p.color;
-      ctx.beginPath(); ctx.arc(p.x * CELL, p.y * CELL, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff88';
+      ctx.beginPath(); ctx.arc(cx, cy, 1.5, 0, Math.PI * 2); ctx.fill();
     }
 
-    // 战斗特效：飘字伤害 + 死亡消散
+    // 战斗特效：飘字伤害 + 死亡消散 + BOSS 冲击波 + 升级爆发
     for (const fx of state.effects) {
       const t = fx.life / fx.maxLife;   // 1→0
       if (fx.kind === 'dmg') {
@@ -104,6 +113,37 @@ export class Board {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(fx.text ?? '', fx.x * CELL, fx.y * CELL);
+        ctx.globalAlpha = 1;
+      } else if (fx.kind === 'shockwave') {
+        const progress = 1 - t;
+        const rad = CELL * (0.2 + progress * 1.2);
+        ctx.globalAlpha = Math.max(0, (1 - progress) * 0.7);
+        ctx.strokeStyle = fx.color;
+        ctx.lineWidth = 4 - progress * 3;
+        ctx.beginPath(); ctx.arc(fx.x * CELL, fx.y * CELL, rad, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = fx.color + '22';
+        ctx.beginPath(); ctx.arc(fx.x * CELL, fx.y * CELL, rad, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      } else if (fx.kind === 'burst') {
+        const progress = 1 - t;
+        const rad = CELL * (0.1 + progress * 0.6);
+        ctx.globalAlpha = Math.max(0, 1 - progress);
+        // 外圈金光
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 3 - progress * 2;
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2 + progress * 2;
+          const x1 = fx.x * CELL + Math.cos(angle) * rad * 0.3;
+          const y1 = fx.y * CELL + Math.sin(angle) * rad * 0.3;
+          const x2 = fx.x * CELL + Math.cos(angle) * rad;
+          const y2 = fx.y * CELL + Math.sin(angle) * rad;
+          ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        }
+        // 中心光晕
+        ctx.fillStyle = '#ffd70055';
+        ctx.beginPath(); ctx.arc(fx.x * CELL, fx.y * CELL, rad * 0.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffffff44';
+        ctx.beginPath(); ctx.arc(fx.x * CELL, fx.y * CELL, rad * 0.2, 0, Math.PI * 2); ctx.fill();
         ctx.globalAlpha = 1;
       } else { // poof：扩散消散圈
         const rad = CELL * (0.3 + (1 - t) * 0.5);
@@ -120,12 +160,45 @@ export class Board {
     // 终点/起点标记
     this.drawEndpoints();
 
+    // 环境粒子（灵气）
+    this.updateAmbient(state.status);
+    for (const p of this.ambientParticles) {
+      ctx.fillStyle = `rgba(255,255,240,${p.alpha})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     // 暗角（vignette）
     const vg = ctx.createRadialGradient(this.canvas.width / 2, this.canvas.height / 2, this.canvas.height * 0.3, this.canvas.width / 2, this.canvas.height / 2, this.canvas.width * 0.7);
     vg.addColorStop(0, 'rgba(0,0,0,0)');
     vg.addColorStop(1, 'rgba(0,0,0,0.45)');
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+
+  /** 环境灵气粒子更新 */
+  private updateAmbient(status: string): void {
+    const w = this.canvas.width, h = this.canvas.height;
+    const spawnRate = status === 'prep' ? 0.4 : 0.15;
+    if (Math.random() < spawnRate) {
+      this.ambientParticles.push({
+        x: Math.random() * w,
+        y: h + 5,
+        vy: -(0.3 + Math.random() * 0.5),
+        size: 1.5 + Math.random() * 2.5,
+        alpha: 0.15 + Math.random() * 0.2,
+        speed: 0.3 + Math.random() * 0.5,
+      });
+    }
+    for (let i = this.ambientParticles.length - 1; i >= 0; i--) {
+      const p = this.ambientParticles[i];
+      p.y += p.vy * p.speed;
+      p.alpha -= 0.002;
+      if (p.y < -10 || p.alpha <= 0) {
+        this.ambientParticles.splice(i, 1);
+      }
+    }
   }
 
   private drawPath(): void {
@@ -139,11 +212,11 @@ export class Board {
         for (let i = 1; i < path.length; i++) ctx.lineTo((path[i].x + 0.5) * CELL, (path[i].y + 0.5) * CELL);
       };
       trace();
-      ctx.strokeStyle = 'rgba(200,160,90,0.12)'; ctx.lineWidth = CELL * 0.85; ctx.stroke();  // 外光晕
+      ctx.strokeStyle = 'rgba(200,160,90,0.12)'; ctx.lineWidth = CELL * 0.85; ctx.stroke();
       trace();
-      ctx.strokeStyle = 'rgba(140,100,45,0.55)'; ctx.lineWidth = CELL * 0.6; ctx.stroke();   // 缎带
+      ctx.strokeStyle = 'rgba(140,100,45,0.55)'; ctx.lineWidth = CELL * 0.6; ctx.stroke();
       trace();
-      ctx.strokeStyle = 'rgba(255,217,130,0.3)'; ctx.lineWidth = 2; ctx.setLineDash([8, 10]); ctx.stroke(); // 中线虚线
+      ctx.strokeStyle = 'rgba(255,217,130,0.3)'; ctx.lineWidth = 2; ctx.setLineDash([8, 10]); ctx.stroke();
       ctx.setLineDash([]);
     }
   }
@@ -245,6 +318,22 @@ export class Board {
       ctx.arc(x + 11 + i * 10, y + 11, 3, 0, Math.PI * 2);
       ctx.fill();
     }
+
+    // 开火 muzzle flash
+    if (t.flashTimer > 0 && !disabled) {
+      const intensity = Math.min(1, t.flashTimer / 0.12);
+      ctx.save();
+      ctx.globalAlpha = intensity * 0.6;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc((t.col + 0.5) * CELL, (t.row + 0.5) * CELL, CELL * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc((t.col + 0.5) * CELL, (t.row + 0.5) * CELL, CELL * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
   private drawEnemy(e: GameState['enemies'][number], auraTowers: GameState['towers'][number][]): void {
@@ -257,55 +346,60 @@ export class Board {
       return dx * dx + dy * dy <= r * r;
     });
     const fly = !!e.def.fly;
-    const lift = fly ? CELL * 0.18 : 0;          // 飞行抬高
+    const lift = fly ? CELL * 0.18 : 0;
     const cx = e.x * CELL, cy = e.y * CELL - lift;
     const elite = !!e.def.elite;
-    const rad = CELL * (elite ? 0.44 : 0.32);
+    const isBoss = !!e.def.bossAbility;
+    const rad = CELL * (elite || isBoss ? 0.44 : 0.32);
     ctx.globalAlpha = stealth && !revealed ? 0.3 : 1;
-    // 飞行阴影（地面投影）
+    // 飞行阴影
     if (fly) {
       ctx.fillStyle = '#0006';
       ctx.beginPath();
       ctx.ellipse(e.x * CELL, e.y * CELL, rad * 0.8, rad * 0.35, 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    // 精英光环底
-    if (elite) {
-      ctx.fillStyle = '#ffd93322';
+    // 精英/首领光环底
+    if (elite || isBoss) {
+      ctx.fillStyle = (isBoss ? '#ff444422' : '#ffd93322');
       ctx.beginPath();
       ctx.arc(cx, cy, rad + 8, 0, Math.PI * 2);
       ctx.fill();
     }
-    // 本体（受击闪白时叠加白色）
-    ctx.fillStyle = e.def.color;
-    ctx.beginPath();
-    ctx.arc(cx, cy, rad, 0, Math.PI * 2);
-    ctx.fill();
+    // 本体形状：飞→菱形，首领→六边，普通→圆
+    const drawShape = (r: number, fill?: string, stroke?: string, lw?: number) => {
+      ctx.beginPath();
+      if (fly) {
+        ctx.moveTo(cx, cy - r);
+        ctx.lineTo(cx + r * 0.75, cy);
+        ctx.lineTo(cx, cy + r);
+        ctx.lineTo(cx - r * 0.75, cy);
+        ctx.closePath();
+      } else if (isBoss) {
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+          const px = cx + r * Math.cos(a), py = cy + r * Math.sin(a);
+          i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+      } else {
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      }
+      if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw ?? 2; ctx.stroke(); }
+    };
+    drawShape(rad, e.def.color);
     if (e.hitFlash > 0) {
       ctx.globalAlpha = (stealth && !revealed ? 0.3 : 1) * Math.min(1, e.hitFlash / 0.12);
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(cx, cy, rad, 0, Math.PI * 2);
-      ctx.fill();
+      drawShape(rad, '#ffffff');
       ctx.globalAlpha = stealth && !revealed ? 0.3 : 1;
     }
-    // 精英金边
-    if (elite) {
-      ctx.strokeStyle = '#ffd93d';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(cx, cy, rad, 0, Math.PI * 2);
-      ctx.stroke();
+    if (elite || isBoss) {
+      drawShape(rad, undefined, '#ffd93d', isBoss ? 4 : 3);
     }
-    // 护盾层（蓝环）
     if (e.shield > 0) {
-      ctx.strokeStyle = '#5fd3ff';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(cx, cy, rad + 4, 0, Math.PI * 2);
-      ctx.stroke();
+      drawShape(rad + 4, undefined, '#5fd3ff', 2);
     }
-    // 减速效果（冰蓝光环）
     if (e.slowFactor < 1) {
       ctx.fillStyle = 'rgba(100,200,255,0.25)';
       ctx.beginPath();
@@ -314,24 +408,24 @@ export class Board {
     }
     // 图标字
     ctx.fillStyle = '#fff';
-    ctx.font = `bold ${elite ? 30 : 24}px sans-serif`;
+    ctx.font = `bold ${elite || isBoss ? 30 : 24}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(e.def.icon, cx, cy);
-    // 精英名称标牌
-    if (elite) {
-      ctx.fillStyle = '#ffd93d';
+    // 精英/首领名称标牌
+    if (elite || isBoss) {
+      ctx.fillStyle = isBoss ? '#ff6b6b' : '#ffd93d';
       ctx.font = 'bold 13px sans-serif';
       ctx.fillText(e.def.name, cx, cy + rad + 12);
     }
     // 血条
-    const w = CELL * (elite ? 0.9 : 0.7), h = elite ? 7 : 6;
-    const bx = cx - w / 2, by = cy - rad - (elite ? 14 : 12);
+    const w = CELL * (elite || isBoss ? 0.9 : 0.7), h = (elite || isBoss) ? 7 : 6;
+    const bx = cx - w / 2, by = cy - rad - ((elite || isBoss) ? 14 : 12);
     ctx.fillStyle = '#0008';
     ctx.fillRect(bx, by, w, h);
     ctx.fillStyle = e.hp / e.maxHp > 0.4 ? '#5fd35f' : '#ff6b6b';
     ctx.fillRect(bx, by, w * Math.max(0, e.hp / e.maxHp), h);
-    ctx.globalAlpha = 1;   // 复位，避免影响后续绘制
+    ctx.globalAlpha = 1;
   }
 
   private drawEndpoints(): void {

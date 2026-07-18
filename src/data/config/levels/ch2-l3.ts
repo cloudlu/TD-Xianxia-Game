@@ -9,22 +9,23 @@ const PATHS = [
 
 export const CH2_L3: LevelConfig = {
   id: 'ch2-l3', name: '山腹古道',
-  startStones: 360, lives: 24,
+  startStones: 360, lives: 3,
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 1.1,
+  maxTowerLevel: 5,
   waves: [
-    { spawns: [{ enemy: 'wolf', count: 12, gap: 0.6, delay: 0, path: 0 }, { enemy: 'bat', count: 8, gap: 0.5, delay: 1, path: 1 }], clearBonus: 100 },
-    { spawns: [{ enemy: 'boar', count: 5, gap: 1.6, delay: 0, path: 0 }, { enemy: 'wolf', count: 12, gap: 0.5, delay: 0, path: 1 }], clearBonus: 120 },
-    { spawns: [{ enemy: 'bull', count: 1, gap: 1, delay: 1, path: 0 }, { enemy: 'bat', count: 12, gap: 0.4, delay: 0, path: 1 }], clearBonus: 140 },
-    { spawns: [{ enemy: 'boar', count: 4, gap: 1.8, delay: 0, path: 1 }, { enemy: 'bat', count: 12, gap: 0.4, delay: 0, path: 0 }], clearBonus: 160 },
+    { spawns: [{ enemy: 'wolf', count: 14, gap: 0.6, delay: 0, path: 0 }, { enemy: 'bat', count: 9, gap: 0.5, delay: 1, path: 1 }], clearBonus: 100 },
+    { spawns: [{ enemy: 'boar', count: 6, gap: 1.6, delay: 0, path: 0 }, { enemy: 'wolf', count: 14, gap: 0.5, delay: 0, path: 1 }], clearBonus: 120 },
+    { spawns: [{ enemy: 'bull', count: 11, gap: 1, delay: 1, path: 0 }, { enemy: 'bat', count: 14, gap: 0.4, delay: 0, path: 1 }], clearBonus: 140 },
+    { spawns: [{ enemy: 'boar', count: 5, gap: 1.8, delay: 0, path: 1 }, { enemy: 'bat', count: 14, gap: 0.4, delay: 0, path: 0 }], clearBonus: 160 },
     // 末波：蛮牛+蝙蝠+狼三路齐攻
     { spawns: [
-      { enemy: 'bull', count: 1, gap: 1, delay: 1, path: 0 },
-      { enemy: 'bat', count: 14, gap: 0.4, delay: 0, path: 1 },
-      { enemy: 'wolf', count: 12, gap: 0.5, delay: 2, path: 0 },
-      { enemy: 'boar', count: 3, gap: 2, delay: 1, path: 1 },
+      { enemy: 'bull', count: 11, gap: 1, delay: 1, path: 0 },
+      { enemy: 'bat', count: 16, gap: 0.4, delay: 0, path: 1 },
+      { enemy: 'wolf', count: 14, gap: 0.5, delay: 2, path: 0 },
+      { enemy: 'boar', count: 33, gap: 2, delay: 1, path: 1 },
     ], clearBonus: 200 },
   ],
   story: {

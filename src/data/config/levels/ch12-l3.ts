@@ -10,15 +10,15 @@ const PATHS = [
 
 export const CH12_L3: LevelConfig = {
   id: 'ch12-l3', name: '魔域军团',
-  startStones: 680, lives: 36,
+  startStones: 680, lives: 3,
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 2.2,
   waves: [
-    { spawns: [{ enemy: 'demon_knight', count: 8, gap: 1.4, delay: 0, path: 0 }, { enemy: 'shadow_assassin', count: 8, gap: 1.0, delay: 1, path: 1 }, { enemy: 'wolf', count: 16, gap: 0.3, delay: 0, path: 2 }], clearBonus: 360 },
-    { spawns: [{ enemy: 'demon_serpent', count: 8, gap: 1.4, delay: 0, path: 0 }, { enemy: 'bat', count: 18, gap: 0.3, delay: 1, path: 1 }, { enemy: 'sand_scorpion', count: 10, gap: 0.9, delay: 0, path: 2 }], clearBonus: 400 },
-    { spawns: [{ enemy: 'mage_lord', count: 1, gap: 0, delay: 0, path: 0 }, { enemy: 'demon_knight', count: 8, gap: 1.4, delay: 1, path: 1 }, { enemy: 'shadow_assassin', count: 10, gap: 0.9, delay: 0, path: 2 }], clearBonus: 480 },
+    { spawns: [{ enemy: 'demon_knight', count: 10, gap: 1.4, delay: 0, path: 0 }, { enemy: 'shadow_assassin', count: 10, gap: 1.0, delay: 1, path: 1 }, { enemy: 'wolf', count: 21, gap: 0.3, delay: 0, path: 2 }], clearBonus: 360 },
+    { spawns: [{ enemy: 'demon_serpent', count: 10, gap: 1.4, delay: 0, path: 0 }, { enemy: 'bat', count: 23, gap: 0.3, delay: 1, path: 1 }, { enemy: 'sand_scorpion', count: 13, gap: 0.9, delay: 0, path: 2 }], clearBonus: 400 },
+    { spawns: [{ enemy: 'mage_lord', count: 11, gap: 0, delay: 0, path: 0 }, { enemy: 'demon_knight', count: 10, gap: 1.4, delay: 1, path: 1 }, { enemy: 'shadow_assassin', count: 13, gap: 0.9, delay: 0, path: 2 }], clearBonus: 480 },
   ],
   story: {
     intro: {

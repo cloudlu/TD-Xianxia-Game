@@ -9,15 +9,15 @@ const P = [[
 
 export const CH22_L1: LevelConfig = {
   id: 'ch22-l1', name: '混沌前沿',
-  startStones: 860, lives: 44,
+  startStones: 860, lives: 3,
   cols: 16, rows: 8,
   paths: P,
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.2,
   waves: [
-    { spawns: [{ enemy: 'void_walker', count: 14, gap: 0.6, delay: 0 }, { enemy: 'chaos_larva', count: 6, gap: 1.2, delay: 1 }], clearBonus: 440 },
-    { spawns: [{ enemy: 'celestial_demon', count: 8, gap: 1.2, delay: 0 }, { enemy: 'chaos_larva', count: 8, gap: 0.9, delay: 1 }], clearBonus: 470 },
-    { spawns: [{ enemy: 'celestial_demon', count: 10, gap: 1.0, delay: 0 }, { enemy: 'void_walker', count: 16, gap: 0.5, delay: 0 }, { enemy: 'demon_knight', count: 4, gap: 1.8, delay: 1 }], clearBonus: 500 },
+    { spawns: [{ enemy: 'void_walker', count: 20, gap: 0.6, delay: 0 }, { enemy: 'chaos_larva', count: 8, gap: 1.2, delay: 1 }], clearBonus: 440 },
+    { spawns: [{ enemy: 'celestial_demon', count: 11, gap: 1.2, delay: 0 }, { enemy: 'chaos_larva', count: 11, gap: 0.9, delay: 1 }], clearBonus: 470 },
+    { spawns: [{ enemy: 'celestial_demon', count: 14, gap: 1.0, delay: 0 }, { enemy: 'void_walker', count: 22, gap: 0.5, delay: 0 }, { enemy: 'demon_knight', count: 6, gap: 1.8, delay: 1 }], clearBonus: 500 },
   ],
   story: {
     intro: {

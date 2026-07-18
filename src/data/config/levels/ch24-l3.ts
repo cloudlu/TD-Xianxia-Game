@@ -10,15 +10,15 @@ const P = [
 
 export const CH24_L3: LevelConfig = {
   id: 'ch24-l3', name: '最后据点',
-  startStones: 980, lives: 46,
+  startStones: 980, lives: 3,
   cols: 16, rows: 8,
   paths: P,
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.4,
   waves: [
-    { spawns: [{ enemy: 'celestial_demon', count: 16, gap: 0.8, delay: 0, path: 0 }, { enemy: 'void_walker', count: 20, gap: 0.4, delay: 0, path: 1 }], clearBonus: 540 },
-    { spawns: [{ enemy: 'chaos_larva', count: 20, gap: 0.4, delay: 0, path: 2 }, { enemy: 'dragon_young', count: 6, gap: 1.4, delay: 1, path: 0 }], clearBonus: 570 },
-    { spawns: [{ enemy: 'rift_sovereign', count: 1, gap: 0, delay: 0, path: 1 }, { enemy: 'celestial_demon', count: 14, gap: 0.8, delay: 1, path: 2 }, { enemy: 'void_walker', count: 18, gap: 0.4, delay: 1, path: 0 }], clearBonus: 610 },
+    { spawns: [{ enemy: 'celestial_demon', count: 22, gap: 0.8, delay: 0, path: 0 }, { enemy: 'void_walker', count: 28, gap: 0.4, delay: 0, path: 1 }], clearBonus: 540 },
+    { spawns: [{ enemy: 'chaos_larva', count: 28, gap: 0.4, delay: 0, path: 2 }, { enemy: 'dragon_young', count: 8, gap: 1.4, delay: 1, path: 0 }], clearBonus: 570 },
+    { spawns: [{ enemy: 'rift_sovereign', count: 11, gap: 0, delay: 0, path: 1 }, { enemy: 'celestial_demon', count: 20, gap: 0.8, delay: 1, path: 2 }, { enemy: 'void_walker', count: 25, gap: 0.4, delay: 1, path: 0 }], clearBonus: 610 },
   ],
   story: {
     intro: {

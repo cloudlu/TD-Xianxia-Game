@@ -9,16 +9,17 @@ const PATHS = [
 
 export const CH2_L2: LevelConfig = {
   id: 'ch2-l2', name: '飞蝠崖',
-  startStones: 320, lives: 22,
+  startStones: 320, lives: 3,
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 1.1,
+  maxTowerLevel: 5,
   waves: [
-    { spawns: [{ enemy: 'wolf', count: 10, gap: 0.7, delay: 0, path: 0 }, { enemy: 'bat', count: 8, gap: 0.5, delay: 1, path: 1 }], clearBonus: 90 },
-    { spawns: [{ enemy: 'bat', count: 14, gap: 0.4, delay: 0, path: 1 }, { enemy: 'boar', count: 3, gap: 2, delay: 0, path: 0 }], clearBonus: 110 },
-    { spawns: [{ enemy: 'wolf', count: 12, gap: 0.5, delay: 0, path: 0 }, { enemy: 'bat', count: 10, gap: 0.4, delay: 0, path: 1 }], clearBonus: 130 },
-    { spawns: [{ enemy: 'bat', count: 16, gap: 0.35, delay: 0, path: 1 }, { enemy: 'boar', count: 4, gap: 1.8, delay: 0, path: 0 }, { enemy: 'wolf', count: 10, gap: 0.6, delay: 1, path: 0 }], clearBonus: 150 },
+    { spawns: [{ enemy: 'wolf', count: 12, gap: 0.7, delay: 0, path: 0 }, { enemy: 'bat', count: 9, gap: 0.5, delay: 1, path: 1 }], clearBonus: 90 },
+    { spawns: [{ enemy: 'bat', count: 16, gap: 0.4, delay: 0, path: 1 }, { enemy: 'boar', count: 33, gap: 2, delay: 0, path: 0 }], clearBonus: 110 },
+    { spawns: [{ enemy: 'wolf', count: 14, gap: 0.5, delay: 0, path: 0 }, { enemy: 'bat', count: 12, gap: 0.4, delay: 0, path: 1 }], clearBonus: 130 },
+    { spawns: [{ enemy: 'bat', count: 18, gap: 0.35, delay: 0, path: 1 }, { enemy: 'boar', count: 5, gap: 1.8, delay: 0, path: 0 }, { enemy: 'wolf', count: 12, gap: 0.6, delay: 1, path: 0 }], clearBonus: 150 },
   ],
   story: {
     intro: {

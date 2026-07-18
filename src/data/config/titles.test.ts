@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { resolveTitle, completedChapters, TITLES } from './titles';
-import { withDefaults, recordResult } from '../../repo/progress';
+import { withDefaults } from '../../repo/progress';
+import { recordResult } from '../../repo/progressLevel';
 import type { ManifestEntry } from '../../types';
 
 const manifest: ReadonlyArray<ManifestEntry> = [

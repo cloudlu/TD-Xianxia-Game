@@ -9,15 +9,15 @@ const PATHS = [[
 
 export const CH17_L1: LevelConfig = {
   id: 'ch17-l1', name: '古战场',
-  startStones: 740, lives: 40,
+  startStones: 740, lives: 3,
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 2.7,
   waves: [
-    { spawns: [{ enemy: 'ghost_cultivator', count: 12, gap: 0.8, delay: 0 }, { enemy: 'dragon_young', count: 6, gap: 1.4, delay: 1 }], clearBonus: 340 },
-    { spawns: [{ enemy: 'ghost_cultivator', count: 16, gap: 0.6, delay: 0 }, { enemy: 'wolf', count: 16, gap: 0.4, delay: 0 }], clearBonus: 380 },
-    { spawns: [{ enemy: 'dragon_young', count: 12, gap: 0.9, delay: 0 }, { enemy: 'ghost_cultivator', count: 16, gap: 0.6, delay: 1 }, { enemy: 'demon_knight', count: 8, gap: 1.2, delay: 0 }], clearBonus: 420 },
+    { spawns: [{ enemy: 'ghost_cultivator', count: 17, gap: 0.8, delay: 0 }, { enemy: 'dragon_young', count: 8, gap: 1.4, delay: 1 }], clearBonus: 340 },
+    { spawns: [{ enemy: 'ghost_cultivator', count: 22, gap: 0.6, delay: 0 }, { enemy: 'wolf', count: 22, gap: 0.4, delay: 0 }], clearBonus: 380 },
+    { spawns: [{ enemy: 'dragon_young', count: 17, gap: 0.9, delay: 0 }, { enemy: 'ghost_cultivator', count: 22, gap: 0.6, delay: 1 }, { enemy: 'demon_knight', count: 11, gap: 1.2, delay: 0 }], clearBonus: 420 },
   ],
   story: {
     intro: {

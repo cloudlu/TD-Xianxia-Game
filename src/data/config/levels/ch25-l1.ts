@@ -9,15 +9,15 @@ const P = [[
 
 export const CH25_L1: LevelConfig = {
   id: 'ch25-l1', name: '天劫降临',
-  startStones: 980, lives: 46,
+  startStones: 980, lives: 3,
   cols: 16, rows: 8,
   paths: P,
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.5,
   waves: [
-    { spawns: [{ enemy: 'void_walker', count: 20, gap: 0.4, delay: 0, path: 0 }, { enemy: 'celestial_demon', count: 12, gap: 0.8, delay: 0, path: 0 }], clearBonus: 540 },
-    { spawns: [{ enemy: 'celestial_demon', count: 16, gap: 0.7, delay: 0, path: 0 }, { enemy: 'chaos_larva', count: 20, gap: 0.4, delay: 1, path: 0 }], clearBonus: 570 },
-    { spawns: [{ enemy: 'void_walker', count: 24, gap: 0.4, delay: 0, path: 0 }, { enemy: 'celestial_demon', count: 16, gap: 0.7, delay: 0, path: 0 }, { enemy: 'blood_lord', count: 1, gap: 0, delay: 1, path: 0 }], clearBonus: 600 },
+    { spawns: [{ enemy: 'void_walker', count: 28, gap: 0.4, delay: 0, path: 0 }, { enemy: 'celestial_demon', count: 17, gap: 0.8, delay: 0, path: 0 }], clearBonus: 540 },
+    { spawns: [{ enemy: 'celestial_demon', count: 22, gap: 0.7, delay: 0, path: 0 }, { enemy: 'chaos_larva', count: 28, gap: 0.4, delay: 1, path: 0 }], clearBonus: 570 },
+    { spawns: [{ enemy: 'void_walker', count: 34, gap: 0.4, delay: 0, path: 0 }, { enemy: 'celestial_demon', count: 22, gap: 0.7, delay: 0, path: 0 }, { enemy: 'blood_lord', count: 11, gap: 0, delay: 1, path: 0 }], clearBonus: 600 },
   ],
   story: {
     intro: {

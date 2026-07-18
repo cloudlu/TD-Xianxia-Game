@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { app, buildMods } from './state';
-import { withDefaults } from '../repo/progress';
+import { app, buildMods, persist } from './state';
+import { withDefaults, type Progression } from '../repo/progress';
 
 describe('buildMods (multi-source merge)', () => {
   it('merges multiple equipment slots additively', () => {
@@ -47,5 +47,34 @@ describe('buildMods (multi-source merge)', () => {
     const ms = buildMods();
     expect(ms.damageMul(['dmg'])).toBe(1);
     expect(ms.rateMul()).toBe(1);
+  });
+});
+
+describe('progression auto-save', () => {
+  it('setter calls persist() on assignment', () => {
+    const saved: Progression[] = [];
+    app.save = {
+      load: () => Promise.resolve(withDefaults({})),
+      save: (p: Progression) => { saved.push({ ...p }); },
+    };
+    app.progression = withDefaults({ contribution: 99, jade: 50 });
+    expect(saved.length).toBe(1);
+    expect(saved[0].contribution).toBe(99);
+    expect(saved[0].jade).toBe(50);
+  });
+
+  it('persist() writes current progression exactly', () => {
+    const saved: Progression[] = [];
+    app.save = {
+      load: () => Promise.resolve(withDefaults({})),
+      save: (p: Progression) => { saved.push({ ...p }); },
+    };
+    app.progression = withDefaults({ contribution: 10, jade: 20 });
+    saved.length = 0; // clear the save from setter above
+    app.progression.contribution = 99; // mutate property directly (bypasses setter)
+    persist(); // manual persist should pick up the mutation
+    expect(saved.length).toBe(1);
+    expect(saved[0].contribution).toBe(99);
+    expect(saved[0].jade).toBe(20);
   });
 });

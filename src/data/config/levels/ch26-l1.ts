@@ -10,15 +10,15 @@ const P = [[
 
 export const CH26_L1: LevelConfig = {
   id: 'ch26-l1', name: '天外天',
-  startStones: 1000, lives: 46,
+  startStones: 1000, lives: 3,
   cols: 16, rows: 8,
   paths: P,
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.6,
   waves: [
-    { spawns: [{ enemy: 'chaos_larva', count: 18, gap: 0.5, delay: 0 }, { enemy: 'void_walker', count: 6, gap: 1.2, delay: 1 }], clearBonus: 520 },
-    { spawns: [{ enemy: 'law_enforcer', count: 5, gap: 1.6, delay: 0 }, { enemy: 'celestial_demon', count: 6, gap: 1.4, delay: 1 }], clearBonus: 560 },
-    { spawns: [{ enemy: 'chaos_beast', count: 4, gap: 2.2, delay: 0 }, { enemy: 'law_enforcer', count: 6, gap: 1.4, delay: 1 }, { enemy: 'void_walker', count: 12, gap: 0.6, delay: 0 }], clearBonus: 620 },
+    { spawns: [{ enemy: 'chaos_larva', count: 25, gap: 0.5, delay: 0 }, { enemy: 'void_walker', count: 8, gap: 1.2, delay: 1 }], clearBonus: 520 },
+    { spawns: [{ enemy: 'law_enforcer', count: 7, gap: 1.6, delay: 0 }, { enemy: 'celestial_demon', count: 8, gap: 1.4, delay: 1 }], clearBonus: 560 },
+    { spawns: [{ enemy: 'chaos_beast', count: 6, gap: 2.2, delay: 0 }, { enemy: 'law_enforcer', count: 8, gap: 1.4, delay: 1 }, { enemy: 'void_walker', count: 17, gap: 0.6, delay: 0 }], clearBonus: 620 },
   ],
   story: {
     intro: {

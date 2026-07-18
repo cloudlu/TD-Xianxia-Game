@@ -82,3 +82,97 @@ export const EQUIPMENT: Record<string, EquipmentConfig> = {
 };
 
 export const EQUIPMENT_IDS = Object.keys(EQUIPMENT);
+
+// —— 随机法宝生成（设计文档：seed/slot/stats/name 均随机，定后不变）——
+
+export const RANDOM_STAT_POOL = ['dmg', 'swordDmg', 'rate', 'range', 'crit', 'bountyMul'] as const;
+
+const NAME_PREFIXES = ['玄铁', '精钢', '赤铜', '寒铁', '陨星', '天外', '紫金', '青玄', '元磁', '太极'];
+const NAME_BASES: Record<EquipSlot, string[]> = {
+  weapon: ['剑', '刀', '戟', '斧', '枪', '棍', '锤'],
+  armor: ['法衣', '道袍', '金甲', '玄甲', '法袍'],
+  accessory: ['珠', '环', '镜', '印', '铃', '幡', '佩'],
+};
+const NAME_SUFFIXES = ['精锐', '良工', '极品', '完美', '超凡', '卓越', '无双'];
+
+const STAT_COUNT_WEIGHTS = [0.10, 0.40, 0.35, 0.15];
+
+function pick<T>(arr: readonly T[], rng: () => number): T {
+  return arr[Math.floor(rng() * arr.length)];
+}
+
+function weightedPick(weights: number[], rng: () => number): number {
+  const roll = rng();
+  let acc = 0;
+  for (let i = 0; i < weights.length; i++) {
+    acc += weights[i];
+    if (roll < acc) return i;
+  }
+  return weights.length - 1;
+}
+
+function randomName(slot: EquipSlot, rng: () => number): string {
+  const prefix = pick(NAME_PREFIXES, rng);
+  const base = pick(NAME_BASES[slot], rng);
+  const suffix = pick(NAME_SUFFIXES, rng);
+  return `${prefix}${base}·${suffix}`;
+}
+
+function modValueRange(statCount: number): { min: number; max: number } {
+  return statCount < 4 ? { min: 0.06, max: 0.14 } : { min: 0.04, max: 0.10 };
+}
+
+function randomModValue(min: number, max: number, rng: () => number): number {
+  return Math.round((min + rng() * (max - min)) * 100) / 100;
+}
+
+function pickSlot(rng: () => number): EquipSlot {
+  const slots: EquipSlot[] = ['weapon', 'armor', 'accessory'];
+  return pick(slots, rng);
+}
+
+function generateEquipId(existingIds: Set<string>, rng: () => number): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  for (let attempt = 0; attempt < 100; attempt++) {
+    let id = 'gen_';
+    for (let i = 0; i < 8; i++) id += chars[Math.floor(rng() * chars.length)];
+    if (!existingIds.has(id)) return id;
+  }
+  return `gen_${Date.now()}`;
+}
+
+export function generateRandomEquip(
+  existingIds: Set<string>,
+  rng: () => number,
+): { config: EquipmentConfig; generatedName: string } {
+  const id = generateEquipId(existingIds, rng);
+  const slot = pickSlot(rng);
+  const name = randomName(slot, rng);
+  const statCount = weightedPick(STAT_COUNT_WEIGHTS, rng) + 1;
+  const { min, max } = modValueRange(statCount);
+
+  const pool = [...RANDOM_STAT_POOL];
+  const chosenStats: string[] = [];
+  for (let i = 0; i < statCount; i++) {
+    const idx = Math.floor(rng() * pool.length);
+    chosenStats.push(pool[idx]);
+    pool.splice(idx, 1);
+  }
+
+  const mods: Modifier[] = chosenStats.map((stat) => {
+    const value = randomModValue(min, max, rng);
+    const op: 'mul_pct' | 'add' = (stat === 'range' || stat === 'crit') ? 'add' : 'mul_pct';
+    return { stat, op, value };
+  });
+
+  const desc = mods.map((m) => {
+    const label: Record<string, string> = { dmg: '全体伤害', swordDmg: '剑修伤害', rate: '攻速', range: '射程', crit: '暴击', bountyMul: '赏金' };
+    const v = m.op === 'add' ? `+${m.value}` : `+${Math.round(m.value * 100)}%`;
+    return `${label[m.stat] ?? m.stat} ${v}`;
+  }).join('，');
+
+  return {
+    config: { id, name, desc, slot, price: 0, mods },
+    generatedName: name,
+  };
+}

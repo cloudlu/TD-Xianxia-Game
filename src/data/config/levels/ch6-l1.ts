@@ -8,16 +8,16 @@ const PATHS = [[
 
 export const CH6_L1: LevelConfig = {
   id: 'ch6-l1', name: '大漠边关',
-  startStones: 420, lives: 28,
+  startStones: 420, lives: 3,
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 1.6,
   waves: [
-    { spawns: [{ enemy: 'wolf', count: 12, gap: 0.6, delay: 0 }, { enemy: 'sand_scorpion', count: 4, gap: 1.6, delay: 1 }], clearBonus: 140 },
-    { spawns: [{ enemy: 'sand_scorpion', count: 8, gap: 1.0, delay: 0 }, { enemy: 'boar', count: 3, gap: 2, delay: 1 }], clearBonus: 160 },
-    { spawns: [{ enemy: 'barbarian', count: 3, gap: 2.5, delay: 0 }, { enemy: 'wolf', count: 14, gap: 0.5, delay: 0 }], clearBonus: 180 },
-    { spawns: [{ enemy: 'sand_scorpion', count: 10, gap: 0.8, delay: 0 }, { enemy: 'barbarian', count: 4, gap: 2, delay: 1 }, { enemy: 'wolf', count: 12, gap: 0.5, delay: 0 }], clearBonus: 210 },
+    { spawns: [{ enemy: 'wolf', count: 16, gap: 0.6, delay: 0 }, { enemy: 'sand_scorpion', count: 5, gap: 1.6, delay: 1 }], clearBonus: 140 },
+    { spawns: [{ enemy: 'sand_scorpion', count: 10, gap: 1.0, delay: 0 }, { enemy: 'boar', count: 4, gap: 2, delay: 1 }], clearBonus: 160 },
+    { spawns: [{ enemy: 'barbarian', count: 4, gap: 2.5, delay: 0 }, { enemy: 'wolf', count: 18, gap: 0.5, delay: 0 }], clearBonus: 180 },
+    { spawns: [{ enemy: 'sand_scorpion', count: 13, gap: 0.8, delay: 0 }, { enemy: 'barbarian', count: 5, gap: 2, delay: 1 }, { enemy: 'wolf', count: 16, gap: 0.5, delay: 0 }], clearBonus: 210 },
   ],
   story: {
     intro: {

@@ -2,17 +2,17 @@ import type { LevelConfig } from '../../../types';
 import { buildableFromPaths } from './buildable';
 const P = [[{ x: 0, y: 1 }, { x: 15, y: 1 }], [{ x: 0, y: 4 }, { x: 15, y: 4 }], [{ x: 0, y: 6 }, { x: 15, y: 6 }]];
 export const CH10_L3: LevelConfig = {
-  id: 'ch10-l3', name: '裂隙主宰', startStones: 680, lives: 36, cols: 16, rows: 8,
+  id: 'ch10-l3', name: '裂隙主宰', startStones: 680, lives: 3, cols: 16, rows: 8,
   paths: P, buildable: buildableFromPaths(16, 8, P), hpMul: 2.0,
   waves: [
-    { spawns: [{ enemy: 'sand_scorpion', count: 14, gap: 0.4, delay: 0, path: 0 }, { enemy: 'mist_wraith', count: 10, gap: 0.7, delay: 0, path: 2 }, { enemy: 'bat', count: 16, gap: 0.3, delay: 1, path: 1 }], clearBonus: 300 },
-    { spawns: [{ enemy: 'barbarian', count: 8, gap: 1.2, delay: 0, path: 0 }, { enemy: 'shadow_fox', count: 12, gap: 0.7, delay: 0, path: 2 }, { enemy: 'blood_cultist', count: 8, gap: 1.0, delay: 0, path: 1 }, { enemy: 'magic_puppet', count: 4, gap: 3, delay: 0, path: 0 }], clearBonus: 340 },
+    { spawns: [{ enemy: 'sand_scorpion', count: 18, gap: 0.4, delay: 0, path: 0 }, { enemy: 'mist_wraith', count: 13, gap: 0.7, delay: 0, path: 2 }, { enemy: 'bat', count: 21, gap: 0.3, delay: 1, path: 1 }], clearBonus: 300 },
+    { spawns: [{ enemy: 'barbarian', count: 10, gap: 1.2, delay: 0, path: 0 }, { enemy: 'shadow_fox', count: 16, gap: 0.7, delay: 0, path: 2 }, { enemy: 'blood_cultist', count: 10, gap: 1.0, delay: 0, path: 1 }, { enemy: 'magic_puppet', count: 5, gap: 3, delay: 0, path: 0 }], clearBonus: 340 },
     // 终波：裂隙主宰降临（10000血/300盾/召唤沙蝎4/狂暴加速/魅惑）
     { spawns: [
-      { enemy: 'rift_sovereign', count: 1, gap: 1, delay: 3, path: 1 },
-      { enemy: 'barbarian', count: 6, gap: 1.5, delay: 0, path: 0 },
-      { enemy: 'mist_wraith', count: 10, gap: 0.7, delay: 0, path: 2 },
-      { enemy: 'sand_scorpion', count: 12, gap: 0.4, delay: 1, path: 0 },
+      { enemy: 'rift_sovereign', count: 11, gap: 1, delay: 3, path: 1 },
+      { enemy: 'barbarian', count: 8, gap: 1.5, delay: 0, path: 0 },
+      { enemy: 'mist_wraith', count: 13, gap: 0.7, delay: 0, path: 2 },
+      { enemy: 'sand_scorpion', count: 16, gap: 0.4, delay: 1, path: 0 },
     ], clearBonus: 500 },
   ],
   story: {

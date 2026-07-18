@@ -8,15 +8,15 @@ const PATHS = [[
 
 export const CH16_L1: LevelConfig = {
   id: 'ch16-l1', name: '万族遗址',
-  startStones: 700, lives: 38,
+  startStones: 700, lives: 3,
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 2.6,
   waves: [
-    { spawns: [{ enemy: 'wolf', count: 14, gap: 0.5, delay: 0 }, { enemy: 'demon_knight', count: 4, gap: 1.8, delay: 1 }], clearBonus: 300 },
-    { spawns: [{ enemy: 'dragon_young', count: 5, gap: 1.6, delay: 0 }, { enemy: 'demon_knight', count: 6, gap: 1.2, delay: 1 }, { enemy: 'wolf', count: 12, gap: 0.5, delay: 0 }], clearBonus: 340 },
-    { spawns: [{ enemy: 'dragon_young', count: 8, gap: 1.2, delay: 0 }, { enemy: 'demon_knight', count: 8, gap: 1.0, delay: 1 }, { enemy: 'boar', count: 6, gap: 1.6, delay: 0 }], clearBonus: 380 },
+    { spawns: [{ enemy: 'wolf', count: 20, gap: 0.5, delay: 0 }, { enemy: 'demon_knight', count: 6, gap: 1.8, delay: 1 }], clearBonus: 300 },
+    { spawns: [{ enemy: 'dragon_young', count: 7, gap: 1.6, delay: 0 }, { enemy: 'demon_knight', count: 8, gap: 1.2, delay: 1 }, { enemy: 'wolf', count: 17, gap: 0.5, delay: 0 }], clearBonus: 340 },
+    { spawns: [{ enemy: 'dragon_young', count: 11, gap: 1.2, delay: 0 }, { enemy: 'demon_knight', count: 11, gap: 1.0, delay: 1 }, { enemy: 'boar', count: 8, gap: 1.6, delay: 0 }], clearBonus: 380 },
   ],
   story: {
     intro: {

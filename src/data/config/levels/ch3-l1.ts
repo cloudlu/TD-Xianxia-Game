@@ -9,17 +9,18 @@ const PATHS = [
 
 export const CH3_L1: LevelConfig = {
   id: 'ch3-l1', name: '破阵前哨',
-  startStones: 380, lives: 25,
+  startStones: 380, lives: 3,
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 1.2,
+  maxTowerLevel: 5,
   waves: [
-    { spawns: [{ enemy: 'wolf', count: 8, gap: 0.7, delay: 0, path: 0 }, { enemy: 'wolf', count: 8, gap: 0.8, delay: 0, path: 1 }], clearBonus: 100 },
+    { spawns: [{ enemy: 'wolf', count: 9, gap: 0.7, delay: 0, path: 0 }, { enemy: 'wolf', count: 9, gap: 0.8, delay: 0, path: 1 }], clearBonus: 100 },
     // 魔修喽啰：护体魔气（蓝环），先破盾再掉血
-    { spawns: [{ enemy: 'magic_minion', count: 4, gap: 1.4, delay: 0, path: 0 }, { enemy: 'wolf', count: 10, gap: 0.5, delay: 0, path: 1 }], clearBonus: 120 },
-    { spawns: [{ enemy: 'magic_minion', count: 5, gap: 1.2, delay: 0, path: 0 }, { enemy: 'magic_minion', count: 4, gap: 1.4, delay: 1, path: 1 }, { enemy: 'boar', count: 2, gap: 2.5, delay: 0, path: 0 }], clearBonus: 150 },
-    { spawns: [{ enemy: 'blood_cultist', count: 4, gap: 1.4, delay: 0, path: 0 }, { enemy: 'magic_minion', count: 5, gap: 1.2, delay: 1, path: 1 }], clearBonus: 170 },
+    { spawns: [{ enemy: 'magic_minion', count: 5, gap: 1.4, delay: 0, path: 0 }, { enemy: 'wolf', count: 12, gap: 0.5, delay: 0, path: 1 }], clearBonus: 120 },
+    { spawns: [{ enemy: 'magic_minion', count: 6, gap: 1.2, delay: 0, path: 0 }, { enemy: 'magic_minion', count: 5, gap: 1.4, delay: 1, path: 1 }, { enemy: 'boar', count: 22, gap: 2.5, delay: 0, path: 0 }], clearBonus: 150 },
+    { spawns: [{ enemy: 'blood_cultist', count: 5, gap: 1.4, delay: 0, path: 0 }, { enemy: 'magic_minion', count: 6, gap: 1.2, delay: 1, path: 1 }], clearBonus: 170 },
   ],
   story: {
     intro: {

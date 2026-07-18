@@ -9,15 +9,15 @@ const P = [
 
 export const CH29_L2: LevelConfig = {
   id: 'ch29-l2', name: '终极考验',
-  startStones: 1140, lives: 50,
+  startStones: 1140, lives: 3,
   cols: 16, rows: 8,
   paths: P,
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.9,
   waves: [
-    { spawns: [{ enemy: 'void_devourer', count: 8, gap: 1.4, delay: 0, path: 0 }, { enemy: 'chaos_beast', count: 12, gap: 1.2, delay: 1, path: 1 }, { enemy: 'void_walker', count: 22, gap: 0.4, delay: 0, path: 0 }], clearBonus: 680 },
-    { spawns: [{ enemy: 'law_enforcer', count: 16, gap: 0.7, delay: 0, path: 1 }, { enemy: 'celestial_demon', count: 16, gap: 0.7, delay: 1, path: 0 }, { enemy: 'void_devourer', count: 6, gap: 1.6, delay: 2, path: 1 }], clearBonus: 720 },
-    { spawns: [{ enemy: 'chaos_beast', count: 14, gap: 1.0, delay: 0, path: 0 }, { enemy: 'void_devourer', count: 8, gap: 1.4, delay: 1, path: 1 }, { enemy: 'law_enforcer', count: 14, gap: 0.8, delay: 0, path: 0 }, { enemy: 'ghost_cultivator', count: 22, gap: 0.4, delay: 2, path: 1 }], clearBonus: 780 },
+    { spawns: [{ enemy: 'void_devourer', count: 11, gap: 1.4, delay: 0, path: 0 }, { enemy: 'chaos_beast', count: 17, gap: 1.2, delay: 1, path: 1 }, { enemy: 'void_walker', count: 31, gap: 0.4, delay: 0, path: 0 }], clearBonus: 680 },
+    { spawns: [{ enemy: 'law_enforcer', count: 22, gap: 0.7, delay: 0, path: 1 }, { enemy: 'celestial_demon', count: 22, gap: 0.7, delay: 1, path: 0 }, { enemy: 'void_devourer', count: 8, gap: 1.6, delay: 2, path: 1 }], clearBonus: 720 },
+    { spawns: [{ enemy: 'chaos_beast', count: 20, gap: 1.0, delay: 0, path: 0 }, { enemy: 'void_devourer', count: 11, gap: 1.4, delay: 1, path: 1 }, { enemy: 'law_enforcer', count: 20, gap: 0.8, delay: 0, path: 0 }, { enemy: 'ghost_cultivator', count: 31, gap: 0.4, delay: 2, path: 1 }], clearBonus: 780 },
   ],
   story: {
     intro: {

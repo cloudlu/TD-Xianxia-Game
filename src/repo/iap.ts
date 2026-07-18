@@ -16,11 +16,14 @@ export interface IAPRepo {
   purchase(productId: string): Promise<Receipt>;
 }
 
-// 仙玉礼包（经典档位）
+// 仙玉礼包（经典档位 + 大额档位）
 export const JADE_PRODUCTS: readonly Product[] = [
   { id: 'jade_60', label: '60 仙玉', priceCny: 6, jade: 60 },
   { id: 'jade_328', label: '328 仙玉', priceCny: 30, jade: 328 },
   { id: 'jade_1098', label: '1098 仙玉', priceCny: 98, jade: 1098 },
+  { id: 'jade_2280', label: '2280 仙玉', priceCny: 198, jade: 2280 },
+  { id: 'jade_3980', label: '3980 仙玉', priceCny: 328, jade: 3980 },
+  { id: 'jade_8080', label: '8080 仙玉', priceCny: 648, jade: 8080 },
 ];
 
 export class LocalIAPRepo implements IAPRepo {

@@ -9,17 +9,18 @@ const PATHS = [
 
 export const CH4_L2: LevelConfig = {
   id: 'ch4-l2', name: '分身谷',
-  startStones: 400, lives: 25,
+  startStones: 400, lives: 3,
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 1.3,
+  maxTowerLevel: 6,
   waves: [
-    { spawns: [{ enemy: 'splitter', count: 4, gap: 1.8, delay: 0, path: 0 }, { enemy: 'wolf', count: 10, gap: 0.6, delay: 0, path: 1 }], clearBonus: 130 },
-    { spawns: [{ enemy: 'splitter', count: 6, gap: 1.4, delay: 0, path: 0 }, { enemy: 'shadow_fox', count: 4, gap: 1.6, delay: 1, path: 1 }], clearBonus: 150 },
+    { spawns: [{ enemy: 'splitter', count: 5, gap: 1.8, delay: 0, path: 0 }, { enemy: 'wolf', count: 12, gap: 0.6, delay: 0, path: 1 }], clearBonus: 130 },
+    { spawns: [{ enemy: 'splitter', count: 7, gap: 1.4, delay: 0, path: 0 }, { enemy: 'shadow_fox', count: 5, gap: 1.6, delay: 1, path: 1 }], clearBonus: 150 },
     // 末波：大量分身妖（每个死分裂2子体）+ 山猪妖压场
-    { spawns: [{ enemy: 'splitter', count: 8, gap: 1.2, delay: 0, path: 0 }, { enemy: 'boar', count: 4, gap: 2, delay: 1, path: 1 }], clearBonus: 180 },
-    { spawns: [{ enemy: 'shadow_fox', count: 8, gap: 1, delay: 0, path: 0 }, { enemy: 'splitter', count: 8, gap: 1, delay: 1, path: 1 }], clearBonus: 200 },
+    { spawns: [{ enemy: 'splitter', count: 10, gap: 1.2, delay: 0, path: 0 }, { enemy: 'boar', count: 5, gap: 2, delay: 1, path: 1 }], clearBonus: 180 },
+    { spawns: [{ enemy: 'shadow_fox', count: 10, gap: 1, delay: 0, path: 0 }, { enemy: 'splitter', count: 10, gap: 1, delay: 1, path: 1 }], clearBonus: 200 },
   ],
   story: {
     intro: {

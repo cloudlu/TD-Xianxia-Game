@@ -27,9 +27,10 @@ export function enrageMul(
   return enrageBelow && hpRatio < enrageBelow.hpPct ? enrageBelow.speedMul : 1;
 }
 
-/** 章节缩放：敌人 HP × hpMul，赏金 × sqrt(hpMul)（经济适度跟上） */
-export function scaleEnemy(baseHp: number, baseBounty: number, hpMul: number): { hp: number; bounty: number } {
-  return { hp: Math.round(baseHp * hpMul), bounty: Math.round(baseBounty * Math.sqrt(hpMul)) };
+/** 章节缩放：敌人 HP × hpMul，赏金 × bountyMul（经济适度跟上，缺省 sqrt(hpMul)） */
+export function scaleEnemy(baseHp: number, baseBounty: number, hpMul: number, bountyMul?: number): { hp: number; bounty: number } {
+  const bMul = bountyMul ?? Math.sqrt(hpMul);
+  return { hp: Math.round(baseHp * hpMul), bounty: Math.round(baseBounty * bMul) };
 }
 
 /** 塔位缩放：自动从 hpMul 推导为 sqrt(hpMul)，与赏金同步保证经济-战力平衡 */

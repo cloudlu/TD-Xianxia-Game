@@ -9,15 +9,15 @@ const PATHS = [
 
 export const CH19_L2: LevelConfig = {
   id: 'ch19-l2', name: '蛊毒沼泽',
-  startStones: 840, lives: 42,
+  startStones: 840, lives: 3,
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 2.9,
   waves: [
-    { spawns: [{ enemy: 'blood_cultist', count: 16, gap: 0.6, delay: 0, path: 0 }, { enemy: 'ghost_cultivator', count: 14, gap: 0.7, delay: 1, path: 1 }], clearBonus: 420 },
-    { spawns: [{ enemy: 'dragon_young', count: 14, gap: 0.7, delay: 0, path: 0 }, { enemy: 'blood_cultist', count: 18, gap: 0.5, delay: 1, path: 1 }, { enemy: 'shadow_fox', count: 12, gap: 0.7, delay: 0, path: 0 }], clearBonus: 460 },
-    { spawns: [{ enemy: 'ghost_cultivator', count: 20, gap: 0.5, delay: 0, path: 1 }, { enemy: 'dragon_young', count: 16, gap: 0.6, delay: 1, path: 0 }, { enemy: 'blood_cultist', count: 18, gap: 0.5, delay: 0, path: 1 }], clearBonus: 520 },
+    { spawns: [{ enemy: 'blood_cultist', count: 22, gap: 0.6, delay: 0, path: 0 }, { enemy: 'ghost_cultivator', count: 20, gap: 0.7, delay: 1, path: 1 }], clearBonus: 420 },
+    { spawns: [{ enemy: 'dragon_young', count: 20, gap: 0.7, delay: 0, path: 0 }, { enemy: 'blood_cultist', count: 25, gap: 0.5, delay: 1, path: 1 }, { enemy: 'shadow_fox', count: 17, gap: 0.7, delay: 0, path: 0 }], clearBonus: 460 },
+    { spawns: [{ enemy: 'ghost_cultivator', count: 28, gap: 0.5, delay: 0, path: 1 }, { enemy: 'dragon_young', count: 22, gap: 0.6, delay: 1, path: 0 }, { enemy: 'blood_cultist', count: 25, gap: 0.5, delay: 0, path: 1 }], clearBonus: 520 },
   ],
   story: {
     intro: {

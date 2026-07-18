@@ -1,4 +1,7 @@
-import type { LevelConfig, ManifestEntry } from '../../../types';
+import type { LevelConfig, ManifestEntry, GridPoint } from '../../../types';
+import { LAYOUTS } from '../layouts';
+import { LAYOUT_MAP } from '../layoutMap';
+import { buildableFromPaths } from './buildable';
 import { CH1_L1 } from './ch1-l1';
 import { CH1_L2 } from './ch1-l2';
 import { CH1_L3 } from './ch1-l3';
@@ -183,6 +186,20 @@ export const LEVELS: Record<string, LevelConfig> = {
   [CH30_L2.id]: CH30_L2,
   [CH30_L3.id]: CH30_L3,
 };
+
+// 布局覆盖：从 layoutMap 合并路径到对应关卡
+const COLS = 16, ROWS = 8;
+for (const [levelId, layoutId] of Object.entries(LAYOUT_MAP)) {
+  const layout = LAYOUTS[layoutId];
+  if (!layout) continue;
+  const level = LEVELS[levelId];
+  if (!level) continue;
+  LEVELS[levelId] = {
+    ...level,
+    paths: layout as GridPoint[][],
+    buildable: buildableFromPaths(COLS, ROWS, layout as GridPoint[][]),
+  };
+}
 
 // 章节清单（顺序即解锁顺序；第 N 关解锁 = 第 N-1 关通关）—— 设计文档 §8.2
 export const MANIFEST: ManifestEntry[] = [

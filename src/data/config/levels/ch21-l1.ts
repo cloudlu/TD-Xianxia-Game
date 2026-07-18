@@ -8,15 +8,15 @@ const P = [[
 
 export const CH21_L1: LevelConfig = {
   id: 'ch21-l1', name: '天道裂痕',
-  startStones: 820, lives: 42,
+  startStones: 820, lives: 3,
   cols: 16, rows: 8,
   paths: P,
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.1,
   waves: [
-    { spawns: [{ enemy: 'wolf', count: 14, gap: 0.5, delay: 0 }, { enemy: 'void_walker', count: 4, gap: 1.6, delay: 1 }], clearBonus: 400 },
-    { spawns: [{ enemy: 'void_walker', count: 8, gap: 1.0, delay: 0 }, { enemy: 'celestial_demon', count: 3, gap: 2, delay: 1 }], clearBonus: 430 },
-    { spawns: [{ enemy: 'celestial_demon', count: 6, gap: 1.6, delay: 0 }, { enemy: 'void_walker', count: 10, gap: 0.7, delay: 0 }, { enemy: 'magic_minion', count: 6, gap: 0.8, delay: 1 }], clearBonus: 460 },
+    { spawns: [{ enemy: 'wolf', count: 20, gap: 0.5, delay: 0 }, { enemy: 'void_walker', count: 6, gap: 1.6, delay: 1 }], clearBonus: 400 },
+    { spawns: [{ enemy: 'void_walker', count: 11, gap: 1.0, delay: 0 }, { enemy: 'celestial_demon', count: 4, gap: 2, delay: 1 }], clearBonus: 430 },
+    { spawns: [{ enemy: 'celestial_demon', count: 8, gap: 1.6, delay: 0 }, { enemy: 'void_walker', count: 14, gap: 0.7, delay: 0 }, { enemy: 'magic_minion', count: 8, gap: 0.8, delay: 1 }], clearBonus: 460 },
   ],
   story: {
     intro: {

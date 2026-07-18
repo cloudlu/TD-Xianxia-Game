@@ -10,37 +10,38 @@ const PATHS = [
 
 export const CH5_L3: LevelConfig = {
   id: 'ch5-l3', name: '血煞魔尊',
-  startStones: 600, lives: 35,
+  startStones: 600, lives: 3,
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 1.5,
+  maxTowerLevel: 6,
   waves: [
     { spawns: [
-      { enemy: 'shadow_fox', count: 5, gap: 1.2, delay: 0, path: 0 },
-      { enemy: 'magic_minion', count: 6, gap: 1, delay: 0, path: 2 },
+      { enemy: 'shadow_fox', count: 6, gap: 1.2, delay: 0, path: 0 },
+      { enemy: 'magic_minion', count: 7, gap: 1, delay: 0, path: 2 },
     ], clearBonus: 200 },
     { spawns: [
-      { enemy: 'blood_cultist', count: 6, gap: 1, delay: 0, path: 0 },
-      { enemy: 'splitter', count: 6, gap: 1.2, delay: 0, path: 2 },
-      { enemy: 'bat', count: 12, gap: 0.4, delay: 1, path: 1 },
+      { enemy: 'blood_cultist', count: 7, gap: 1, delay: 0, path: 0 },
+      { enemy: 'splitter', count: 7, gap: 1.2, delay: 0, path: 2 },
+      { enemy: 'bat', count: 14, gap: 0.4, delay: 1, path: 1 },
     ], clearBonus: 230 },
     { spawns: [
-      { enemy: 'magic_minion', count: 8, gap: 0.9, delay: 0, path: 0 },
-      { enemy: 'splitter', count: 8, gap: 1, delay: 0, path: 2 },
-      { enemy: 'bat', count: 14, gap: 0.35, delay: 1, path: 1 },
+      { enemy: 'magic_minion', count: 10, gap: 0.9, delay: 0, path: 0 },
+      { enemy: 'splitter', count: 10, gap: 1, delay: 0, path: 2 },
+      { enemy: 'bat', count: 17, gap: 0.35, delay: 1, path: 1 },
     ], clearBonus: 260 },
     { spawns: [
-      { enemy: 'blood_cultist', count: 8, gap: 0.9, delay: 0, path: 0 },
-      { enemy: 'shadow_fox', count: 10, gap: 0.9, delay: 0, path: 2 },
-      { enemy: 'magic_puppet', count: 3, gap: 2.5, delay: 1, path: 1 },
+      { enemy: 'blood_cultist', count: 10, gap: 0.9, delay: 0, path: 0 },
+      { enemy: 'shadow_fox', count: 12, gap: 0.9, delay: 0, path: 2 },
+      { enemy: 'magic_puppet', count: 4, gap: 2.5, delay: 1, path: 1 },
     ], clearBonus: 300 },
     // 终波：魔尊血煞降临（多阶段：厚盾→狂暴加速+多召唤血修）+ 两侧持续施压
     { spawns: [
-      { enemy: 'blood_lord', count: 1, gap: 1, delay: 3, path: 1 },
-      { enemy: 'shadow_fox', count: 6, gap: 1.1, delay: 0, path: 0 },
-      { enemy: 'magic_puppet', count: 2, gap: 3, delay: 1, path: 2 },
-      { enemy: 'blood_cultist', count: 5, gap: 1.2, delay: 2, path: 0 },
+      { enemy: 'blood_lord', count: 11, gap: 1, delay: 3, path: 1 },
+      { enemy: 'shadow_fox', count: 7, gap: 1.1, delay: 0, path: 0 },
+      { enemy: 'magic_puppet', count: 22, gap: 3, delay: 1, path: 2 },
+      { enemy: 'blood_cultist', count: 6, gap: 1.2, delay: 2, path: 0 },
     ], clearBonus: 400 },
   ],
   story: {

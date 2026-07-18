@@ -10,15 +10,15 @@ const P = [
 
 export const CH22_L3: LevelConfig = {
   id: 'ch22-l3', name: '界域防线',
-  startStones: 900, lives: 44,
+  startStones: 900, lives: 3,
   cols: 16, rows: 8,
   paths: P,
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.2,
   waves: [
-    { spawns: [{ enemy: 'celestial_demon', count: 12, gap: 0.9, delay: 0, path: 0 }, { enemy: 'void_walker', count: 16, gap: 0.5, delay: 0, path: 1 }], clearBonus: 480 },
-    { spawns: [{ enemy: 'chaos_larva', count: 16, gap: 0.5, delay: 0, path: 2 }, { enemy: 'demon_serpent', count: 6, gap: 1.4, delay: 1, path: 0 }], clearBonus: 510 },
-    { spawns: [{ enemy: 'parasite_king', count: 1, gap: 0, delay: 0, path: 1 }, { enemy: 'celestial_demon', count: 10, gap: 1.0, delay: 1, path: 2 }, { enemy: 'chaos_larva', count: 12, gap: 0.6, delay: 1, path: 0 }], clearBonus: 550 },
+    { spawns: [{ enemy: 'celestial_demon', count: 17, gap: 0.9, delay: 0, path: 0 }, { enemy: 'void_walker', count: 22, gap: 0.5, delay: 0, path: 1 }], clearBonus: 480 },
+    { spawns: [{ enemy: 'chaos_larva', count: 22, gap: 0.5, delay: 0, path: 2 }, { enemy: 'demon_serpent', count: 8, gap: 1.4, delay: 1, path: 0 }], clearBonus: 510 },
+    { spawns: [{ enemy: 'parasite_king', count: 11, gap: 0, delay: 0, path: 1 }, { enemy: 'celestial_demon', count: 14, gap: 1.0, delay: 1, path: 2 }, { enemy: 'chaos_larva', count: 17, gap: 0.6, delay: 1, path: 0 }], clearBonus: 550 },
   ],
   story: {
     intro: {

@@ -9,18 +9,19 @@ const PATHS = [
 
 export const CH3_L2: LevelConfig = {
   id: 'ch3-l2', name: '血池',
-  startStones: 380, lives: 25,
+  startStones: 380, lives: 3,
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 1.2,
+  maxTowerLevel: 5,
   waves: [
-    { spawns: [{ enemy: 'magic_minion', count: 4, gap: 1.4, delay: 0, path: 0 }, { enemy: 'wolf', count: 10, gap: 0.5, delay: 0, path: 1 }], clearBonus: 110 },
+    { spawns: [{ enemy: 'magic_minion', count: 5, gap: 1.4, delay: 0, path: 0 }, { enemy: 'wolf', count: 12, gap: 0.5, delay: 0, path: 1 }], clearBonus: 110 },
     // 血修：受击回血，零星之伤反为其补——须以长枪贯穿/暴击一鼓作气
-    { spawns: [{ enemy: 'blood_cultist', count: 3, gap: 1.6, delay: 0, path: 0 }, { enemy: 'blood_cultist', count: 3, gap: 1.8, delay: 1, path: 1 }], clearBonus: 130 },
+    { spawns: [{ enemy: 'blood_cultist', count: 33, gap: 1.6, delay: 0, path: 0 }, { enemy: 'blood_cultist', count: 33, gap: 1.8, delay: 1, path: 1 }], clearBonus: 130 },
     // 魔甲傀儡：40 甲，物理刮痧，需堆暴击/数量
-    { spawns: [{ enemy: 'magic_puppet', count: 2, gap: 3, delay: 0, path: 0 }, { enemy: 'blood_cultist', count: 4, gap: 1.4, delay: 1, path: 1 }, { enemy: 'wolf', count: 10, gap: 0.5, delay: 0, path: 0 }], clearBonus: 160 },
-    { spawns: [{ enemy: 'blood_cultist', count: 5, gap: 1.2, delay: 0, path: 0 }, { enemy: 'magic_puppet', count: 3, gap: 2.5, delay: 1, path: 1 }, { enemy: 'magic_minion', count: 5, gap: 1.2, delay: 0, path: 0 }], clearBonus: 180 },
+    { spawns: [{ enemy: 'magic_puppet', count: 22, gap: 3, delay: 0, path: 0 }, { enemy: 'blood_cultist', count: 5, gap: 1.4, delay: 1, path: 1 }, { enemy: 'wolf', count: 12, gap: 0.5, delay: 0, path: 0 }], clearBonus: 160 },
+    { spawns: [{ enemy: 'blood_cultist', count: 6, gap: 1.2, delay: 0, path: 0 }, { enemy: 'magic_puppet', count: 33, gap: 2.5, delay: 1, path: 1 }, { enemy: 'magic_minion', count: 6, gap: 1.2, delay: 0, path: 0 }], clearBonus: 180 },
   ],
   story: {
     intro: {

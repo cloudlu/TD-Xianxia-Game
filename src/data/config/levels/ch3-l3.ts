@@ -10,33 +10,34 @@ const PATHS = [
 
 export const CH3_L3: LevelConfig = {
   id: 'ch3-l3', name: '魔修营地',
-  startStones: 420, lives: 28,
+  startStones: 420, lives: 3,
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 1.2,
+  maxTowerLevel: 5,
   waves: [
     { spawns: [
-      { enemy: 'magic_minion', count: 5, gap: 1.2, delay: 0, path: 0 },
-      { enemy: 'wolf', count: 8, gap: 0.6, delay: 0, path: 1 },
-      { enemy: 'wolf', count: 8, gap: 0.6, delay: 0, path: 2 },
+      { enemy: 'magic_minion', count: 6, gap: 1.2, delay: 0, path: 0 },
+      { enemy: 'wolf', count: 9, gap: 0.6, delay: 0, path: 1 },
+      { enemy: 'wolf', count: 9, gap: 0.6, delay: 0, path: 2 },
     ], clearBonus: 130 },
     { spawns: [
-      { enemy: 'blood_cultist', count: 4, gap: 1.4, delay: 0, path: 0 },
-      { enemy: 'magic_puppet', count: 2, gap: 3, delay: 0, path: 1 },
-      { enemy: 'magic_minion', count: 5, gap: 1.2, delay: 1, path: 2 },
+      { enemy: 'blood_cultist', count: 5, gap: 1.4, delay: 0, path: 0 },
+      { enemy: 'magic_puppet', count: 22, gap: 3, delay: 0, path: 1 },
+      { enemy: 'magic_minion', count: 6, gap: 1.2, delay: 1, path: 2 },
     ], clearBonus: 160 },
     { spawns: [
-      { enemy: 'blood_cultist', count: 5, gap: 1.2, delay: 0, path: 0 },
-      { enemy: 'magic_puppet', count: 3, gap: 2.5, delay: 0, path: 2 },
-      { enemy: 'magic_minion', count: 6, gap: 1, delay: 1, path: 1 },
+      { enemy: 'blood_cultist', count: 6, gap: 1.2, delay: 0, path: 0 },
+      { enemy: 'magic_puppet', count: 33, gap: 2.5, delay: 0, path: 2 },
+      { enemy: 'magic_minion', count: 7, gap: 1, delay: 1, path: 1 },
     ], clearBonus: 180 },
     // 末波：魔修统领（小头目，厚盾）+ 三路魔修大军
     { spawns: [
-      { enemy: 'mage_lord', count: 1, gap: 1, delay: 2, path: 1 },
-      { enemy: 'magic_minion', count: 6, gap: 1, delay: 0, path: 0 },
-      { enemy: 'blood_cultist', count: 4, gap: 1.4, delay: 1, path: 2 },
-      { enemy: 'wolf', count: 10, gap: 0.5, delay: 0, path: 0 },
+      { enemy: 'mage_lord', count: 11, gap: 1, delay: 2, path: 1 },
+      { enemy: 'magic_minion', count: 7, gap: 1, delay: 0, path: 0 },
+      { enemy: 'blood_cultist', count: 5, gap: 1.4, delay: 1, path: 2 },
+      { enemy: 'wolf', count: 12, gap: 0.5, delay: 0, path: 0 },
     ], clearBonus: 220 },
   ],
   story: {

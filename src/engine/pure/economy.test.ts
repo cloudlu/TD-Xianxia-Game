@@ -11,8 +11,8 @@ describe('investedCost', () => {
   });
 
   it('accumulates upgrade costs through 化神', () => {
-    // 70 + 60 + 100 + 170 + 280 = 680
-    expect(investedCost(sword, 4)).toBe(680);
+    // 70 + 50 + 80 + 130 + 200 = 530
+    expect(investedCost(sword, 4)).toBe(530);
   });
 });
 
@@ -22,13 +22,13 @@ describe('sellRefund', () => {
   });
 
   it('scales refund by total invested after upgrades', () => {
-    expect(sellRefund(sword, 4)).toBe(Math.floor(680 * 0.6)); // 408
+    expect(sellRefund(sword, 4)).toBe(Math.floor(530 * 0.6)); // 318
   });
 });
 
 describe('nextUpgradeCost', () => {
   it('returns the next realm cost', () => {
-    expect(nextUpgradeCost(sword, 0)).toBe(60); // 筑基
+    expect(nextUpgradeCost(sword, 0)).toBe(50); // 筑基
   });
 
   it('returns null when already at max realm (飞升)', () => {

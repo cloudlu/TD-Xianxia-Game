@@ -10,6 +10,9 @@ dist-ssr/
 .env.local
 .env.*.local
 
+# 服务端运行数据
+server/data/
+
 # 日志
 *.log
 npm-debug.log*

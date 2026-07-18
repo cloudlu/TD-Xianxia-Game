@@ -11,3 +11,5 @@ export { TITLES, resolveTitle, completedChapters } from './titles';
 export type { TitleStatus } from './titles';
 export type { SkinEffect } from './skins';
 export type { StoryBeat } from '../../types';
+export { LIMITED_TREASURES, LIMITED_TREASURE_IDS } from './limited_treasures';
+export type { LimitedTreasureConfig } from './limited_treasures';

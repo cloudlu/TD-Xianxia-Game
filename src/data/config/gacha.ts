@@ -1,60 +1,155 @@
-// 寻仙抽卡：奖池定义 + 抽奖 + 碎片合成
-// 全部纯函数，不依赖 UI；走 Progression 持久化。
+import { EQUIPMENT_IDS } from './equipment';
+import { LIMITED_TREASURE_IDS } from './limited_treasures';
 
-/** 奖品类型 */
-export type GachaPrize = 'frags' | 'refund' | 'destiny' | 'soul3' | 'soul8' | 'destiny3';
+export type GachaPrize =
+  | 'mythic_equip'
+  | 'random_equip'
+  | 'destiny3'
+  | 'soul20'
+  | 'soul8'
+  | 'frags8'
+  | 'destiny'
+  | 'soul3'
+  | 'frags3'
+  | 'refund40'
+  | 'frags2'
+  | 'soul2'
+  | 'refund20'
+  | 'frags'
+  | 'soul'
+  | 'refund10'
+  | 'empty';
 
 export interface DrawResult {
   prize: GachaPrize;
-  /** 贡献返还（refund 用） */
   contributionGain: number;
-  /** 装备碎片 */
   frags: number;
-  /** 天命符 */
   destinyScrolls: number;
-  /** 仙魂碎片 */
   soulShards: number;
-  /** 是否触发保底 */
   pityTriggered: boolean;
+  grantedTreasureId?: string;
+  grantedEquipId?: string;
 }
 
-const POOL: { prize: GachaPrize; prob: number; rare: boolean }[] = [
-  { prize: 'frags', prob: 0.30, rare: false },
-  { prize: 'refund', prob: 0.25, rare: false },
-  { prize: 'destiny', prob: 0.15, rare: false },
-  { prize: 'soul3', prob: 0.20, rare: false },
-  { prize: 'soul8', prob: 0.05, rare: true },
-  { prize: 'destiny3', prob: 0.05, rare: true },
+interface SubPrize {
+  subProb: number;
+  make: (rng: () => number) => DrawResult;
+}
+
+interface Tier {
+  prob: number;
+  label: string;
+  subs: SubPrize[];
+}
+
+const TIERS: Tier[] = [
+  {
+    prob: 0.0001, label: '特等奖',
+    subs: [{
+      subProb: 1,
+      make: (rng) => {
+        const id = LIMITED_TREASURE_IDS[Math.floor(rng() * LIMITED_TREASURE_IDS.length)];
+        return { prize: 'mythic_equip', contributionGain: 0, frags: 0, destinyScrolls: 0, soulShards: 0, pityTriggered: false, grantedTreasureId: id };
+      },
+    }],
+  },
+  {
+    prob: 0.0009, label: '一等奖',
+    subs: [{
+      subProb: 1,
+      make: (rng) => {
+        const id = EQUIPMENT_IDS[Math.floor(rng() * EQUIPMENT_IDS.length)];
+        return { prize: 'random_equip', contributionGain: 0, frags: 0, destinyScrolls: 0, soulShards: 0, pityTriggered: false, grantedEquipId: id };
+      },
+    }],
+  },
+  {
+    prob: 0.009, label: '二等奖',
+    subs: [
+      { subProb: 0.5, make: () => ({ prize: 'destiny3' as const, contributionGain: 0, frags: 0, destinyScrolls: 3, soulShards: 0, pityTriggered: false }) },
+      { subProb: 0.5, make: () => ({ prize: 'soul20' as const, contributionGain: 0, frags: 0, destinyScrolls: 0, soulShards: 20, pityTriggered: false }) },
+    ],
+  },
+  {
+    prob: 0.04, label: '三等奖',
+    subs: [
+      { subProb: 0.4, make: () => ({ prize: 'soul8' as const, contributionGain: 0, frags: 0, destinyScrolls: 0, soulShards: 8, pityTriggered: false }) },
+      { subProb: 0.3, make: () => ({ prize: 'frags8' as const, contributionGain: 0, frags: 8, destinyScrolls: 0, soulShards: 0, pityTriggered: false }) },
+      { subProb: 0.3, make: () => ({ prize: 'destiny' as const, contributionGain: 0, frags: 0, destinyScrolls: 1, soulShards: 0, pityTriggered: false }) },
+    ],
+  },
+  {
+    prob: 0.10, label: '四等奖',
+    subs: [
+      { subProb: 0.4, make: () => ({ prize: 'soul3' as const, contributionGain: 0, frags: 0, destinyScrolls: 0, soulShards: 3, pityTriggered: false }) },
+      { subProb: 0.3, make: () => ({ prize: 'frags3' as const, contributionGain: 0, frags: 3, destinyScrolls: 0, soulShards: 0, pityTriggered: false }) },
+      { subProb: 0.3, make: () => ({ prize: 'refund40' as const, contributionGain: 40, frags: 0, destinyScrolls: 0, soulShards: 0, pityTriggered: false }) },
+    ],
+  },
+  {
+    prob: 0.20, label: '五等奖',
+    subs: [
+      { subProb: 0.3, make: () => ({ prize: 'frags2' as const, contributionGain: 0, frags: 2, destinyScrolls: 0, soulShards: 0, pityTriggered: false }) },
+      { subProb: 0.3, make: () => ({ prize: 'soul2' as const, contributionGain: 0, frags: 0, destinyScrolls: 0, soulShards: 2, pityTriggered: false }) },
+      { subProb: 0.4, make: () => ({ prize: 'refund20' as const, contributionGain: 20, frags: 0, destinyScrolls: 0, soulShards: 0, pityTriggered: false }) },
+    ],
+  },
+  {
+    prob: 0.25, label: '六等奖',
+    subs: [
+      { subProb: 0.4, make: () => ({ prize: 'frags' as const, contributionGain: 0, frags: 1, destinyScrolls: 0, soulShards: 0, pityTriggered: false }) },
+      { subProb: 0.4, make: () => ({ prize: 'soul' as const, contributionGain: 0, frags: 0, destinyScrolls: 0, soulShards: 1, pityTriggered: false }) },
+      { subProb: 0.2, make: () => ({ prize: 'refund10' as const, contributionGain: 10, frags: 0, destinyScrolls: 0, soulShards: 0, pityTriggered: false }) },
+    ],
+  },
+  {
+    prob: 0.40, label: '空奖',
+    subs: [
+      { subProb: 1, make: () => ({ prize: 'empty' as const, contributionGain: 5, frags: 0, destinyScrolls: 0, soulShards: 0, pityTriggered: false }) },
+    ],
+  },
 ];
 
-const RARE_POOL = POOL.filter((p) => p.rare);
+const PITY_THRESHOLD = 299;
 
-/** 单抽（返回奖品 + 更新后的抽卡计数） */
+function pickTier(rng: () => number): Tier {
+  const roll = rng();
+  let acc = 0;
+  for (const t of TIERS) {
+    acc += t.prob;
+    if (roll < acc) return t;
+  }
+  return TIERS[TIERS.length - 1];
+}
+
+function pickSub(tier: Tier, rng: () => number): DrawResult {
+  const roll = rng();
+  let acc = 0;
+  for (const s of tier.subs) {
+    acc += s.subProb;
+    if (roll < acc) return s.make(rng);
+  }
+  return tier.subs[tier.subs.length - 1].make(rng);
+}
+
+function isMajorPrize(prize: GachaPrize): boolean {
+  return prize === 'mythic_equip' || prize === 'random_equip';
+}
+
 export function drawGacha(pity: number, rng: () => number): { result: DrawResult; newPity: number } {
-  const isPity = pity >= 9;  // 十连保底
-  let prize: GachaPrize;
+  let result: DrawResult;
+  const isPity = pity >= PITY_THRESHOLD;
+
   if (isPity) {
-    prize = RARE_POOL[Math.floor(rng() * RARE_POOL.length)].prize;
+    const id = EQUIPMENT_IDS[Math.floor(rng() * EQUIPMENT_IDS.length)];
+    result = { prize: 'random_equip', contributionGain: 0, frags: 0, destinyScrolls: 0, soulShards: 0, pityTriggered: true, grantedEquipId: id };
   } else {
-    const roll = rng();
-    let acc = 0;
-    prize = POOL[0].prize;
-    for (const p of POOL) { acc += p.prob; if (roll < acc) { prize = p.prize; break; } }
+    const tier = pickTier(rng);
+    result = pickSub(tier, rng);
   }
-  return { result: toResult(prize, isPity), newPity: isPity ? 0 : pity + 1 };
+
+  const newPity = (isPity || isMajorPrize(result.prize)) ? 0 : pity + 1;
+  return { result, newPity };
 }
 
-function toResult(prize: GachaPrize, pity: boolean): DrawResult {
-  const base = { contributionGain: 0, frags: 0, destinyScrolls: 0, soulShards: 0, pityTriggered: pity };
-  switch (prize) {
-    case 'frags':       return { ...base, prize, frags: 3 };
-    case 'refund':       return { ...base, prize, contributionGain: 80 };
-    case 'destiny':      return { ...base, prize, destinyScrolls: 1 };
-    case 'soul3':        return { ...base, prize, soulShards: 3 };
-    case 'soul8':        return { ...base, prize, soulShards: 8 };
-    case 'destiny3':     return { ...base, prize, destinyScrolls: 3 };
-  }
-}
-
-/** 装备碎片合成：消耗碎片合成随机限定法宝（从普通法宝池中选一件，属性 ×1.3） */
 export const FRAG_COST = 30;

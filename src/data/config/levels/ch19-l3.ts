@@ -10,15 +10,15 @@ const PATHS = [
 
 export const CH19_L3: LevelConfig = {
   id: 'ch19-l3', name: '最终防线',
-  startStones: 860, lives: 42,
+  startStones: 860, lives: 3,
   cols: 16, rows: 8,
   paths: PATHS,
   buildable: buildableFromPaths(16, 8, PATHS),
   hpMul: 2.9,
   waves: [
-    { spawns: [{ enemy: 'dragon_young', count: 14, gap: 0.7, delay: 0, path: 0 }, { enemy: 'ghost_cultivator', count: 16, gap: 0.5, delay: 1, path: 1 }, { enemy: 'shadow_assassin', count: 14, gap: 0.6, delay: 0, path: 2 }], clearBonus: 460 },
-    { spawns: [{ enemy: 'blood_cultist', count: 18, gap: 0.5, delay: 0, path: 0 }, { enemy: 'demon_knight', count: 16, gap: 0.6, delay: 1, path: 1 }, { enemy: 'splitter', count: 14, gap: 0.7, delay: 0, path: 2 }], clearBonus: 500 },
-    { spawns: [{ enemy: 'demon_general', count: 1, gap: 0, delay: 0, path: 0 }, { enemy: 'dragon_young', count: 16, gap: 0.6, delay: 1, path: 1 }, { enemy: 'ghost_cultivator', count: 20, gap: 0.4, delay: 0, path: 2 }, { enemy: 'blood_cultist', count: 16, gap: 0.6, delay: 2, path: 0 }], clearBonus: 640 },
+    { spawns: [{ enemy: 'dragon_young', count: 20, gap: 0.7, delay: 0, path: 0 }, { enemy: 'ghost_cultivator', count: 22, gap: 0.5, delay: 1, path: 1 }, { enemy: 'shadow_assassin', count: 20, gap: 0.6, delay: 0, path: 2 }], clearBonus: 460 },
+    { spawns: [{ enemy: 'blood_cultist', count: 25, gap: 0.5, delay: 0, path: 0 }, { enemy: 'demon_knight', count: 22, gap: 0.6, delay: 1, path: 1 }, { enemy: 'splitter', count: 20, gap: 0.7, delay: 0, path: 2 }], clearBonus: 500 },
+    { spawns: [{ enemy: 'demon_general', count: 11, gap: 0, delay: 0, path: 0 }, { enemy: 'dragon_young', count: 22, gap: 0.6, delay: 1, path: 1 }, { enemy: 'ghost_cultivator', count: 28, gap: 0.4, delay: 0, path: 2 }, { enemy: 'blood_cultist', count: 22, gap: 0.6, delay: 2, path: 0 }], clearBonus: 640 },
   ],
   story: {
     intro: {
