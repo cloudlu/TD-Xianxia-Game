@@ -12,4 +12,5 @@ export type { TitleStatus } from './titles';
 export type { SkinEffect } from './skins';
 export type { StoryBeat } from '../../types';
 export { LIMITED_TREASURES, LIMITED_TREASURE_IDS } from './limited_treasures';
+export { REALM_STORIES, TOWER_UNLOCK_STORIES } from './realmStories';
 export type { LimitedTreasureConfig } from './limited_treasures';

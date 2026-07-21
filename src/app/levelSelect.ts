@@ -8,11 +8,12 @@ import { audio } from '../audio/AudioManager';
 import { app, buildMods, lookup, telemetry } from './state';
 import { showStory, hideStory, type ConfirmBeat } from './storyModal';
 import { clearedKey } from '../repo/progress';
-import { isUnlocked, computeStars, recordResult, awardContribution, setDifficulty, isClearedOn, isClearedAny, recordEndless, awardMilestones, isEndlessUnlocked, endlessMaxTowerLevel, clearedStageCount, ENDLESS_UNLOCK_STAGES } from '../repo/progressLevel';
+import { isUnlocked, computeStars, recordResult, awardContribution, setDifficulty, isClearedOn, isClearedAny, recordEndless, awardMilestones, isEndlessUnlocked, endlessMaxTowerLevel, globalTowerLevel, clearedStageCount, unlockedTowerIds, TOWER_LEVEL_THRESHOLDS, ENDLESS_UNLOCK_STAGES, TOWER_UNLOCK_TABLE } from '../repo/progressLevel';
 import type { ChallengeDef } from '../types';
 import { consumeDestiny, reincarnate } from '../repo/progressMeta';
 import { generateWave, endlessHpMul, endlessContrib, MILESTONES, ENDLESS_PATHS, prepTime } from '../engine/EndlessMode';
 import { buildableFromPaths } from '../data/config/levels/buildable';
+import { REALM_STORIES, TOWER_UNLOCK_STORIES } from '../data/config/realmStories';
 
 const levelSelect = document.getElementById('levelSelect')!;
 const lsList = document.getElementById('lsList')!;
@@ -43,6 +44,26 @@ export function renderLevelSelect(): void {
   lsSub.textContent = `${title.title}　·　${app.profileName || '修士'}${destinyTxt}`;
   const soulMul = Math.sqrt(app.progression.soulShards) * 0.008;
   lsProgress.textContent = `通关 ${cleared}/${total}    星 ★ ${stars}/${total * 3}${app.progression.reincarnationLevel > 0 ? `    转生 ${app.progression.reincarnationLevel} 世` : ''}${soulMul > 0 ? `    仙魂 +${(soulMul * 100).toFixed(2)}%` : ''}`;
+
+  // 塔境界 + 解锁状态
+  const clearedCount = clearedStageCount(app.progression);
+  const curRealmIdx = globalTowerLevel(clearedCount);
+  const curRealmName = ['炼气','筑基','金丹','元婴','化神','渡劫','大乘','飞升'][curRealmIdx] ?? '未知';
+  const nextThreshold = TOWER_LEVEL_THRESHOLDS[curRealmIdx + 1];
+  const realmTxt = nextThreshold != null
+    ? `当前修为：${curRealmName}（再通 ${nextThreshold - clearedCount} 关 → ${['炼气','筑基','金丹','元婴','化神','渡劫','大乘','飞升'][curRealmIdx + 1]}）`
+    : `当前修为：${curRealmName}（已至化境）`;
+
+  const available = unlockedTowerIds(app.progression);
+  const allTowerIds = ['flying_sword','talisman','spear','aura','ice_mage','fire_mage','thunder_mage'];
+  const iconMap: Record<string, string> = { flying_sword:'剑', talisman:'符', spear:'枪', aura:'阵', ice_mage:'冰', fire_mage:'火', thunder_mage:'雷' };
+  const unlockedStr = available.map((id) => iconMap[id] ?? id).join(' ');
+  const lockedStr = allTowerIds
+    .filter((id) => !available.includes(id))
+    .map(() => '？')
+    .join(' ');
+  const lsRealm = document.getElementById('lsRealm');
+  if (lsRealm) lsRealm.textContent = [realmTxt, unlockedStr ? `已解锁修士：${unlockedStr}` : '', lockedStr ? `未解锁：${lockedStr}` : ''].filter(Boolean).join('　|　');
   
   // 转生按钮
   const reincBtn = document.getElementById('reincarnateBtn')!;
@@ -252,14 +273,19 @@ function resetSpeedUI(): void {
   });
 }
 
-/** 通关结算（由 main 的主循环在检测到 won 时调用）：含头衔晋升检测 + 挑战奖励 */
+/** 通关结算（由 main 的主循环在检测到 won 时调用）：含头衔晋升检测 + 挑战奖励 + 境界突破 + 塔解锁 */
 export function settleWin(livesRemaining: number, startLives: number, levelId: string, outro?: StoryBeat): void {
   const manifest = registry.manifest();
-  const before = resolveTitle(completedChapters(manifest, app.progression)).index;
+  const beforeClear = clearedStageCount(app.progression);
+  const beforeLevel = globalTowerLevel(beforeClear);
+  const beforeTowers = new Set(unlockedTowerIds(app.progression));
+  const beforeTitle = resolveTitle(completedChapters(manifest, app.progression)).index;
+
   const stars = computeStars(livesRemaining, startLives);
   const diff = app.progression.difficulty ?? 'normal';
   app.progression = recordResult(app.progression, levelId, diff, stars);
   app.progression = awardContribution(app.progression, stars);
+
   // 挑战结算
   let challengeTxt = '';
   if (app.game?.activeChallenge && app.game?.challengeSucceeded) {
@@ -277,16 +303,47 @@ export function settleWin(livesRemaining: number, startLives: number, levelId: s
   } else if (app.game?.activeChallenge && app.game?.challengeFailed) {
     challengeTxt = `\n挑战「${app.game.activeChallenge.name}」失败：${app.game.challengeFailedReason}`;
   }
-  const after = resolveTitle(completedChapters(manifest, app.progression));
+  const afterTitle = resolveTitle(completedChapters(manifest, app.progression));
   app.selectedChallenge = null;
 
+  // 检测境界突破 + 塔解锁
+  const afterClear = clearedStageCount(app.progression);
+  const afterLevel = globalTowerLevel(afterClear);
+  const afterTowers = unlockedTowerIds(app.progression);
+  const newTowers = afterTowers.filter((id) => !beforeTowers.has(id));
+
   const lines = [`获得 ${20 + stars * 10} 宗门贡献。${challengeTxt}`];
-  const beat: StoryBeat = outro ?? { title: '守阵成功', lines, btn: '返 回 选 关' };
-  if (after.index > before) {
-    // 晋升：先播结局，再弹晋升庆典，最后回选关
-    showStory(beat, () => showPromotion(after.title, returnToSelect));
+  const settlementBeat: StoryBeat = outro ?? { title: '守阵成功', lines, btn: '返 回 选 关' };
+
+  function finalSettlement(): void {
+    if (afterTitle.index > beforeTitle) {
+      showStory(settlementBeat, () => showPromotion(afterTitle.title, returnToSelect));
+    } else {
+      showStory(settlementBeat, returnToSelect);
+    }
+  }
+
+  function playNextUnlock(level: number, towerIdx: number): void {
+    if (level < afterLevel) {
+      showStory({
+        chapter: '境 界 突 破',
+        title: REALM_STORIES[level + 1].title,
+        lines: REALM_STORIES[level + 1].lines,
+        btn: '继 续',
+      }, () => playNextUnlock(level + 1, towerIdx));
+      return;
+    }
+    if (towerIdx < newTowers.length) {
+      const s = TOWER_UNLOCK_STORIES[newTowers[towerIdx]];
+      if (s) { showStory(s, () => playNextUnlock(level, towerIdx + 1)); return; }
+    }
+    finalSettlement();
+  }
+
+  if (afterLevel > beforeLevel || newTowers.length > 0) {
+    playNextUnlock(beforeLevel, 0);
   } else {
-    showStory(beat, returnToSelect);
+    finalSettlement();
   }
 }
 

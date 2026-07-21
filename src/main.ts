@@ -8,6 +8,7 @@ import { app, buildMods, useRemote } from './app/state';
 import { damageStatsFor } from './data/Modifier';
 import { showStory } from './app/storyModal';
 import { returnToSelect, settleWin, startEndless, tickEndless, settleEndless } from './app/levelSelect';
+import { unlockedTowerIds } from './repo/progressLevel';
 import { renderProfileSelect, switchProfile } from './app/profileScreen';
 import './app/metaScreen';   // 模块加载时绑定 metaBtn 等
 import { renderBestiary } from './app/bestiary';
@@ -157,6 +158,7 @@ for (const id of Object.keys(TOWERS)) {
     : `DPS ${dps} · 射程 ${lv0.range} · ${BEHAVIOR_LABEL[def.behavior] ?? def.behavior}${def.hitsAir ? ' · 对空+对地' : ' · 仅对地'}`;
   const btn = document.createElement('div');
   btn.className = 'tower-btn' + (id === app.activeTowerId ? ' active' : '');
+  btn.dataset.towerId = id;
   btn.innerHTML = `
     <span class="name">${def.icon} ${def.name}</span>
     <span class="cost">${def.cost} 灵石</span>
@@ -191,6 +193,7 @@ for (const id of Object.keys(TOWERS)) {
 board.setActiveBuild(app.activeTowerId, {
   levels: TOWERS[app.activeTowerId].levels, color: TOWERS[app.activeTowerId].color,
 });
+refreshTowerVisibility();
 
 /** 刷新底部塔按钮的有效数值（原始(加成后) 格式）；只显示 meta（法宝/天赋/VIP），不含章节缩放 */
 function refreshTowerButtonStats(): void {
@@ -222,6 +225,25 @@ function refreshTowerButtonStats(): void {
       const el = btn.querySelector('.stat-line');
       if (el && el.textContent !== statTxt) el.textContent = statTxt;
     }
+  }
+}
+
+/** 根据当前模式刷新塔按钮可见性：主线仅显示已解锁塔，无尽/空闲全显示 */
+function refreshTowerVisibility(): void {
+  const unlocked = app.game && app.currentLevel?.id !== 'endless'
+    ? new Set(unlockedTowerIds(app.progression))
+    : new Set(Object.keys(TOWERS));
+  for (const [id, btn] of towerBtns) {
+    if (unlocked.has(id)) {
+      btn.style.display = '';
+    } else {
+      btn.style.display = 'none';
+      btn.classList.remove('active');
+    }
+  }
+  if (app.activeTowerId && !unlocked.has(app.activeTowerId)) {
+    const first = Object.keys(TOWERS).find((id) => unlocked.has(id));
+    if (first) setActiveTower(first);
   }
 }
 
@@ -340,6 +362,7 @@ function frame(now: number): void {
   }
 
   refreshTowerButtonStats();   // 刷新塔按钮的 meta 加成数值
+  refreshTowerVisibility();    // 塔类型解锁过滤
 
   if (!app.game || !app.currentLevel) { requestAnimationFrame(frame); return; }
 
