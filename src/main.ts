@@ -9,6 +9,8 @@ import { damageStatsFor } from './data/Modifier';
 import { showStory } from './app/storyModal';
 import { returnToSelect, settleWin, startEndless, tickEndless, settleEndless } from './app/levelSelect';
 import { unlockedTowerIds } from './repo/progressLevel';
+import { SKIP_MESSAGES } from './engine/EndlessMode';
+import { towerConfig } from './engine/TowerOperations';
 import { renderProfileSelect, switchProfile } from './app/profileScreen';
 import './app/metaScreen';   // 模块加载时绑定 metaBtn 等
 import { renderBestiary } from './app/bestiary';
@@ -21,7 +23,7 @@ window.addEventListener('beforeunload', () => persist());
 
 // ---------- 棋盘 ----------
 const canvas = document.getElementById('board') as HTMLCanvasElement;
-const board = new Board(canvas, 16, 8);
+const board = new Board(canvas, 32, 12);
 app.board = board;
 // 皮肤解析：读 app.progression 的装备皮肤（实时反映装备变化）
 board.skinResolver = (towerId) => {
@@ -222,6 +224,13 @@ function refreshTowerButtonStats(): void {
     }
     const btn = towerBtns.get(id);
     if (btn) {
+      const nameEl = btn.querySelector('.name');
+      if (nameEl) {
+        const sid = app.progression?.equippedSkins?.[id];
+        const skin = sid && SKINS[sid];
+        const newName = skin ? `${skin.icon} ${skin.name}` : `${def.icon} ${def.name}`;
+        if (nameEl.textContent !== newName) nameEl.textContent = newName;
+      }
       const el = btn.querySelector('.stat-line');
       if (el && el.textContent !== statTxt) el.textContent = statTxt;
     }
@@ -363,6 +372,7 @@ function frame(now: number): void {
 
   refreshTowerButtonStats();   // 刷新塔按钮的 meta 加成数值
   refreshTowerVisibility();    // 塔类型解锁过滤
+  board.rangeAdd = buildMods().rangeAdd();
 
   if (!app.game || !app.currentLevel) { requestAnimationFrame(frame); return; }
 
@@ -488,6 +498,30 @@ function frame(now: number): void {
   if (app.currentLevel.id === 'endless' && s.status === 'prep' && app.game) {
     tickEndless();
   }
+  // 无尽模式跳关横幅显示
+  if (app.endlessSkipDisplay > 0) {
+    const banner = document.getElementById('endlessSkipBanner');
+    if (banner) {
+      const msg = SKIP_MESSAGES[app.endlessSkipDisplay] ?? `跳过 ${app.endlessSkipDisplay} 波`;
+      banner.textContent = `⚡ ${msg}！`;
+      banner.classList.add('show');
+    }
+    const timer = window.setTimeout(() => {
+      const b2 = document.getElementById('endlessSkipBanner');
+      if (b2) b2.classList.remove('show');
+      app.endlessSkipDisplay = 0;
+    }, 1500);
+  }
+  // 无尽模式主动技能按钮状态
+  app.endlessSkillReady = app.game?.endlessSkillReady ?? false;
+  const skillBtn = document.getElementById('endlessSkillBtn')!;
+  if (app.currentLevel?.id === 'endless') {
+    skillBtn.style.display = 'flex';
+    skillBtn.className = app.endlessSkillReady ? 'ready' : 'cooldown';
+    skillBtn.title = app.endlessSkillReady ? '天雷·灭：全屏真伤（每 25 波可用一次）' : `冷却中（还需 ${25 - ((app.game?.waveIndex ?? 0) - (app.game as any)?.skillLastUsedWave ?? 0)} 波）`;
+  } else {
+    skillBtn.style.display = 'none';
+  }
   app.prevStatus = s.status;
 
   requestAnimationFrame(frame);
@@ -530,6 +564,25 @@ function refreshDebugPanel(): void {
   document.getElementById('debugDps')!.innerHTML = dps.slice(-50).reverse().map((l) =>
     `<tr><td>${l.data.towerId as string}</td><td>${Math.round((l.data.totalDmg as number) / Math.max(1, l.data.elapsed as number))}</td><td>${Math.round(l.data.totalDmg as number)}</td><td>${l.data.kills as number}</td><td>${(l.data.elapsed as number).toFixed(1)}s</td></tr>`,
   ).join('');
+  // 战报
+  const reportEl = document.getElementById('debugBattleReport');
+  if (reportEl && app.game) {
+    try {
+      const report = app.game.battleReport;
+      const towerLines = report.towers.map((t) =>
+        `${t.towerId} Lv${t.level} ${t.onFormation ? '[' + t.onFormation + ']' : ''} 伤害~${t.totalDamage}`
+      ).join('\n');
+      reportEl.textContent = `波次: ${report.totalWaves} | 分: ${report.score} | 灵石: ${report.finalStones} | 加持: ${report.blessings.join(',') || '无'}\n塔:\n${towerLines}`;
+    } catch { reportEl.textContent = '(战斗中)'; }
+  }
+  // 管理面板：塔数量上限
+  const adminInput = document.getElementById('adminMaxTowers') as HTMLInputElement;
+  const adminCount = document.getElementById('adminTowerCount');
+  if (adminInput && adminCount) {
+    const val = parseInt(adminInput.value, 10);
+    if (val > 0 && val !== towerConfig.maxTowers) { towerConfig.maxTowers = val; }
+    adminCount.textContent = `当前 ${app.game?.towerOps?.towers?.length ?? 0} / ${towerConfig.maxTowers}`;
+  }
 }
 function fmtTime(ts: number): string {
   const d = new Date(ts);
@@ -555,6 +608,13 @@ if (!configResult.ok) {
 useRemote('');
 renderProfileSelect();   // 先选玩家档案（多存档隔离）
 document.getElementById('switchBtn')!.onclick = switchProfile;
+
+// 无尽模式主动技能按钮
+document.getElementById('endlessSkillBtn')!.onclick = () => {
+  if (app.game && app.game.triggerEndlessSkill()) {
+    audio.sfx('boss');
+  }
+};
 document.getElementById('bestiaryBtn')!.onclick = () => {
   const card = document.getElementById('bestiaryCard')!;
   card.innerHTML = renderBestiary() + `<div class="close-row"><button id="bestiaryClose">返 回 选 关</button></div>`;

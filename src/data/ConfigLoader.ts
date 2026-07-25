@@ -15,9 +15,9 @@ export interface ValidationResult {
   warnings: string[];
 }
 
-const VALID_BEHAVIORS: TowerBehavior[] = ['projectile', 'pierce', 'aura', 'aoe', 'chain'];
+const VALID_BEHAVIORS: TowerBehavior[] = ['projectile', 'pierce', 'aura', 'aoe', 'chain', 'mine'];
 const VALID_TARGETS: TargetPolicy[] = ['first', 'last', 'strongest', 'nearest'];
-const VALID_SCHOOLS = ['sword', 'talisman', 'spear', 'magic', 'aura', 'fire', 'thunder', 'ice'];
+const VALID_SCHOOLS = ['sword', 'talisman', 'spear', 'magic', 'aura', 'fire', 'thunder', 'ice', 'earth'];
 
 function err(msg: string): string {
   return `[配置错误] ${msg}`;

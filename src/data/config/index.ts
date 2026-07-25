@@ -14,3 +14,5 @@ export type { StoryBeat } from '../../types';
 export { LIMITED_TREASURES, LIMITED_TREASURE_IDS } from './limited_treasures';
 export { REALM_STORIES, TOWER_UNLOCK_STORIES } from './realmStories';
 export type { LimitedTreasureConfig } from './limited_treasures';
+export { CHAPTER_MAPS } from './chapterMaps';
+export { BACKGROUNDS } from './backgrounds';

@@ -1,6 +1,5 @@
-import type { LevelConfig, ManifestEntry, GridPoint } from '../../../types';
-import { LAYOUTS } from '../layouts';
-import { LAYOUT_MAP } from '../layoutMap';
+import type { LevelConfig, ManifestEntry } from '../../../types';
+import { CHAPTER_MAPS } from '../chapterMaps';
 import { buildableFromPaths } from './buildable';
 import { CH1_L1 } from './ch1-l1';
 import { CH1_L2 } from './ch1-l2';
@@ -187,18 +186,21 @@ export const LEVELS: Record<string, LevelConfig> = {
   [CH30_L3.id]: CH30_L3,
 };
 
-// 布局覆盖：从 layoutMap 合并路径到对应关卡
-const COLS = 16, ROWS = 8;
-for (const [levelId, layoutId] of Object.entries(LAYOUT_MAP)) {
-  const layout = LAYOUTS[layoutId];
-  if (!layout) continue;
-  const level = LEVELS[levelId];
-  if (!level) continue;
-  LEVELS[levelId] = {
-    ...level,
-    paths: layout as GridPoint[][],
-    buildable: buildableFromPaths(COLS, ROWS, layout as GridPoint[][]),
-  };
+// 章节地图合并：将 CHAPTER_MAPS 中的路径/障碍/基地等覆盖到对应关卡
+for (const [chapterId, map] of Object.entries(CHAPTER_MAPS)) {
+  for (const diff of ['l1', 'l2', 'l3'] as const) {
+    const levelId = `${chapterId}-${diff}` as keyof typeof LEVELS;
+    const level = LEVELS[levelId];
+    if (!level) continue;
+    LEVELS[levelId] = {
+      ...level,
+      cols: map.cols, rows: map.rows,
+      paths: map.paths,
+      buildable: buildableFromPaths(map.cols, map.rows, map.paths, map.blocked),
+      base: map.base, blocked: map.blocked, backgroundId: map.backgroundId,
+      activePaths: map.actives[diff],
+    };
+  }
 }
 
 // 章节清单（顺序即解锁顺序；第 N 关解锁 = 第 N-1 关通关）—— 设计文档 §8.2

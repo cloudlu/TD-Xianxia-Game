@@ -30,9 +30,13 @@ export function showStory(beat: StoryBeat, onClose: () => void): void {
   sTitle.textContent = cb.title;
   sBody.textContent = '';
   sBtn.textContent = cb.btn;
-  sBtn.disabled = true;
-  sBtn.style.opacity = '0.4';
-  sBtn.style.display = '';
+  if (!cb.btn) {
+    sBtn.style.display = 'none';
+  } else {
+    sBtn.style.display = '';
+    sBtn.disabled = true;
+    sBtn.style.opacity = '0.4';
+  }
   sSkip.style.display = '';
   if (cb.btnCancel) {
     sCancel.textContent = cb.btnCancel;
@@ -50,8 +54,7 @@ export function showStory(beat: StoryBeat, onClose: () => void): void {
   if (cb.html) {
     // 直接渲染 HTML，无打字机
     sBody.innerHTML = cb.lines.join('\n');
-    sBtn.disabled = false;
-    sBtn.style.opacity = '1';
+    if (cb.btn) { sBtn.disabled = false; sBtn.style.opacity = '1'; }
     finishTyping = () => {};
   } else {
     // 打字机效果

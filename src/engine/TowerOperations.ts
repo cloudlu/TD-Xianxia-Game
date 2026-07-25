@@ -1,7 +1,7 @@
-// 玩家操作（设计文档 §1.3）：负责塔的放置 / 升级 / 出售 / 索敌切换
+// 玩家操作（设计文档 §1.3）：负责塔的放置 / 升级 / 出售 / 索敌切换 / 阵眼
 // 拥有 towers[] 和 stones，Game 作为协调者统⼀管理 msg/emit。
 
-import type { LevelConfig, TowerConfig, TargetPolicy } from '../types';
+import type { LevelConfig, TowerConfig, TargetPolicy, FormationType } from '../types';
 import { investedCost, sellRefund as computeSellRefund } from './pure/economy';
 
 export interface TowerR {
@@ -15,11 +15,15 @@ export interface TowerR {
   disabledUntil: number;
   knockImmuneUntil: number;
   flashTimer: number;
+  onFormation: FormationType | null;
 }
 
 export interface TowerLookup {
   tower(id: string): TowerConfig | undefined;
 }
+
+/** 塔配置（可通过调试面板修改） */
+export const towerConfig = { maxTowers: 60 };
 
 export class TowerOperations {
   towers: TowerR[] = [];
@@ -40,21 +44,36 @@ export class TowerOperations {
   canPlace(col: number, row: number): boolean {
     if (col < 0 || row < 0 || col >= this.level.cols || row >= this.level.rows) return false;
     if (!this.level.buildable[row][col]) return false;
-    return !this.towers.some((t) => t.col === col && t.row === row);
+    if (this.towers.some((t) => t.col === col && t.row === row)) return false;
+    return this.towers.length < towerConfig.maxTowers;
   }
 
   placeTower(col: number, row: number, towerId: string): boolean {
     const def = this.reg.tower(towerId);
-    if (!def || !this.canPlace(col, row)) return false;
+    if (!def || !this.canPlace(col, row)) {
+      if (this.towers.length >= towerConfig.maxTowers) this.msg = `已达塔数量上限（${towerConfig.maxTowers}）！`;
+      return false;
+    }
     if (this.stones < def.cost) { this.msg = '灵石不足！'; return false; }
     this.stones -= def.cost;
     this.towers.push({
       uid: this.nextUid(), def, col, row,
       x: col + 0.5, y: row + 0.5, level: 0, cooldown: 0,
       targetPolicy: this.globalTargetPolicy ?? def.targetPolicy, disabledUntil: 0, knockImmuneUntil: 0, flashTimer: 0,
+      onFormation: this.formationAt(col, row),
     });
     this.msg = `布置 ${def.name}。`;
     return true;
+  }
+
+  /** 获取某格上的阵眼类型 */
+  formationAt(col: number, row: number): FormationType | null {
+    const f = this.level.formations;
+    if (!f) return null;
+    for (const ft of f) {
+      if (ft.col === col && ft.row === row) return ft.type;
+    }
+    return null;
   }
 
   towerAt(col: number, row: number): TowerR | undefined {

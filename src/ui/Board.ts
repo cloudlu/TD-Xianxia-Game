@@ -2,9 +2,10 @@
 // 引擎不依赖 UI，UI 只读 snapshot 渲染、把输入转成玩家操作。
 
 import type { GameState } from '../engine/Game';
-import type { GridPoint } from '../types';
+import type { FormationTile, FormationType, GridPoint, BlockedCell } from '../types';
+import { BACKGROUNDS, DEFAULT_BACKGROUND } from '../data/config/backgrounds';
 
-const CELL = 80;
+const CELL = 60;
 
 // 皮肤光晕配色（hex，用于 #RRGGBBAA 拼接）
 const EFFECT_RGB: Record<string, string> = {
@@ -14,16 +15,28 @@ const EFFECT_RGB: Record<string, string> = {
   blue: '#29b6f6',
 };
 
+const FORMATION_STYLE: Record<FormationType, { color: string; label: string; desc: string }> = {
+  wind: { color: '#4fc3f7', label: '风', desc: '射程 +1.5' },
+  thunder: { color: '#ffd54f', label: '雷', desc: '攻速 ×1.4' },
+  earth: { color: '#81c784', label: '地', desc: '伤害 ×1.5' },
+  spirit: { color: '#ce93d8', label: '灵', desc: '相邻阵眼塔各 +15%' },
+};
+
 export class Board {
   private ctx: CanvasRenderingContext2D;
   cols: number;
   rows: number;
   private paths: GridPoint[][] = [];
   skinResolver: ((towerId: string) => { icon: string; color: string; effect?: string } | null) | null = null;
+  rangeAdd = 0;
   hoverCol = -1;
   hoverRow = -1;
   activeBuild: string | null = null;
-  private ambientParticles: { x: number; y: number; vy: number; size: number; alpha: number; speed: number }[] = [];
+  private ambientParticles: { x: number; y: number; vy: number; size: number; alpha: number; speed: number; color: string }[] = [];
+  private currentAmbientColor = '#fffff0';
+  private currentPathGlow = '#4a6fa5';
+  private currentActivePaths: ReadonlyArray<number> | null = null;
+  formations: FormationTile[] | null = null;
 
   constructor(private canvas: HTMLCanvasElement, cols: number, rows: number) {
     this.ctx = canvas.getContext('2d')!;
@@ -34,10 +47,11 @@ export class Board {
   }
 
   /** 切换关卡时更新棋盘尺寸 + 路径（不同关卡可能不同网格/路径） */
-  configure(cols: number, rows: number, paths: ReadonlyArray<ReadonlyArray<GridPoint>>): void {
+  configure(cols: number, rows: number, paths: ReadonlyArray<ReadonlyArray<GridPoint>>, formations?: FormationTile[] | null): void {
     this.cols = cols;
     this.rows = rows;
     this.paths = paths.map((p) => p.map((pt) => ({ ...pt })));
+    this.formations = formations ?? null;
     this.canvas.width = cols * CELL;
     this.canvas.height = rows * CELL;
   }
@@ -56,18 +70,36 @@ export class Board {
     this.lastBuildable = buildable;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+    const bg = BACKGROUNDS[state.backgroundId ?? ''] ?? DEFAULT_BACKGROUND;
+    this.currentAmbientColor = bg.ambient?.color ?? '#fffff0';
+    this.currentPathGlow = bg.pathGlow;
+    this.currentActivePaths = state.activePaths ?? null;
+
     // 格子底色
     for (let r = 0; r < this.rows; r++) {
       for (let c = 0; c < this.cols; c++) {
         const x = c * CELL, y = r * CELL;
         if (!buildable[r][c]) {
-          ctx.fillStyle = '#2a1f12';       // 路径底
+          ctx.fillStyle = bg.pathColor;
         } else {
-          ctx.fillStyle = (c + r) % 2 === 0 ? '#141a2e' : '#181f36';
+          ctx.fillStyle = (c + r) % 2 === 0 ? bg.cellA : bg.cellB;
         }
         ctx.fillRect(x, y, CELL, CELL);
       }
     }
+
+    // 地形障碍（在格子之上，路径之下）
+    if (state.blocked) {
+      for (const b of state.blocked) {
+        this.drawTerrain(b.col, b.row, b.terrain);
+      }
+    }
+
+    // 宗门基地
+    if (state.base) {
+      this.drawBase(state.base.x, state.base.y, bg.baseGlow, state.elapsed);
+    }
+
     // 网格线（仅可建区，淡）
     ctx.strokeStyle = 'rgba(95,211,255,0.05)'; ctx.lineWidth = 1;
     for (let c = 0; c <= this.cols; c++) { ctx.beginPath(); ctx.moveTo(c * CELL, 0); ctx.lineTo(c * CELL, this.rows * CELL); ctx.stroke(); }
@@ -75,6 +107,34 @@ export class Board {
 
     // 路径发光缎带
     this.drawPath();
+
+    // 阵眼标记
+    if (this.formations) {
+      for (const ft of this.formations) {
+        const style = FORMATION_STYLE[ft.type];
+        const cx = ft.col * CELL + CELL / 2;
+        const cy = ft.row * CELL + CELL / 2;
+        ctx.save();
+        // 外圈光晕
+        ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.42, 0, Math.PI * 2);
+        ctx.fillStyle = style.color + '20';
+        ctx.fill();
+        ctx.strokeStyle = style.color + '88';
+        ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]);
+        // 内圈
+        ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.28, 0, Math.PI * 2);
+        ctx.fillStyle = '#0d1120cc';
+        ctx.fill();
+        ctx.strokeStyle = style.color + 'aa';
+        ctx.lineWidth = 1.5; ctx.stroke();
+        // 文字
+        ctx.fillStyle = style.color;
+        ctx.font = 'bold 14px "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(style.label, cx, cy);
+        ctx.restore();
+      }
+    }
 
     // 悬停预览
     this.drawHover(state);
@@ -108,10 +168,16 @@ export class Board {
       const t = fx.life / fx.maxLife;   // 1→0
       if (fx.kind === 'dmg') {
         ctx.globalAlpha = Math.max(0, t);
+        const isCrit = (fx as any).crit;
         ctx.fillStyle = fx.color;
-        ctx.font = 'bold 16px sans-serif';
+        ctx.font = isCrit ? 'bold 16px sans-serif' : 'bold 12px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+        if (isCrit) {
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 3;
+          ctx.strokeText(fx.text ?? '', fx.x * CELL, fx.y * CELL);
+        }
         ctx.fillText(fx.text ?? '', fx.x * CELL, fx.y * CELL);
         ctx.globalAlpha = 1;
       } else if (fx.kind === 'shockwave') {
@@ -163,7 +229,7 @@ export class Board {
     // 环境粒子（灵气）
     this.updateAmbient(state.status);
     for (const p of this.ambientParticles) {
-      ctx.fillStyle = `rgba(255,255,240,${p.alpha})`;
+      ctx.fillStyle = p.color;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       ctx.fill();
@@ -189,6 +255,7 @@ export class Board {
         size: 1.5 + Math.random() * 2.5,
         alpha: 0.15 + Math.random() * 0.2,
         speed: 0.3 + Math.random() * 0.5,
+        color: this.currentAmbientColor,
       });
     }
     for (let i = this.ambientParticles.length - 1; i >= 0; i--) {
@@ -204,20 +271,38 @@ export class Board {
   private drawPath(): void {
     const ctx = this.ctx;
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    for (const path of this.paths) {
+    const trace = (path: GridPoint[]) => {
+      ctx.beginPath();
+      ctx.moveTo((path[0].x + 0.5) * CELL, (path[0].y + 0.5) * CELL);
+      for (let i = 1; i < path.length; i++) ctx.lineTo((path[i].x + 0.5) * CELL, (path[i].y + 0.5) * CELL);
+    };
+    for (let pi = 0; pi < this.paths.length; pi++) {
+      const isActive = !this.currentActivePaths || this.currentActivePaths.includes(pi);
+      const path = this.paths[pi];
       if (path.length < 2) continue;
-      const trace = () => {
-        ctx.beginPath();
-        ctx.moveTo((path[0].x + 0.5) * CELL, (path[0].y + 0.5) * CELL);
-        for (let i = 1; i < path.length; i++) ctx.lineTo((path[i].x + 0.5) * CELL, (path[i].y + 0.5) * CELL);
-      };
-      trace();
-      ctx.strokeStyle = 'rgba(200,160,90,0.12)'; ctx.lineWidth = CELL * 0.85; ctx.stroke();
-      trace();
-      ctx.strokeStyle = 'rgba(140,100,45,0.55)'; ctx.lineWidth = CELL * 0.6; ctx.stroke();
-      trace();
-      ctx.strokeStyle = 'rgba(255,217,130,0.3)'; ctx.lineWidth = 2; ctx.setLineDash([8, 10]); ctx.stroke();
-      ctx.setLineDash([]);
+      if (!isActive) {
+        trace(path);
+        ctx.strokeStyle = 'rgba(120,120,120,0.08)'; ctx.lineWidth = CELL * 0.85; ctx.stroke();
+        trace(path);
+        ctx.strokeStyle = 'rgba(100,100,100,0.25)'; ctx.lineWidth = CELL * 0.6; ctx.stroke();
+        trace(path);
+        ctx.strokeStyle = 'rgba(140,140,140,0.25)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 6]); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+    for (let pi = 0; pi < this.paths.length; pi++) {
+      const isActive = !this.currentActivePaths || this.currentActivePaths.includes(pi);
+      const path = this.paths[pi];
+      if (path.length < 2) continue;
+      if (isActive) {
+        trace(path);
+        ctx.strokeStyle = 'rgba(200,160,90,0.12)'; ctx.lineWidth = CELL * 0.85; ctx.stroke();
+        trace(path);
+        ctx.strokeStyle = 'rgba(140,100,45,0.55)'; ctx.lineWidth = CELL * 0.6; ctx.stroke();
+        trace(path);
+        ctx.strokeStyle = this.currentPathGlow + '66'; ctx.lineWidth = 2; ctx.setLineDash([8, 10]); ctx.stroke();
+        ctx.setLineDash([]);
+      }
     }
   }
   private lastBuildable: boolean[][] = [];
@@ -236,7 +321,7 @@ export class Board {
       ctx.strokeStyle = tower.def.color + 'aa';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(tower.x * CELL, tower.y * CELL, lv.range * CELL, 0, Math.PI * 2);
+      ctx.arc(tower.x * CELL, tower.y * CELL, (lv.range + this.rangeAdd) * CELL, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
       // 选中描边
@@ -254,10 +339,31 @@ export class Board {
         ctx.fillStyle = def.color + '18';
         ctx.strokeStyle = def.color + '66';
         ctx.beginPath();
-        ctx.arc((c + 0.5) * CELL, (r + 0.5) * CELL, lv.range * CELL, 0, Math.PI * 2);
+        ctx.arc((c + 0.5) * CELL, (r + 0.5) * CELL, (lv.range + this.rangeAdd) * CELL, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
       }
+    }
+
+    // 阵眼悬停说明
+    const ft = this.formations?.find((f) => f.col === c && f.row === r);
+    if (ft && !tower) {
+      const style = FORMATION_STYLE[ft.type];
+      const tooltip = `${style.label}眼 · ${style.desc}`;
+      const tw = tooltip.length * 9;
+      const tx = Math.min(x, this.canvas.width - tw - 8);
+      const ty = y + CELL + 6;
+      ctx.save();
+      ctx.fillStyle = 'rgba(13,17,32,0.92)';
+      ctx.strokeStyle = style.color + 'aa';
+      ctx.lineWidth = 1;
+      this.roundRect(tx, ty, tw + 10, 24, 4);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = style.color;
+      ctx.font = '13px "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(tooltip, tx + 6, ty + 12);
+      ctx.restore();
     }
   }
   private activeBuildDef: { levels: { range: number }[]; color: string } | null = null;
@@ -268,72 +374,75 @@ export class Board {
 
   private drawTower(t: GameState['towers'][number], now: number): void {
     const ctx = this.ctx;
+    const cx = (t.col + 0.5) * CELL, cy = (t.row + 0.5) * CELL;
     const x = t.col * CELL, y = t.row * CELL;
     const disabled = t.disabledUntil > now;
     const skin = this.skinResolver?.(t.def.id) ?? null;
     const color = skin?.color ?? t.def.color;
     const icon = skin?.icon ?? t.def.icon;
     const effectColor = skin?.effect ? EFFECT_RGB[skin.effect] ?? null : null;
-
-    // 皮肤光晕（脉动）
+    ctx.save();
     if (effectColor) {
       const pulse = 0.5 + 0.5 * Math.sin(now * 4);
       ctx.fillStyle = effectColor + Math.floor(40 + 50 * pulse).toString(16).padStart(2, '0');
-      ctx.beginPath();
-      ctx.arc((t.col + 0.5) * CELL, (t.row + 0.5) * CELL, CELL * 0.55, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.55, 0, Math.PI * 2); ctx.fill();
     }
-
-    // 塔身（瘫痪时灰显）
     ctx.globalAlpha = disabled ? 0.4 : 1;
-    ctx.fillStyle = color;
-    this.roundRect(x + 4, y + 4, CELL - 8, CELL - 8, 6);
-    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.beginPath(); ctx.ellipse(cx, y + CELL - 3, CELL * 0.3, 5, 0, 0, Math.PI * 2); ctx.fill();
+    const baseY = y + CELL - 4;
+    const tiers = Math.min(t.level + 1, 3);
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(cx - CELL * 0.34, baseY - 3, CELL * 0.68, 5);
+    ctx.fillStyle = '#795548';
+    ctx.fillRect(cx - CELL * 0.28, baseY - 6, CELL * 0.56, 3);
+    for (let i = 0; i < tiers; i++) {
+      const s = 1 - i * 0.18;
+      const tw = CELL * 0.26 * s;
+      const th = CELL * 0.16;
+      const ty = baseY - 6 - i * (th + 10) - th;
+      ctx.fillStyle = color;
+      ctx.fillRect(cx - tw, ty, tw * 2, th);
+      ctx.strokeStyle = '#0003'; ctx.lineWidth = 1; ctx.strokeRect(cx - tw, ty, tw * 2, th);
+      ctx.fillStyle = '#ffd70022';
+      ctx.fillRect(cx - tw * 0.25, ty + 2, tw * 0.5, th - 4);
+      const rw = tw + 6 + i * 1;
+      ctx.fillStyle = i === tiers - 1 ? '#6d4c41' : '#8d6e63';
+      ctx.beginPath();
+      ctx.moveTo(cx - rw, ty);
+      ctx.quadraticCurveTo(cx - rw + 4, ty - 3, cx - rw + 7, ty);
+      ctx.lineTo(cx - tw, ty - 7);
+      ctx.lineTo(cx + tw, ty - 7);
+      ctx.lineTo(cx + rw - 7, ty);
+      ctx.quadraticCurveTo(cx + rw - 4, ty - 3, cx + rw, ty);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#a1887f55'; ctx.lineWidth = 0.5; ctx.stroke();
+    }
+    const topY = baseY - 6 - tiers * (CELL * 0.16 + 10) - 7;
+    ctx.fillStyle = '#ffd700';
+    ctx.beginPath(); ctx.moveTo(cx, topY - 10); ctx.lineTo(cx - 4, topY - 3); ctx.lineTo(cx + 4, topY - 3); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffd70066';
+    ctx.beginPath(); ctx.arc(cx, topY - 12, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = '28px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(icon, cx, cy - 1);
     ctx.globalAlpha = 1;
-
-    // 瘫痪标记
-    if (disabled) {
-      ctx.fillStyle = '#ff9b6b';
-      ctx.font = 'bold 16px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('眩', (t.col + 0.5) * CELL, y + 12);
-    }
-
-    // 图标字
-    ctx.fillStyle = '#0f1320';
-    ctx.font = 'bold 40px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(icon, (t.col + 0.5) * CELL, (t.row + 0.5) * CELL);
-
-    // 境界等级 pips（level+1 个点，加深色底圈保证在任何塔色上都可见）
     for (let i = 0; i <= t.level; i++) {
-      ctx.fillStyle = '#000a';
-      ctx.beginPath();
-      ctx.arc(x + 11 + i * 10, y + 11, 5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffd93d';
-      ctx.beginPath();
-      ctx.arc(x + 11 + i * 10, y + 11, 3, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillStyle = '#000a'; ctx.beginPath(); ctx.arc(x + 6 + i * 6, y + 6, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffd93d'; ctx.beginPath(); ctx.arc(x + 6 + i * 6, y + 6, 2, 0, Math.PI * 2); ctx.fill();
     }
-
-    // 开火 muzzle flash
+    if (disabled) {
+      ctx.fillStyle = '#ff9b6b'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('眩', cx, y + 12);
+    }
     if (t.flashTimer > 0 && !disabled) {
       const intensity = Math.min(1, t.flashTimer / 0.12);
-      ctx.save();
       ctx.globalAlpha = intensity * 0.6;
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.arc((t.col + 0.5) * CELL, (t.row + 0.5) * CELL, CELL * 0.35, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc((t.col + 0.5) * CELL, (t.row + 0.5) * CELL, CELL * 0.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.35, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = color; ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.2, 0, Math.PI * 2); ctx.fill();
     }
+    ctx.restore();
   }
 
   private drawEnemy(e: GameState['enemies'][number], auraTowers: GameState['towers'][number][]): void {
@@ -346,7 +455,8 @@ export class Board {
       return dx * dx + dy * dy <= r * r;
     });
     const fly = !!e.def.fly;
-    const lift = fly ? CELL * 0.18 : 0;
+    const burrowed = !!e.burrowed;
+    const lift = fly ? CELL * 0.18 : (burrowed ? -CELL * 0.1 : 0);
     const cx = e.x * CELL, cy = e.y * CELL - lift;
     const elite = !!e.def.elite;
     const isBoss = !!e.def.bossAbility;
@@ -392,7 +502,21 @@ export class Board {
     if (e.hitFlash > 0) {
       ctx.globalAlpha = (stealth && !revealed ? 0.3 : 1) * Math.min(1, e.hitFlash / 0.12);
       drawShape(rad, '#ffffff');
-      ctx.globalAlpha = stealth && !revealed ? 0.3 : 1;
+    ctx.globalAlpha = stealth && !revealed ? 0.3 : (burrowed ? 0.5 : 1);
+    // 遁地波纹（地下敌人脚底涟漪）
+    if (burrowed) {
+      ctx.strokeStyle = '#88aa88';
+      ctx.lineWidth = 2;
+      const ripple = (this.waveTimer * 3) % (CELL * 0.6);
+      for (let i = 0; i < 2; i++) {
+        const r = ripple + i * CELL * 0.3;
+        ctx.globalAlpha = 0.4 - i * 0.15;
+        ctx.beginPath();
+        ctx.arc(e.x * CELL, e.y * CELL + 4, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 0.5;
+    }
     }
     if (elite || isBoss) {
       drawShape(rad, undefined, '#ffd93d', isBoss ? 4 : 3);
@@ -408,14 +532,14 @@ export class Board {
     }
     // 图标字
     ctx.fillStyle = '#fff';
-    ctx.font = `bold ${elite || isBoss ? 30 : 24}px sans-serif`;
+    ctx.font = `bold ${elite || isBoss ? 20 : 16}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(e.def.icon, cx, cy);
     // 精英/首领名称标牌
     if (elite || isBoss) {
       ctx.fillStyle = isBoss ? '#ff6b6b' : '#ffd93d';
-      ctx.font = 'bold 13px sans-serif';
+      ctx.font = 'bold 10px sans-serif';
       ctx.fillText(e.def.name, cx, cy + rad + 12);
     }
     // 血条
@@ -428,26 +552,258 @@ export class Board {
     ctx.globalAlpha = 1;
   }
 
-  private drawEndpoints(): void {
+  // ---------- 地形障碍 ----------
+  private drawTerrain(col: number, row: number, terrain: string): void {
     const ctx = this.ctx;
-    if (this.paths.length === 0) return;
-    for (const path of this.paths) {
-      if (path.length === 0) continue;
-      const draw = (p: GridPoint, color: string, label: string) => {
-        const cx = (p.x + 0.5) * CELL, cy = (p.y + 0.5) * CELL;
-        ctx.fillStyle = color + '55';
+    const cx = (col + 0.5) * CELL, cy = (row + 0.5) * CELL;
+    ctx.save();
+    if (terrain === 'rock') {
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath(); ctx.ellipse(cx + 5, cy + 5, CELL * 0.32, CELL * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#4a3728';
+      ctx.strokeStyle = '#2a1f14';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(cx - CELL * 0.4, cy + CELL * 0.2);
+      ctx.lineTo(cx - CELL * 0.25, cy - CELL * 0.34);
+      ctx.lineTo(cx + CELL * 0.1, cy - CELL * 0.4);
+      ctx.lineTo(cx + CELL * 0.4, cy - CELL * 0.1);
+      ctx.lineTo(cx + CELL * 0.34, cy + CELL * 0.28);
+      ctx.lineTo(cx + CELL * 0.05, cy + CELL * 0.32);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#8d7a6688';
+      ctx.beginPath(); ctx.arc(cx + CELL * 0.05, cy - CELL * 0.18, CELL * 0.1, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#6d5a4488';
+      ctx.beginPath(); ctx.arc(cx - CELL * 0.12, cy - CELL * 0.28, CELL * 0.07, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3a2718';
+      ctx.beginPath(); ctx.arc(cx + CELL * 0.2, cy - CELL * 0.05, CELL * 0.15, 0, Math.PI * 2); ctx.fill();
+    } else if (terrain === 'tree') {
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.beginPath(); ctx.ellipse(cx + 4, cy + 5, CELL * 0.3, CELL * 0.08, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3e2a1a';
+      ctx.fillRect(cx - CELL * 0.07, cy + CELL * 0.02, CELL * 0.14, CELL * 0.34);
+      ctx.fillStyle = '#5d403788';
+      ctx.fillRect(cx - CELL * 0.02, cy + CELL * 0.02, CELL * 0.05, CELL * 0.34);
+      ctx.fillStyle = '#1b5e20';
+      ctx.beginPath(); ctx.arc(cx, cy - CELL * 0.1, CELL * 0.36, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#2e7d32';
+      ctx.beginPath(); ctx.arc(cx - CELL * 0.18, cy + CELL * 0.02, CELL * 0.24, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#388e3c';
+      ctx.beginPath(); ctx.arc(cx + CELL * 0.16, cy - CELL * 0.16, CELL * 0.22, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#43a047';
+      ctx.beginPath(); ctx.arc(cx - CELL * 0.06, cy - CELL * 0.28, CELL * 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#66bb6a77';
+      ctx.beginPath(); ctx.arc(cx - CELL * 0.22, cy - CELL * 0.12, CELL * 0.12, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#81c78466';
+      ctx.beginPath(); ctx.arc(cx + CELL * 0.08, cy - CELL * 0.32, CELL * 0.08, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#a5d6a744';
+      ctx.beginPath(); ctx.arc(cx + CELL * 0.2, cy - CELL * 0.08, CELL * 0.06, 0, Math.PI * 2); ctx.fill();
+    } else if (terrain === 'water') {
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.beginPath(); ctx.arc(cx + 3, cy + 4, CELL * 0.42, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#0d1b2a';
+      ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.44, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1a3a5c88';
+      ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1565c044';
+      ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.35, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#64b5f644';
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 4; i++) {
+        const phase = i * 0.9 + (Date.now() * 0.001) % (Math.PI * 2);
+        const wy = cy - CELL * 0.18 + i * CELL * 0.18;
+        ctx.globalAlpha = 0.3 + 0.2 * Math.sin(phase);
         ctx.beginPath();
-        ctx.arc(cx, cy, CELL * 0.46, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = color;
-        ctx.font = 'bold 20px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label, cx, cy - CELL * 0.62);
-      };
-      draw(path[0], '#e57373', '入');
-      draw(path[path.length - 1], '#ffd93d', '宗');
+        ctx.moveTo(cx - CELL * 0.3 + Math.sin(phase) * 4, wy);
+        ctx.quadraticCurveTo(cx, wy - CELL * 0.04 + Math.sin(phase + 1) * 3, cx + CELL * 0.32 + Math.sin(phase + 2) * 4, wy);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 0.08;
+      ctx.fillStyle = '#90caf9';
+      ctx.beginPath(); ctx.arc(cx - CELL * 0.08, cy - CELL * 0.1, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
     }
+    ctx.restore();
+  }
+
+  private drawBase(col: number, row: number, glowColor: string, elapsed: number): void {
+    const ctx = this.ctx;
+    const cx = (col + 0.5) * CELL, cy = (row + 0.5) * CELL;
+    const pulse = Math.sin(elapsed * 2) * 0.15 + 0.85;
+    ctx.save();
+
+    ctx.fillStyle = '#ffd700' + Math.round(200 * pulse).toString(16).padStart(2, '0');
+    ctx.font = 'bold 11px "Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText('『 玄天宗门 』', cx, cy - CELL * 0.58);
+
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, CELL);
+    grad.addColorStop(0, 'rgba(255,215,0,0.12)');
+    grad.addColorStop(0.5, 'rgba(255,215,0,0.04)');
+    grad.addColorStop(1, 'rgba(255,215,0,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(cx, cy, CELL, 0, Math.PI * 2); ctx.fill();
+
+    ctx.fillStyle = '#1a1a2e';
+    ctx.beginPath();
+    ctx.moveTo(cx - CELL * 0.45, cy + CELL * 0.42);
+    ctx.lineTo(cx - CELL * 0.08, cy + CELL * 0.15);
+    ctx.lineTo(cx + CELL * 0.08, cy + CELL * 0.15);
+    ctx.lineTo(cx + CELL * 0.45, cy + CELL * 0.42);
+    ctx.lineTo(cx + CELL * 0.3, cy + CELL * 0.52);
+    ctx.lineTo(cx - CELL * 0.3, cy + CELL * 0.52);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = glowColor + Math.round(160 * pulse).toString(16).padStart(2, '0');
+    ctx.lineWidth = 2; ctx.stroke();
+
+    // Left side hall
+    ctx.fillStyle = '#1e1e32';
+    ctx.beginPath();
+    ctx.moveTo(cx - CELL * 0.48, cy + CELL * 0.1);
+    ctx.lineTo(cx - CELL * 0.36, cy - CELL * 0.02);
+    ctx.lineTo(cx - CELL * 0.2, cy - CELL * 0.02);
+    ctx.lineTo(cx - CELL * 0.2, cy + CELL * 0.18);
+    ctx.lineTo(cx - CELL * 0.44, cy + CELL * 0.18);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#6d4c41';
+    ctx.beginPath();
+    ctx.moveTo(cx - CELL * 0.44, cy - CELL * 0.02);
+    ctx.lineTo(cx - CELL * 0.38, cy - CELL * 0.1);
+    ctx.lineTo(cx - CELL * 0.22, cy - CELL * 0.02);
+    ctx.closePath(); ctx.fill();
+
+    // Right side hall
+    ctx.fillStyle = '#1e1e32';
+    ctx.beginPath();
+    ctx.moveTo(cx + CELL * 0.48, cy + CELL * 0.1);
+    ctx.lineTo(cx + CELL * 0.36, cy - CELL * 0.02);
+    ctx.lineTo(cx + CELL * 0.2, cy - CELL * 0.02);
+    ctx.lineTo(cx + CELL * 0.2, cy + CELL * 0.18);
+    ctx.lineTo(cx + CELL * 0.44, cy + CELL * 0.18);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#6d4c41';
+    ctx.beginPath();
+    ctx.moveTo(cx + CELL * 0.44, cy - CELL * 0.02);
+    ctx.lineTo(cx + CELL * 0.38, cy - CELL * 0.1);
+    ctx.lineTo(cx + CELL * 0.22, cy - CELL * 0.02);
+    ctx.closePath(); ctx.fill();
+
+    // Main hall body
+    ctx.fillStyle = '#2a2a44';
+    ctx.fillRect(cx - CELL * 0.22, cy - CELL * 0.1, CELL * 0.44, CELL * 0.25);
+    ctx.fillStyle = glowColor;
+    ctx.globalAlpha = pulse;
+    ctx.beginPath();
+    ctx.moveTo(cx - CELL * 0.3, cy - CELL * 0.1);
+    ctx.lineTo(cx, cy - CELL * 0.38);
+    ctx.lineTo(cx + CELL * 0.3, cy - CELL * 0.1);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#ffd700aa';
+    ctx.lineWidth = 2; ctx.stroke();
+
+    // Main hall door
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#3d2b1f';
+    ctx.fillRect(cx - CELL * 0.08, cy + CELL * 0.02, CELL * 0.16, CELL * 0.13);
+    ctx.fillStyle = '#8d6e6344';
+    ctx.fillRect(cx - CELL * 0.04, cy + CELL * 0.02, CELL * 0.08, CELL * 0.13);
+    ctx.fillStyle = '#ffd70033';
+    ctx.beginPath(); ctx.arc(cx, cy + CELL * 0.04, 3, 0, Math.PI * 2); ctx.fill();
+
+    // Steps
+    ctx.fillStyle = '#555';
+    ctx.fillRect(cx - CELL * 0.18, cy + CELL * 0.15, CELL * 0.36, 3);
+    ctx.fillRect(cx - CELL * 0.15, cy + CELL * 0.18, CELL * 0.3, 2);
+
+    // Decorative lanterns
+    ctx.fillStyle = '#ff4444';
+    ctx.beginPath(); ctx.arc(cx - CELL * 0.25, cy - CELL * 0.05, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + CELL * 0.25, cy - CELL * 0.05, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffd70044';
+    ctx.beginPath(); ctx.arc(cx - CELL * 0.25, cy - CELL * 0.05, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + CELL * 0.25, cy - CELL * 0.05, 7, 0, Math.PI * 2); ctx.fill();
+
+    // Stone lions
+    ctx.fillStyle = '#757575';
+    ctx.beginPath(); ctx.arc(cx - CELL * 0.32, cy + CELL * 0.22, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + CELL * 0.32, cy + CELL * 0.22, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#555';
+    ctx.beginPath(); ctx.arc(cx - CELL * 0.32, cy + CELL * 0.19, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + CELL * 0.32, cy + CELL * 0.19, 3, 0, Math.PI * 2); ctx.fill();
+
+    // Heaven light pillar
+    ctx.globalAlpha = (Math.sin(elapsed * 3) * 0.3 + 0.3) * 0.35;
+    const grad2 = ctx.createRadialGradient(cx, cy - CELL * 0.4, 0, cx, cy - CELL * 0.4, CELL * 0.45);
+    grad2.addColorStop(0, 'rgba(255,215,0,0.5)');
+    grad2.addColorStop(0.5, 'rgba(255,215,0,0.15)');
+    grad2.addColorStop(1, 'rgba(255,215,0,0)');
+    ctx.fillStyle = grad2;
+    ctx.beginPath(); ctx.arc(cx, cy - CELL * 0.4, CELL * 0.45, 0, Math.PI * 2); ctx.fill();
+
+    ctx.fillStyle = '#ffffff33';
+    ctx.globalAlpha = (Math.sin(elapsed * 5) * 0.5 + 0.5) * 0.2;
+    ctx.fillRect(cx - 2, cy - CELL * 0.55, 4, CELL * 0.2);
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  private drawEndpoints(): void {
+    if (this.paths.length === 0) return;
+    for (let pi = 0; pi < this.paths.length; pi++) {
+      const isActive = !this.currentActivePaths || this.currentActivePaths.includes(pi);
+      const path = this.paths[pi];
+      if (path.length === 0) continue;
+      this.drawEntrance(path[0], pi, isActive);
+    }
+  }
+
+  private drawEntrance(p: GridPoint, index: number, active: boolean): void {
+    const ctx = this.ctx;
+    const cx = (p.x + 0.5) * CELL, cy = (p.y + 0.5) * CELL;
+    const pulse = Math.sin(index * 2.7 + Date.now() * 0.003) * 0.2 + 0.8;
+    ctx.save();
+    if (active) {
+      ctx.fillStyle = '#0a0a0e';
+      ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.42, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(180,40,40,0.12)';
+      ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.5, 0, Math.PI * 2); ctx.fill();
+      const grad = ctx.createRadialGradient(cx, cy - 6, 0, cx, cy - 6, CELL * 0.3);
+      grad.addColorStop(0, `rgba(180,50,50,${0.15 * pulse})`);
+      grad.addColorStop(1, 'rgba(180,50,50,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(cx, cy - 6, CELL * 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = `rgba(220,60,60,${0.5 * pulse})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.4, Math.PI, 0); ctx.closePath(); ctx.stroke();
+      ctx.fillStyle = '#ff6464';
+      ctx.font = 'bold 16px "Microsoft YaHei",sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('入', cx, cy - 3);
+      ctx.fillStyle = `rgba(255,100,80,${0.2 * pulse})`;
+      ctx.beginPath(); ctx.arc(cx, cy - 6, CELL * 0.08 + (1 - pulse) * 6, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.fillStyle = '#1a1a1e';
+      ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.42, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#2a2a2e';
+      ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.38, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.4, Math.PI, 0); ctx.closePath(); ctx.stroke();
+      ctx.fillStyle = '#666';
+      ctx.font = 'bold 14px "Microsoft YaHei",sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('封', cx, cy - 3);
+      for (let i = 0; i < 3; i++) {
+        ctx.strokeStyle = '#555';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        const angle = (i / 3) * Math.PI;
+        ctx.moveTo(cx - CELL * 0.25 * Math.cos(angle), cy - 10 - CELL * 0.25 * Math.sin(angle));
+        ctx.lineTo(cx + CELL * 0.25 * Math.cos(angle), cy - 10 + CELL * 0.25 * Math.sin(angle));
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
   }
 
   private roundRect(x: number, y: number, w: number, h: number, r: number): void {

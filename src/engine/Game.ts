@@ -4,7 +4,7 @@
 //   TowerOperations — 塔操作（放置/升级/出售/索敌）
 //   TowerCombat    — 塔战斗（攻击/弹道/伤害/光环/BOSS/撞塔）
 
-import type { LevelConfig, TowerConfig, TargetPolicy, WaveConfig, ChallengeDef } from '../types';
+import type { LevelConfig, TowerConfig, TargetPolicy, WaveConfig, ChallengeDef, FormationTile, FormationType, WaveSnapshot, BattleReport, TowerSummary } from '../types';
 import { checkChallenge } from '../repo/challenge';
 import { mulberry32 } from './PRNG';
 import { type AttackStrategyRegistry, defaultAttackRegistry } from './combat/AttackStrategies';
@@ -52,6 +52,10 @@ export interface GameState {
   challengeFailedReason: string;
   challengeId: string | null;
   challengeName: string;
+  backgroundId?: string;
+  base?: { x: number; y: number };
+  blocked?: ReadonlyArray<{ col: number; row: number; terrain: string }>;
+  activePaths?: ReadonlyArray<number>;
   challengeProgress?: {
     kind: string;
     elapsed?: number;
@@ -96,6 +100,14 @@ export class Game {
   private challengeUpgraded = false;
   private challengeTotalSpent = 0;
   private challengeStartTime = 0;
+
+  // —— 无尽模式跳关 + 阵眼 + 战报 ——
+  endlessBlessings: string[] = [];
+  private waveStartTime = 0;
+  private lastWaveClearTime = 0;
+  private waveRecords: WaveSnapshot[] = [];
+
+  getWaveClearTime(): number { return this.lastWaveClearTime; }
 
   setChallenge(levelChallenges: ChallengeDef[] | undefined): void {
     if (!levelChallenges || levelChallenges.length === 0) { this.activeChallenge = null; return; }
@@ -239,11 +251,12 @@ export class Game {
     }
     if (events.waveCleared) {
       this.waveManager.waveIndex++;
+      this.lastWaveClearTime = Date.now();
       this.towerOps.stones += wave.clearBonus;
       this.recordEconomy(wave.clearBonus, 'waveClear');
       const refund = this.mods.waveRefund();
       if (refund > 0) { this.towerOps.stones += Math.floor(wave.clearBonus * refund); this.recordEconomy(Math.floor(wave.clearBonus * refund), 'waveRefund'); }
-      // 无尽模式永不通关，由 tickEndless 动态加波；普通关卡打完所有波才获胜
+      this.recordWaveSnapshot(wave, events, false);
       if (this.level.id !== 'endless' && this.waveManager.waveIndex >= this.waves.length) {
         this.status = 'won';
         this.msg = '守阵成功！山门无恙。';
@@ -385,6 +398,106 @@ export class Game {
     return this.waveManager.waveIndex * 100 + this.clearedWaves * 100 + Math.floor(this.towerOps.stones / 10);
   }
 
+  setWaveStartTime(t: number): void { this.waveStartTime = t; }
+  getWaveStartTime(): number { return this.waveStartTime; }
+
+  /** 跳过 n 波：递增 waveIndex 并发放清波奖励 */
+  skipWaves(n: number): number {
+    const actual = Math.min(n, Math.max(0, 84 - this.waveManager.waveIndex));
+    for (let i = 0; i < actual; i++) {
+      this.waveManager.waveIndex++;
+      const bonus = 100 + this.waveManager.waveIndex * 15;
+      this.towerOps.stones += bonus;
+      this.recordEconomy(bonus, 'waveSkip');
+    }
+    return actual;
+  }
+
+  /** 记录波次快照 */
+  private recordWaveSnapshot(wave: WaveConfig, events: { killed: number; spawned: number; leacked: number }, skipped: boolean): void {
+    const towerDps: { towerId: string; damage: number; kills: number }[] = [];
+    for (const t of this.towerOps.towers) {
+      const lv = t.def.levels[t.level];
+      const dps = Math.round(lv.dmg * lv.rate);
+      towerDps.push({ towerId: t.def.id, damage: dps, kills: 0 });
+    }
+    this.waveRecords.push({
+      wave: this.waveManager.waveIndex,
+      isBoss: ((this.waveManager.waveIndex) % 5) === 0,
+      clearTime: this.waveManager.elapsed - (this.waveRecords.length > 0 ? this.waveRecords[this.waveRecords.length - 1].clearTime : 0),
+      skipped,
+      spawnCount: events.spawned,
+      killed: events.killed,
+      leaked: events.leacked,
+      stonesBefore: this.towerOps.stones - wave.clearBonus,
+      stonesGained: wave.clearBonus,
+      towerDps,
+    });
+  }
+
+  /** 获取某格上的阵眼类型 */
+  formationAt(col: number, row: number): FormationType | null {
+    return this.towerOps.formationAt(col, row);
+  }
+
+  /** 获取该局全部阵眼 */
+  formations(): readonly FormationTile[] {
+    return this.level.formations ?? [];
+  }
+
+  /** 触发无尽主动技能（天雷）：全屏 2000 真伤 */
+  triggerEndlessSkill(): boolean {
+    if (this.skillLastUsedWave !== undefined && this.waveManager.waveIndex - this.skillLastUsedWave < 25) {
+      return false;
+    }
+    this.skillLastUsedWave = this.waveManager.waveIndex;
+    // 对场上所有敌人造成 2000 真伤
+    for (const e of this.waveManager.enemies) {
+      e.hp -= 2000;
+    }
+    // 视觉特效：每个敌人位置 + 全屏冲击波
+    for (const e of this.waveManager.enemies) {
+      this.towerCombat.effects.push({
+        kind: 'shockwave', x: e.x, y: e.y, color: '#ffd700', life: 0.6, maxLife: 0.6, vy: 0,
+      });
+    }
+    // 全屏中心爆发
+    this.towerCombat.effects.push({
+      kind: 'burst', x: this.level.cols / 2, y: this.level.rows / 2, color: '#ffd700', life: 0.5, maxLife: 0.5, vy: 0,
+    });
+    this.msg = '天雷·灭！全屏清剿！';
+    return true;
+  }
+
+  /** 主动技能是否可用 */
+  get endlessSkillReady(): boolean {
+    return this.skillLastUsedWave === undefined || this.waveManager.waveIndex - this.skillLastUsedWave >= 25;
+  }
+  private skillLastUsedWave: number | undefined = undefined;
+
+  /** 导出战报 */
+  get battleReport(): BattleReport {
+    const towerSummary: TowerSummary[] = this.towerOps.towers.map((t) => {
+      const lv = t.def.levels[t.level];
+      return {
+        towerId: t.def.id, level: t.level,
+        col: t.col, row: t.row,
+        onFormation: this.formationAt(t.col, t.row),
+        totalDamage: Math.round(lv.dmg * lv.rate * this.waveManager.elapsed), totalKills: 0,
+        placedAtWave: 0,
+      };
+    });
+    return {
+      date: new Date().toISOString(), mode: 'endless',
+      totalWaves: this.waveManager.waveIndex,
+      score: this.endlessScore,
+      finalStones: Math.floor(this.towerOps.stones),
+      blessings: this.endlessBlessings,
+      waves: this.waveRecords,
+      towers: towerSummary,
+    };
+  }
+
   // ---------- 挑战 ----------
   get challengeSucceeded(): boolean {
     return this.activeChallenge !== null && !this.challengeFailed;
@@ -414,6 +527,10 @@ export class Game {
       challengeFailedReason: this.challengeFailedReason,
       challengeId: this.activeChallenge?.id ?? null,
       challengeName: this.activeChallenge?.name ?? '',
+      backgroundId: this.level.backgroundId,
+      base: this.level.base,
+      blocked: this.level.blocked,
+      activePaths: this.level.activePaths,
     };
 
     // 挑战进度

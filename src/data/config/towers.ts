@@ -5,7 +5,7 @@ import type { TowerConfig } from '../../types';
 // L7/L0 总 DPS 从 ~437 倍降至 ~115 倍，升级总花费约降 30%
 export const TOWERS: Record<string, TowerConfig> = {
   flying_sword: {
-    id: 'flying_sword', name: '飞剑修士', icon: '剑', color: '#7fb3ff', school: 'sword',
+    id: 'flying_sword', name: '飞剑修士', icon: '🗡️', color: '#7fb3ff', school: 'sword',
     cost: 70, sellRatio: 0.6, behavior: 'projectile', targetPolicy: 'first',
     desc: '单体均衡·剑修',
     levels: [
@@ -20,7 +20,7 @@ export const TOWERS: Record<string, TowerConfig> = {
     ],
   },
   talisman: {
-    id: 'talisman', name: '符箓修士', icon: '符', color: '#b388ff', school: 'talisman',
+    id: 'talisman', name: '符箓修士', icon: '📜', color: '#b388ff', school: 'talisman',
     cost: 85, sellRatio: 0.6, behavior: 'projectile', targetPolicy: 'first', hitsAir: true,
     desc: '远程速射·符修',
     levels: [
@@ -35,7 +35,7 @@ export const TOWERS: Record<string, TowerConfig> = {
     ],
   },
   spear: {
-    id: 'spear', name: '长枪兵修', icon: '枪', color: '#ffd54f', school: 'spear',
+    id: 'spear', name: '长枪兵修', icon: '🔱', color: '#ffd54f', school: 'spear',
     cost: 75, sellRatio: 0.6, behavior: 'pierce', targetPolicy: 'first',
     desc: '横扫范围全敌·枪修',
     levels: [
@@ -50,7 +50,7 @@ export const TOWERS: Record<string, TowerConfig> = {
     ],
   },
   aura: {
-    id: 'aura', name: '聚灵阵', icon: '阵', color: '#81c784', school: 'aura',
+    id: 'aura', name: '聚灵阵', icon: '✨', color: '#81c784', school: 'aura',
     cost: 90, sellRatio: 0.6, behavior: 'aura', targetPolicy: 'nearest',
     desc: '光环增益·阵法',
     levels: [
@@ -65,7 +65,7 @@ export const TOWERS: Record<string, TowerConfig> = {
     ],
   },
   fire_mage: {
-    id: 'fire_mage', name: '火法修士', icon: '火', color: '#ff7043', school: 'fire',
+    id: 'fire_mage', name: '火法修士', icon: '🔥', color: '#ff7043', school: 'fire',
     cost: 130, sellRatio: 0.6, behavior: 'aoe', targetPolicy: 'strongest', hitsAir: true,
     desc: '范围溅射·法修',
     levels: [
@@ -80,7 +80,7 @@ export const TOWERS: Record<string, TowerConfig> = {
     ],
   },
   thunder_mage: {
-    id: 'thunder_mage', name: '雷法修士', icon: '雷', color: '#7986cb', school: 'thunder',
+    id: 'thunder_mage', name: '雷法修士', icon: '⚡', color: '#7986cb', school: 'thunder',
     cost: 150, sellRatio: 0.6, behavior: 'chain', targetPolicy: 'first', hitsAir: true,
     desc: '链电跳跃·法修',
     levels: [
@@ -95,7 +95,7 @@ export const TOWERS: Record<string, TowerConfig> = {
     ],
   },
   ice_mage: {
-    id: 'ice_mage', name: '寒冰修士', icon: '冰', color: '#4fc3f7', school: 'ice',
+    id: 'ice_mage', name: '寒冰修士', icon: '❄️', color: '#4fc3f7', school: 'ice',
     cost: 95, sellRatio: 0.6, behavior: 'projectile', targetPolicy: 'first', hitsAir: true,
     desc: '单体减速·冰修',
     levels: [
@@ -107,6 +107,21 @@ export const TOWERS: Record<string, TowerConfig> = {
       { realm: '渡劫', dmg: 170, rate: 1.75, range: 3.9, upgradeCost: 310, slow: { mul: 0.25, duration: 3.5 } },
       { realm: '大乘', dmg: 290, rate: 1.9, range: 4.2, upgradeCost: 460, slow: { mul: 0.2, duration: 4.0 } },
       { realm: '飞升', dmg: 500, rate: 2.0, range: 4.5, upgradeCost: 650, slow: { mul: 0.15, duration: 5.0 } },
+    ],
+  },
+  mine_tower: {
+    id: 'mine_tower', name: '震地雷', icon: '💥', color: '#8d6e63', school: 'earth',
+    cost: 150, sellRatio: 0.6, behavior: 'mine', targetPolicy: 'nearest', hitsBurrowed: true,
+    desc: '地雷触发·范围震荡，可伤地下',
+    levels: [
+      { realm: '炼气', dmg: 80, rate: 0.125, range: 1.5, aoeRadius: 1.0 },
+      { realm: '筑基', dmg: 140, rate: 0.14, range: 1.7, upgradeCost: 100, aoeRadius: 1.2 },
+      { realm: '金丹', dmg: 240, rate: 0.15, range: 1.9, upgradeCost: 150, aoeRadius: 1.4, crit: 0.15 },
+      { realm: '元婴', dmg: 420, rate: 0.16, range: 2.1, upgradeCost: 220, aoeRadius: 1.6, crit: 0.20 },
+      { realm: '化神', dmg: 720, rate: 0.18, range: 2.3, upgradeCost: 320, aoeRadius: 1.8, crit: 0.25 },
+      { realm: '渡劫', dmg: 1200, rate: 0.20, range: 2.5, upgradeCost: 460, aoeRadius: 2.0, crit: 0.30 },
+      { realm: '大乘', dmg: 2000, rate: 0.22, range: 2.7, upgradeCost: 640, aoeRadius: 2.2, crit: 0.35 },
+      { realm: '飞升', dmg: 3400, rate: 0.25, range: 3.0, upgradeCost: 900, aoeRadius: 2.5, crit: 0.40 },
     ],
   },
 };

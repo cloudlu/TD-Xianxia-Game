@@ -44,6 +44,10 @@ export const app = {
   profileName: '' as string,
   save: null as SaveRepo | null,
   progression: withDefaults({}),
+  // 无尽模式 UI 状态
+  endlessSkipDisplay: 0 as number,
+  endlessBlessings: [] as string[],
+  endlessSkillReady: false,
 };
 
 /* progression 通过 setter 自动保存（每次重新赋值即触发 persist） */

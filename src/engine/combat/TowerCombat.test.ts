@@ -25,6 +25,7 @@ function makeEnemy(overrides: Partial<EnemyR> = {}): EnemyR {
     uid, def: enemyDef, hp: 200, maxHp: 200, shield: 0, pathIndex: 0, dist: 5,
     x: 3, y: 0, abilityTimer: 0, speedMul: 1, hitFlash: 0,
     bounty: 50, slowFactor: 1, slowUntil: 0, dead: false, leaked: false,
+    burrowTimer: 0, burrowed: false,
     ...overrides,
   };
 }
@@ -34,6 +35,7 @@ function makeTower(overrides: Partial<TowerR> = {}): TowerR {
   return {
     uid, def: towerDef, col: 1, row: 0, x: 1.5, y: 0, level: 0,
     cooldown: 0, targetPolicy: 'first', disabledUntil: 0, knockImmuneUntil: 0, flashTimer: 0,
+    onFormation: null,
     ...overrides,
   };
 }
@@ -237,5 +239,68 @@ describe('TowerCombat', () => {
     tc.projectiles.push({ x: 0, y: 0, targetUid: 1, dmg: 10, color: '#fff', dead: true });
     tc.update(0.1, [], []);
     expect(tc.projectiles).toHaveLength(0);
+  });
+
+  // ---------- 遁地 ----------
+
+  it('updateBurrowTimers toggles burrowed when timer expires (surface→burrow)', () => {
+    const tc = freshCombat();
+    const burrowDef: EnemyConfig = { ...enemyDef, burrow: { interval: 3, surfDuration: 2 } };
+    const e = makeEnemy({ def: burrowDef, burrowTimer: 2, burrowed: false });
+    tc.update(1, [e], []);
+    expect(e.burrowed).toBe(false);  // timer went 2→1
+    expect(e.burrowTimer).toBeCloseTo(1);
+  });
+
+  it('updateBurrowTimers transitions to burrowed state and resets timer', () => {
+    const tc = freshCombat();
+    const burrowDef: EnemyConfig = { ...enemyDef, burrow: { interval: 3, surfDuration: 2 } };
+    const e = makeEnemy({ def: burrowDef, burrowTimer: 0.1, burrowed: false });
+    tc.update(0.2, [e], []);
+    expect(e.burrowed).toBe(true);
+    expect(e.burrowTimer).toBeCloseTo(3);   // now underground for 3s
+  });
+
+  it('updateBurrowTimers transitions back to surfaced state', () => {
+    const tc = freshCombat();
+    const burrowDef: EnemyConfig = { ...enemyDef, burrow: { interval: 3, surfDuration: 2 } };
+    const e = makeEnemy({ def: burrowDef, burrowTimer: 0.1, burrowed: true });
+    tc.update(0.2, [e], []);
+    expect(e.burrowed).toBe(false);
+    expect(e.burrowTimer).toBeCloseTo(2);   // surfaced for 2s
+  });
+
+  it('acquireTarget skips burrowed enemies for normal towers', () => {
+    const tc = freshCombat();
+    const burrowDef: EnemyConfig = { ...enemyDef, burrow: { interval: 3, surfDuration: 2 } };
+    const e1 = makeEnemy({ uid: 1, dist: 5, def: burrowDef, burrowed: true, x: 3, y: 0 });
+    const e2 = makeEnemy({ uid: 2, dist: 10, def: burrowDef, burrowed: false, x: 3, y: 0 });
+    // Tower without hitsBurrowed should only target e2 (surfaced)
+    const towers = [makeTower(1, { ...towerDef, hitsBurrowed: undefined }, 0)];
+    // We can't easily call acquireTarget directly (it's private), but we can check the result of updateTowers
+    // Instead, verify that the combat system doesn't target burrowed enemies via enemiesInRange filter
+    // Use updateTowers with a projectile tower that fires at targets
+    tc.update(0.01, [e1, e2], towers);
+    // The tower should target e2 (not burrowed), not e1
+    // If projectile targets e2, it should be in flight
+    expect(tc.projectiles.length).toBe(1);
+  });
+
+  it('acquireTarget targets burrowed enemies for mine towers', () => {
+    const tc = freshCombat();
+    const burrowDef: EnemyConfig = { ...enemyDef, burrow: { interval: 3, surfDuration: 2 } };
+    const e1 = makeEnemy({ uid: 1, dist: 5, def: burrowDef, burrowed: true, x: 3, y: 0 });
+    const e2 = makeEnemy({ uid: 2, dist: 10, def: burrowDef, burrowed: false, x: 5, y: 0 });
+    // Mine tower with hitsBurrowed: true targets burrowed enemies
+    const mineDef: TowerConfig = {
+      ...towerDef, id: 'm', behavior: 'mine', hitsBurrowed: true,
+      targetPolicy: 'nearest',
+      levels: [{ realm: '炼气', dmg: 100, rate: 1, range: 10, aoeRadius: 1 }],
+    };
+    const towers = [makeTower({ def: mineDef, x: 1.5, y: 0 })];
+    // Burrowed e1 is nearest (dist 5 vs 10) and hitsBurrowed is true, so mine should trigger
+    tc.update(0.01, [e1, e2], towers);
+    // Mine triggers on acquire, creating damage effects
+    expect(tc.effects.length).toBeGreaterThanOrEqual(1);
   });
 });

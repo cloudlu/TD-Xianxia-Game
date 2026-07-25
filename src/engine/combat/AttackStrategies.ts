@@ -30,6 +30,7 @@ export interface SpawnedProjectile {
   dmg: number;
   color: string;
   dead: boolean;
+  crit?: boolean;
   slowMul?: number;       // 命中减速倍率（0.5=半速），undefined=不减速
   slowDuration?: number;   // 减速持续秒数
 }
@@ -47,7 +48,7 @@ export interface CombatContext {
   rng: () => number;
   effectiveStats: (tower: CombatTower) => TowerStats;
   spawnProjectile: (p: SpawnedProjectile) => void;
-  damage: (enemy: CombatEnemy, rawDamage: number) => void;
+  damage: (enemy: CombatEnemy, rawDamage: number, isCrit?: boolean) => void;
   enemiesInRange: (tower: CombatTower, range: number) => CombatEnemy[];
   enemiesNearPoint: (x: number, y: number, radius: number) => CombatEnemy[];
 }
@@ -56,10 +57,11 @@ export interface AttackStrategy {
   execute(tower: CombatTower, primary: CombatEnemy, ctx: CombatContext): void;
 }
 
-/** 计算一次命中的最终伤害：base × dmgMul，暴击 ×2 */
-export function rollDamage(baseDmg: number, dmgMul: number, critChance: number, rng: () => number): number {
+/** 计算一次命中的最终伤害：base × dmgMul，暴击 ×2，返回是否暴击 */
+export function rollDamage(baseDmg: number, dmgMul: number, critChance: number, rng: () => number): { dmg: number; crit: boolean } {
   const dmg = baseDmg * dmgMul;
-  return critChance > 0 && rng() < critChance ? dmg * 2 : dmg;
+  const isCrit = critChance > 0 && rng() < critChance;
+  return { dmg: isCrit ? dmg * 2 : dmg, crit: isCrit };
 }
 
 /** 暴击率上限（设计文档 §9.5：crit ≤ 0.6） */
@@ -86,9 +88,9 @@ export class ProjectileStrategy implements AttackStrategy {
     const lv = tower.def.levels[tower.level];
     const stats = ctx.effectiveStats(tower);
     const critChance = Math.min(CRIT_CAP, (lv.crit ?? 0) + stats.critBonus);
-    const dmg = rollDamage(lv.dmg, stats.dmgMul, critChance, ctx.rng);
+    const { dmg, crit } = rollDamage(lv.dmg, stats.dmgMul, critChance, ctx.rng);
     ctx.spawnProjectile({
-      x: tower.x, y: tower.y, targetUid: primary.uid, dmg, color: tower.def.color, dead: false,
+      x: tower.x, y: tower.y, targetUid: primary.uid, dmg, crit, color: tower.def.color, dead: false,
       slowMul: lv.slow?.mul, slowDuration: lv.slow?.duration,
     });
   }
@@ -100,10 +102,10 @@ export class PierceStrategy implements AttackStrategy {
     const lv = tower.def.levels[tower.level];
     const stats = ctx.effectiveStats(tower);
     const critChance = Math.min(CRIT_CAP, (lv.crit ?? 0) + stats.critBonus);
-    const dmg = rollDamage(lv.dmg, stats.dmgMul, critChance, ctx.rng);
+    const { dmg, crit } = rollDamage(lv.dmg, stats.dmgMul, critChance, ctx.rng);
     const range = lv.range + stats.rangeAdd;
     const hits = ctx.enemiesInRange(tower, range);   // 范围内全部敌人（扫荡）
-    for (const e of hits) ctx.damage(e, dmg);
+    for (const e of hits) ctx.damage(e, dmg, crit);
     // 视觉弹道（伤害已即时结算，dmg=0）
     ctx.spawnProjectile({
       x: tower.x, y: tower.y, targetUid: primary.uid, dmg: 0, color: tower.def.color, dead: false,
@@ -117,10 +119,10 @@ export class AoeStrategy implements AttackStrategy {
     const lv = tower.def.levels[tower.level];
     const stats = ctx.effectiveStats(tower);
     const critChance = Math.min(CRIT_CAP, (lv.crit ?? 0) + stats.critBonus);
-    const dmg = rollDamage(lv.dmg, stats.dmgMul, critChance, ctx.rng);
+    const { dmg, crit } = rollDamage(lv.dmg, stats.dmgMul, critChance, ctx.rng);
     const radius = lv.aoeRadius ?? 0;
     const hits = radius > 0 ? ctx.enemiesNearPoint(primary.x, primary.y, radius) : [primary];
-    for (const e of hits) ctx.damage(e, dmg);
+    for (const e of hits) ctx.damage(e, dmg, crit);
     ctx.spawnProjectile({ x: tower.x, y: tower.y, targetUid: primary.uid, dmg: 0, color: tower.def.color, dead: false });
   }
 }
@@ -131,11 +133,11 @@ export class ChainStrategy implements AttackStrategy {
     const lv = tower.def.levels[tower.level];
     const stats = ctx.effectiveStats(tower);
     const critChance = Math.min(CRIT_CAP, (lv.crit ?? 0) + stats.critBonus);
-    const dmg = rollDamage(lv.dmg, stats.dmgMul, critChance, ctx.rng);
+    const { dmg, crit } = rollDamage(lv.dmg, stats.dmgMul, critChance, ctx.rng);
     const range = lv.chainRange ?? 0;
     const count = lv.chainCount ?? 1;
     const hit = new Set<number>([primary.uid]);
-    ctx.damage(primary, dmg);
+    ctx.damage(primary, dmg, crit);
     let cur = primary;
     for (let i = 1; i < count; i++) {
       const nearby = ctx.enemiesNearPoint(cur.x, cur.y, range).filter((e) => !hit.has(e.uid));
@@ -143,9 +145,23 @@ export class ChainStrategy implements AttackStrategy {
       nearby.sort((a, b) => distSq(a, cur) - distSq(b, cur));
       cur = nearby[0];
       hit.add(cur.uid);
-      ctx.damage(cur, dmg);
+      ctx.damage(cur, dmg, crit);
     }
     ctx.spawnProjectile({ x: tower.x, y: tower.y, targetUid: primary.uid, dmg: 0, color: tower.def.color, dead: false });
+  }
+}
+
+/** 震地雷：触发后对范围内所有敌人造成伤害，无弹道 */
+export class MineStrategy implements AttackStrategy {
+  execute(tower: CombatTower, primary: CombatEnemy, ctx: CombatContext): void {
+    const lv = tower.def.levels[tower.level];
+    const stats = ctx.effectiveStats(tower);
+    const critChance = Math.min(CRIT_CAP, (lv.crit ?? 0) + stats.critBonus);
+    const { dmg, crit } = rollDamage(lv.dmg, stats.dmgMul, critChance, ctx.rng);
+    const range = lv.range + stats.rangeAdd;
+    const radius = lv.aoeRadius ?? 0.8;
+    const hits = radius > 0 ? ctx.enemiesNearPoint(primary.x, primary.y, radius) : [primary];
+    for (const e of hits) ctx.damage(e, dmg, crit);
   }
 }
 
@@ -161,12 +177,13 @@ export class AttackStrategyRegistry {
   get(behavior: TowerBehavior): AttackStrategy | undefined { return this.map.get(behavior); }
 }
 
-/** 默认注册表：装填 projectile / pierce / aoe / chain */
+/** 默认注册表：装填 projectile / pierce / aura / aoe / chain / mine */
 export function defaultAttackRegistry(): AttackStrategyRegistry {
   const r = new AttackStrategyRegistry();
   r.register('projectile', new ProjectileStrategy());
   r.register('pierce', new PierceStrategy());
   r.register('aoe', new AoeStrategy());
   r.register('chain', new ChainStrategy());
+  r.register('mine', new MineStrategy());
   return r;
 }

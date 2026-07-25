@@ -1,7 +1,7 @@
 // 类型定义 —— 对应设计文档 §3-§5 的配置 schema
 // P1 仅含数值/组合所需字段，behavior/ability 等随阶段扩展
 
-export type TowerBehavior = 'projectile' | 'pierce' | 'aura' | 'aoe' | 'chain';
+export type TowerBehavior = 'projectile' | 'pierce' | 'aura' | 'aoe' | 'chain' | 'mine';
 
 /** 难度模式（独立命名，不用境界名避免混淆） */
 export type Difficulty = 'simple' | 'normal' | 'hard';
@@ -44,6 +44,7 @@ export interface TowerConfig {
   targetPolicy: TargetPolicy;
   color: string;
   hitsAir?: boolean;      // 对空：可攻击飞行敌人（符箓/法术为 true）
+  hitsBurrowed?: boolean; // 可攻击地下敌人（震地雷为 true）
   desc: string;
   levels: TowerLevelConfig[];
 }
@@ -65,6 +66,7 @@ export interface EnemyConfig {
   dodge?: number;         // 闪避概率 0..1：每次受击有概率完全规避
   stealth?: boolean;      // 隐身：仅在"破隐"光环（聚灵阵）范围内可被锁定
   split?: { child: string; count: number };   // 死亡分裂：生成 count 个 child（子体赏金应为 0）
+  burrow?: { interval: number; surfDuration: number }; // 遁地：在地下游走 interval 秒后上浮 surfDuration 秒，循环
   bossAbility?: {                               // BOSS 周期技能（§5.4 护栏）
     interval: number;     // 触发周期（秒）
     charmRadius?: number; // 魅惑范围（格）：范围内塔瘫痪
@@ -88,6 +90,36 @@ export interface WaveConfig {
 }
 
 export interface GridPoint { x: number; y: number; } // 格坐标 (col, row)
+
+export type TerrainType = 'rock' | 'tree' | 'water';
+
+export interface BlockedCell {
+  col: number;
+  row: number;
+  terrain: TerrainType;
+}
+
+export interface ChapterBackground {
+  id: string;
+  cellA: string;           // 棋盘两色格 A
+  cellB: string;           // 棋盘两色格 B
+  pathColor: string;       // 路径底色
+  pathGlow: string;        // 路径发光色
+  baseGlow: string;        // 宗门光效色
+  ambient?: { color: string; count: number };  // 飘浮粒子
+}
+
+/** 章节共享地图配置：每章一份，l1/l2/l3 引用 */
+export interface ChapterMapConfig {
+  id: string;              // 'ch1'
+  cols: number;
+  rows: number;
+  paths: GridPoint[][];    // 所有路径，汇聚到 base
+  base: GridPoint;         // 宗门入口坐标
+  blocked?: BlockedCell[];
+  backgroundId: string;
+  actives: { l1: number[]; l2: number[]; l3: number[] };  // 每关开放的路径 index
+}
 
 /** 剧情片段（设计文档 §8.4，弹窗渲染层消费） */
 export interface StoryBeat {
@@ -132,6 +164,64 @@ export interface LevelConfig {
   hpMul?: number;
   /** 此处可选的挑战列表（选关时显示供玩家选一个） */
   challenges?: ChallengeDef[];
+  /** 阵眼布局（无尽或普通关卡均可使用） */
+  formations?: FormationTile[];
+  /** 背景主题 id */
+  backgroundId?: string;
+  /** 宗门入口坐标（汇聚路径的终点） */
+  base?: GridPoint;
+  /** 本关开放的路径 index（不出兵的路径地图上隐藏） */
+  activePaths?: number[];
+  /** 不可建区域（岩石/树木/水域） */
+  blocked?: BlockedCell[];
+}
+
+/** 阵眼类型 */
+export type FormationType = 'wind' | 'thunder' | 'earth' | 'spirit';
+
+/** 阵眼格定义 */
+export interface FormationTile {
+  col: number;
+  row: number;
+  type: FormationType;
+}
+
+/** 波次快照（战斗记录用） */
+export interface WaveSnapshot {
+  wave: number;
+  isBoss: boolean;
+  clearTime: number;
+  skipped: boolean;
+  spawnCount: number;
+  killed: number;
+  leaked: number;
+  stonesBefore: number;
+  stonesGained: number;
+  towerDps: { towerId: string; damage: number; kills: number }[];
+}
+
+/** 塔战斗总结（战报用） */
+export interface TowerSummary {
+  towerId: string;
+  level: number;
+  col: number;
+  row: number;
+  onFormation: FormationType | null;
+  totalDamage: number;
+  totalKills: number;
+  placedAtWave: number;
+}
+
+/** 单局战报 */
+export interface BattleReport {
+  date: string;
+  mode: 'endless' | 'campaign';
+  totalWaves: number;
+  score: number;
+  finalStones: number;
+  blessings: string[];
+  waves: WaveSnapshot[];
+  towers: TowerSummary[];
 }
 
 /** 章节清单条目（设计文档 §8.2 manifest） */

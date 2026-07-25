@@ -11,7 +11,7 @@ import { clearedKey } from '../repo/progress';
 import { isUnlocked, computeStars, recordResult, awardContribution, setDifficulty, isClearedOn, isClearedAny, recordEndless, awardMilestones, isEndlessUnlocked, endlessMaxTowerLevel, globalTowerLevel, clearedStageCount, unlockedTowerIds, TOWER_LEVEL_THRESHOLDS, ENDLESS_UNLOCK_STAGES, TOWER_UNLOCK_TABLE } from '../repo/progressLevel';
 import type { ChallengeDef } from '../types';
 import { consumeDestiny, reincarnate } from '../repo/progressMeta';
-import { generateWave, endlessHpMul, endlessContrib, MILESTONES, ENDLESS_PATHS, prepTime } from '../engine/EndlessMode';
+import { generateWave, endlessHpMul, endlessContrib, MILESTONES, ENDLESS_PATHS, prepTime, calcSkip, SKIP_MESSAGES, BLESSINGS, pickBlessings, ENDLESS_FORMATIONS } from '../engine/EndlessMode';
 import { buildableFromPaths } from '../data/config/levels/buildable';
 import { REALM_STORIES, TOWER_UNLOCK_STORIES } from '../data/config/realmStories';
 
@@ -143,7 +143,7 @@ export function startLevel(id: string): void {
     app.currentLevel = lvl;
     levelSelect.classList.add('fade-out');
     setTimeout(() => { levelSelect.style.display = 'none'; levelSelect.classList.remove('fade-out'); }, 280);
-    board.configure(lvl.cols, lvl.rows, lvl.paths);
+    board.configure(lvl.cols, lvl.rows, lvl.paths, lvl.formations);
 
     audio.init(); audio.resume(); audio.startMusic();
 
@@ -404,20 +404,21 @@ export function startEndless(): void {
     return;
   }
   const board = app.board; if (!board) return;
-  const cols = 16, rows = 8;
+  const cols = 32, rows = 12;
   const level: LevelConfig = {
     id: 'endless', name: '无尽试炼', startStones: 600, lives: 3,
     cols, rows, paths: ENDLESS_PATHS,
     buildable: buildableFromPaths(cols, rows, ENDLESS_PATHS),
     hpMul: 1, waves: [],
     maxTowerLevel: endlessMaxTowerLevel(app.progression),
+    formations: ENDLESS_FORMATIONS,
   };
 
   const doStart = () => {
     app.currentLevel = level;
     levelSelect.classList.add('fade-out');
     setTimeout(() => { levelSelect.style.display = 'none'; levelSelect.classList.remove('fade-out'); }, 280);
-    board.configure(cols, rows, ENDLESS_PATHS);
+    board.configure(cols, rows, ENDLESS_PATHS, level.formations);
 
     audio.init(); audio.resume(); audio.startMusic();
     app.progression = pAfterDestiny;
@@ -493,14 +494,95 @@ export function refreshEndlessButton(): void {
 export function tickEndless(): void {
   if (!app.game || !app.currentLevel || app.currentLevel.id !== 'endless') return;
   if (app.game.status !== 'prep') return;
-  const wave = app.game.waveIndex;
-  // 自动生成下一波
+  if (app.paused) return;
+
+  let wave = app.game.waveIndex;
+
+  // 每 10 波弹加持选择（在开始下一波之前）
+  if (wave > 0 && wave % 10 === 0 && !app.game.endlessBlessings.includes(`milestone_${wave}`)) {
+    app.game.endlessBlessings.push(`milestone_${wave}`);
+    showBlessingChoice(wave);
+    return;
+  }
+
+  // 计算上一波通关耗时 → 跳关（使用冻结的 waveClearTime，不含暂停耗时）
+  const prevWave = app.game.clearedWaves;
+  if (prevWave > 0 && !skipCooldown) {
+    const waveEnd = app.game.getWaveClearTime();
+    const waveStart = app.game.getWaveStartTime();
+    if (waveStart > 0 && waveEnd > 0) {
+      const clearTime = (waveEnd - waveStart) / 1000;
+      const skip = calcSkip(clearTime, prevWave - 1);
+      if (skip > 0) {
+        const actual = app.game.skipWaves(skip);
+        if (actual > 0) {
+          app.endlessSkipDisplay = actual;
+          skipCooldown = true;
+          setTimeout(() => { skipCooldown = false; }, 2000);
+          wave = app.game.waveIndex; // 跳关后更新 wave
+
+          // 跳关后检查是否正好落在整数波 → 补弹加持
+          if (wave > 0 && wave % 10 === 0 && !app.game.endlessBlessings.includes(`milestone_${wave}`)) {
+            app.game.endlessBlessings.push(`milestone_${wave}`);
+            showBlessingChoice(wave);
+            return;
+          }
+        }
+      }
+    }
+  }
+
   app.game.setHpMul(endlessHpMul(wave));
   const w = generateWave(wave, endlessWaveSeed);
   app.game.addWave(w);
-  // 自动开始（不需要玩家点）
   app.game.startWave();
+  app.game.setWaveStartTime(Date.now());
 }
+
+/** 每 10 波弹加持选择 */
+function showBlessingChoice(wave: number): void {
+  const existing = app.game!.endlessBlessings;
+  const options = pickBlessings(wave * 31 + endlessWaveSeed, 3, existing);
+
+  const lines = [
+    `第 ${wave} 波里程碑——选择一项加持：`,
+    '',
+    options.map((b, i) =>
+      `<button class="blessing-opt" data-idx="${i}" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px 16px;background:linear-gradient(180deg,#2a3450,#1c2640);border:1px solid #3a4a6a;border-radius:6px;color:#e0e0e0;cursor:pointer;font-size:16px">
+        <span style="color:#ffd93d;font-weight:bold">${b.name}</span>
+        <span style="color:#8b8ba0;margin-left:12px">${b.desc}</span>
+      </button>`
+    ).join(''),
+  ];
+
+  const beat: ConfirmBeat = {
+    chapter: '阵 眼 共 鸣',
+    title: '天 地 加 持',
+    lines,
+    btn: '',
+    html: true,
+  };
+  showStory(beat, () => { app.paused = false; });
+  // 隐藏跳过按钮
+  const skipBtn = document.getElementById('storySkip');
+  if (skipBtn) skipBtn.style.display = 'none';
+
+  setTimeout(() => {
+    const body = document.getElementById('storyBody');
+    if (!body) return;
+    body.querySelectorAll('.blessing-opt').forEach((el) => {
+      el.addEventListener('click', () => {
+        const idx = parseInt((el as HTMLElement).dataset.idx!, 10);
+        const chosen = options[idx];
+        app.game!.endlessBlessings.push(chosen.id);
+        hideStory();
+        app.paused = false;
+      });
+    });
+  }, 0);
+}
+
+let skipCooldown = false;
 
 /** 无尽模式结算 */
 export function settleEndless(): void {

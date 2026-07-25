@@ -51,6 +51,8 @@ export const ENEMIES: Record<string, EnemyConfig> = {
   // —— 第六章 · 域外篇 ——
   sand_scorpion: { id: 'sand_scorpion', name: '沙蝎', icon: '蝎', hp: 280, speed: 0.9, armor: 20, bounty: 28, color: '#d4a017' },
   barbarian: { id: 'barbarian', name: '域外蛮修', icon: '蛮', hp: 450, speed: 0.6, armor: 0, bounty: 45, color: '#8b4513', shield: 80 },
+  // 穿山甲：遁地 3s → 上浮 2s 循环，需震地雷反隐 & 打击
+  pangolin: { id: 'pangolin', name: '穿山甲', icon: '甲', hp: 350, speed: 1.0, armor: 20, bounty: 35, color: '#a1887f', burrow: { interval: 3, surfDuration: 2 } },
   mist_wraith: { id: 'mist_wraith', name: '雾妖', icon: '雾', hp: 350, speed: 1.0, armor: 25, bounty: 35, color: '#b0bec5' },
   rift_lord: {
     id: 'rift_lord', name: '裂隙领主', icon: '裂', hp: 6000, speed: 0.6, armor: 15, bounty: 0, color: '#ff6f00', elite: true, shield: 200,
@@ -72,6 +74,8 @@ export const ENEMIES: Record<string, EnemyConfig> = {
   demon_knight: { id: 'demon_knight', name: '魔甲骑兵', icon: '骑', hp: 700, speed: 1.2, armor: 50, bounty: 70, color: '#5d4037' },
   // 影杀者：隐身 + 30% 闪避，需聚灵阵破隐 + 高频攻击压闪避
   shadow_assassin: { id: 'shadow_assassin', name: '影杀者', icon: '影', hp: 300, speed: 1.4, armor: 0, bounty: 30, color: '#37474f', stealth: true, dodge: 0.30 },
+  // 遁地刺客：隐身 + 遁地 4s → 上浮 1.5s，极难锁定
+  burrow_assassin: { id: 'burrow_assassin', name: '遁地刺客', icon: '刺', hp: 250, speed: 1.5, armor: 0, bounty: 35, color: '#263238', stealth: true, dodge: 0.25, burrow: { interval: 4, surfDuration: 1.5 } },
   // 魔蛟：高血中甲，坚韧的中坚单位（原设计毒雾简化为纯数值）
   demon_serpent: { id: 'demon_serpent', name: '魔蛟', icon: '蛟', hp: 550, speed: 0.8, armor: 15, bounty: 55, color: '#1b5e20' },
   // 魔帅（ch15 章末 BOSS）：召唤魔甲骑兵 + 狂暴 + 魅惑
@@ -87,6 +91,8 @@ export const ENEMIES: Record<string, EnemyConfig> = {
   // —— 第十六章~二十章 · 百族大战篇 ——
   // 龙裔幼龙：飞行 + 极高甲，需对空法术
   dragon_young: { id: 'dragon_young', name: '龙裔幼龙', icon: '龙', hp: 500, speed: 0.9, armor: 45, bounty: 50, color: '#1565c0', fly: true },
+  // 地龙：遁地 boss，遁地 5s → 上浮 3s，精英渲染
+  earth_dragon: { id: 'earth_dragon', name: '地龙', icon: '龙', hp: 5000, speed: 0.5, armor: 30, bounty: 0, color: '#4e342e', elite: true, shield: 150, burrow: { interval: 5, surfDuration: 3 } },
   // 鬼修：高闪避50%（近似物理免疫），需高频攻击压制
   ghost_cultivator: { id: 'ghost_cultivator', name: '鬼修', icon: '鬼', hp: 350, speed: 1.1, armor: 0, bounty: 35, color: '#6a1b9a', dodge: 0.50 },
   // 天妖蛊王（ch20 章末 BOSS）：吸血 + 召唤血修 + 狂暴

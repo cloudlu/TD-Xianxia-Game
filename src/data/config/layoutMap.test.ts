@@ -57,8 +57,11 @@ describe('layouts integrity', () => {
 });
 
 describe('layoutMap integrity', () => {
-  it('covers all 90 levels in manifest', () => {
+  const CHAPTER_MAP_LEVELS = new Set(['ch1-l1', 'ch1-l2', 'ch1-l3']);
+
+  it('covers all non-chapterMap levels in manifest', () => {
     for (const entry of MANIFEST) {
+      if (CHAPTER_MAP_LEVELS.has(entry.levelId)) continue;
       expect(LAYOUT_MAP).toHaveProperty(entry.levelId);
     }
   });
@@ -79,8 +82,9 @@ describe('layoutMap integrity', () => {
     }
   });
 
-  it('every level has correct path count matching its layout', () => {
+  it('every non-chapterMap level has correct path count matching its layout', () => {
     for (const entry of MANIFEST) {
+      if (CHAPTER_MAP_LEVELS.has(entry.levelId)) continue;
       const layoutId = LAYOUT_MAP[entry.levelId];
       const paths = LAYOUTS[layoutId];
       const prefix = layoutId[1];
@@ -94,8 +98,8 @@ describe('LEVELS after layout override', () => {
   it('every level has valid paths and buildable grid', () => {
     for (const [id, level] of Object.entries(LEVELS)) {
       expect(level.paths.length).toBeGreaterThan(0);
-      expect(level.buildable.length).toBe(8);
-      expect(level.buildable[0].length).toBe(16);
+      expect(level.buildable.length).toBe(level.rows);
+      expect(level.buildable[0].length).toBe(level.cols);
     }
   });
 
@@ -104,9 +108,9 @@ describe('LEVELS after layout override', () => {
       for (const pts of level.paths) {
         for (const p of pts) {
           expect(p.x).toBeGreaterThanOrEqual(0);
-          expect(p.x).toBeLessThanOrEqual(15);
+          expect(p.x).toBeLessThan(level.cols);
           expect(p.y).toBeGreaterThanOrEqual(0);
-          expect(p.y).toBeLessThanOrEqual(7);
+          expect(p.y).toBeLessThan(level.rows);
         }
       }
     }

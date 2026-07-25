@@ -37,6 +37,7 @@ export interface VisEffect {
   color: string;
   life: number; maxLife: number;
   vy: number;
+  crit?: boolean;
 }
 
 export type CombatGameEvent =
@@ -70,6 +71,7 @@ export class TowerCombat {
 
   /** 每帧主入口 */
   update(dt: number, enemies: EnemyR[], towers: TowerR[]): void {
+    this.updateBurrowTimers(dt, enemies);
     this.applyKnockback(enemies, towers);
     this.applyBossAbilities(dt, enemies, towers);
     this.updateTowers(dt, enemies, towers);
@@ -152,9 +154,11 @@ export class TowerCombat {
     let best: EnemyR | null = null;
     let bestKey = 0;
     const hitsAir = !!t.def.hitsAir;
+    const hitsBurrowed = !!t.def.hitsBurrowed;
     for (const e of enemies) {
       if (!canHitFlying(hitsAir, !!e.def.fly)) continue;
       if (e.def.stealth && !this.isRevealed(e, towers)) continue;
+      if (e.burrowed && !hitsBurrowed) continue;
       const dx = e.x - t.x, dy = e.y - t.y;
       if (dx * dx + dy * dy > range * range) continue;
       const key = targetPriorityKey(policy, e);
@@ -184,7 +188,7 @@ export class TowerCombat {
       rng: () => this.ctx.rng(),
       effectiveStats: (t) => this.effectiveStats(t, towers, enemies),
       spawnProjectile: (p: any) => { this.projectiles.push(p); },
-      damage: (e, raw) => { this.damage(e, raw, towers, enemies); },
+      damage: (e, raw, isCrit) => { this.damage(e, raw, towers, enemies, isCrit); },
       enemiesInRange: (t, range) => this.enemiesInRange(t, range, enemies, towers),
       enemiesNearPoint: (x, y, radius) => this.enemiesNearPoint(x, y, radius, enemies),
     };
@@ -202,16 +206,41 @@ export class TowerCombat {
     const school = t.def.school ?? 'sword';
     const killStackCount = Math.floor(this.killStack / 10);
     const killStackBonus = this.ctx.mods.killStackDmgPer() * Math.min(killStackCount, this.ctx.mods.killStackCap() || Infinity);
-    const dmgMul = (1 + aura.dmgMul + killStackBonus) * this.ctx.mods.damageMul(damageStatsFor(school)) * this.ctx.towerMul * this.ctx.destinyBoost * this.ctx.mods.soulShardMul();
-    const rateMul = (1 + aura.rateMul) * this.ctx.mods.rateMul() * this.ctx.towerMul;
-    return { dmgMul, rateMul, rangeAdd: this.ctx.mods.rangeAdd(), critBonus: this.ctx.mods.critBonus() };
+
+    // 阵眼加成
+    const ft = towers.find((x) => x.uid === t.uid);
+    const fmt = ft?.onFormation;
+    let fmtDmgMul = 1, fmtRateMul = 1, fmtRangeAdd = 0;
+    if (fmt) {
+      fmtDmgMul = fmt === 'earth' ? 1.5 : fmt === 'spirit' ? 1.15 : 1;
+      fmtRateMul = fmt === 'thunder' ? 1.4 : fmt === 'spirit' ? 1.15 : 1;
+      fmtRangeAdd = fmt === 'wind' ? 1.5 : 0;
+    }
+    // 灵眼：周围额外阵眼格上的塔提供叠加加成
+    let spiritAdjacent = 0;
+    if (fmt === 'spirit') {
+      for (const o of towers) {
+        if (o.uid === t.uid) continue;
+        if (o.onFormation && Math.abs(o.col - ft!.col) <= 1 && Math.abs(o.row - ft!.row) <= 1) {
+          spiritAdjacent++;
+        }
+      }
+    }
+    const spiritMul = 1 + spiritAdjacent * 0.15;
+
+    const dmgMul = (1 + aura.dmgMul + killStackBonus) * this.ctx.mods.damageMul(damageStatsFor(school)) * this.ctx.towerMul * this.ctx.destinyBoost * this.ctx.mods.soulShardMul() * fmtDmgMul * spiritMul;
+    const rateMul = (1 + aura.rateMul) * this.ctx.mods.rateMul() * this.ctx.towerMul * fmtRateMul;
+    const rangeAdd = this.ctx.mods.rangeAdd() + fmtRangeAdd;
+    return { dmgMul, rateMul, rangeAdd, critBonus: this.ctx.mods.critBonus() };
   }
 
   private enemiesInRange(t: CombatTower, range: number, enemies: EnemyR[], towers: TowerR[]): CombatEnemy[] {
     const hitsAir = !!t.def.hitsAir;
+    const hitsBurrowed = !!t.def.hitsBurrowed;
     return enemies.filter((e) => {
       if (!canHitFlying(hitsAir, !!e.def.fly)) return false;
       if (e.def.stealth && !this.isRevealed(e, towers)) return false;
+      if (e.burrowed && !hitsBurrowed) return false;
       const dx = e.x - t.x, dy = e.y - t.y;
       return dx * dx + dy * dy <= range * range;
     });
@@ -247,8 +276,20 @@ export class TowerCombat {
     return { dmgMul: Math.min(dmgMul, 0.8), rateMul: Math.min(rateMul, 0.8) };
   }
 
+  // ---------- 遁地计时 ----------
+  private updateBurrowTimers(dt: number, enemies: EnemyR[]): void {
+    for (const e of enemies) {
+      if (!e.def.burrow) continue;
+      e.burrowTimer -= dt;
+      if (e.burrowTimer <= 0) {
+        e.burrowed = !e.burrowed;
+        e.burrowTimer = e.burrowed ? e.def.burrow.interval : e.def.burrow.surfDuration;
+      }
+    }
+  }
+
   // ---------- 伤害 ----------
-  private damage(e: CombatEnemy, raw: number, towers: TowerR[], enemies: EnemyR[]): void {
+  private damage(e: CombatEnemy, raw: number, towers: TowerR[], enemies: EnemyR[], isCrit?: boolean): void {
     if (e.dead) return;
     const enemy = e as EnemyR;
     if (enemy.def.dodge && this.ctx.rng() < enemy.def.dodge) return;
@@ -261,7 +302,8 @@ export class TowerCombat {
     const dealt = before - (enemy.hp + enemy.shield);
     if (dealt > 0) {
       enemy.hitFlash = 0.12;
-      this.effects.push({ kind: 'dmg', x: enemy.x, y: enemy.y, text: String(Math.round(dealt)), color: '#ffffff', life: 0.7, maxLife: 0.7, vy: -1.4 });
+      const color = isCrit ? '#ffd700' : '#ff4444';
+      this.effects.push({ kind: 'dmg', x: enemy.x, y: enemy.y, text: String(Math.round(dealt)), color, life: 0.7, maxLife: 0.7, vy: -1.4, crit: isCrit });
     }
     if (enemy.hp <= 0) {
       enemy.dead = true;
@@ -287,7 +329,7 @@ export class TowerCombat {
       const step = PROJ_SPEED * dt;
       if (dist <= step) {
         p.x = target.x; p.y = target.y;
-        if (p.dmg > 0) this.damage(target, p.dmg, towers, enemies);
+        if (p.dmg > 0) this.damage(target, p.dmg, towers, enemies, p.crit);
         if (p.slowMul !== undefined && p.slowDuration !== undefined) {
           target.slowFactor = p.slowMul;
           target.slowUntil = this.ctx.elapsed() + p.slowDuration;

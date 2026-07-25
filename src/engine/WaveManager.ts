@@ -28,6 +28,8 @@ export interface EnemyR {
   slowUntil: number;
   dead: boolean;
   leaked: boolean;
+  burrowTimer: number;
+  burrowed: boolean;
 }
 
 /** 每帧波次事件，Game 据此更新 stones/lives/status */
@@ -97,6 +99,8 @@ export class WaveManager {
       x: p.x, y: p.y, abilityTimer: def.bossAbility?.interval ?? 0,
       speedMul: 1, hitFlash: 0, bounty: scaled.bounty, slowFactor: 1, slowUntil: 0,
       dead: false, leaked: false,
+      burrowTimer: def.burrow?.surfDuration ?? 0,
+      burrowed: false,
     };
     this.enemies.push(e);
     this.waveTotalSpawned++;

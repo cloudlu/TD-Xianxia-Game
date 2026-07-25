@@ -18,8 +18,8 @@
       color: #e0e0e0;
       border: 1px solid #3a4a6a;
       border-radius: 5px;
-      padding: 8px 16px;
-      font-size: 14px;
+      padding: 6px 12px;
+      font-size: 12px;
       cursor: pointer;
       transition: border-color 0.12s, transform 0.08s, box-shadow 0.12s;
     }
@@ -44,22 +44,22 @@
       background: linear-gradient(90deg, transparent, #ffd93d 30%, #ff9b6b 50%, #ffd93d 70%, transparent);
       box-shadow: 0 0 12px #ffd93d88;
     }
-    #app { display: flex; flex-direction: column; align-items: center; padding: 16px; gap: 12px; }
+    #app { display: flex; flex-direction: column; align-items: center; padding: 8px; gap: 6px; height: 100vh; }
     #hud {
-      display: flex; gap: 28px; align-items: center;
+      display: flex; gap: 16px; align-items: center;
       background: linear-gradient(180deg, #1e2a4a 0%, #16213e 100%);
       border: 1px solid #3a4a6a; border-top: 2px solid #ffd93d88;
       box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-      padding: 14px 26px; border-radius: 8px;
-      font-size: 20px; width: 100%; min-width: 1280px; justify-content: space-between;
+      padding: 8px 16px; border-radius: 8px;
+      font-size: 13px; width: 100%; justify-content: space-between;
     }
-    #hud .stat { display: flex; gap: 8px; align-items: center; }
-    #hud .label { color: #8b8ba0; font-size: 17px; }
-    #hud .val { font-weight: bold; font-size: 26px; }
+    #hud .stat { display: flex; gap: 5px; align-items: center; }
+    #hud .label { color: #8b8ba0; font-size: 11px; }
+    #hud .val { font-weight: bold; font-size: 16px; }
     .stones { color: #5fd3ff; }
     .lives { color: #ff6b6b; display: flex; gap: 2px; }
-    .lives .heart { font-size: 26px; line-height: 1; transition: all 0.2s; }
-    .lives .heart.lost { color: #553333; font-size: 22px; }
+    .lives .heart { font-size: 16px; line-height: 1; transition: all 0.2s; }
+    .lives .heart.lost { color: #553333; font-size: 14px; }
     .wave { color: #ffd93d; }
     .val.hit { animation: hitpulse 0.45s ease; }
     @keyframes hitpulse {
@@ -73,41 +73,41 @@
     }
     #muteBtn {
       background: #1f2a4a; color: #e0e0e0; border: 1px solid #2a3450;
-      padding: 10px 16px; border-radius: 6px; font-size: 18px; cursor: pointer;
+      padding: 6px 10px; border-radius: 6px; font-size: 12px; cursor: pointer;
     }
     #muteBtn:hover { border-color: #5fd3ff; }
-    .speed-group { display: flex; gap: 4px; }
-    .vol-group { display: flex; gap: 6px; align-items: center; }
-    .vol-label { display: flex; align-items: center; gap: 3px; font-size: 12px; color: #8b8ba0; }
-    .vol-slider { width: 52px; height: 4px; cursor: pointer; accent-color: #5fd3ff; }
+    .speed-group { display: flex; gap: 3px; }
+    .vol-group { display: flex; gap: 4px; align-items: center; }
+    .vol-label { display: flex; align-items: center; gap: 2px; font-size: 10px; color: #8b8ba0; }
+    .vol-slider { width: 40px; height: 4px; cursor: pointer; accent-color: #5fd3ff; }
     .speed-btn {
       background: #1f2a4a; color: #e0e0e0; border: 1px solid #2a3450;
-      padding: 10px 12px; border-radius: 6px; font-size: 16px; cursor: pointer; min-width: 44px;
+      padding: 6px 8px; border-radius: 6px; font-size: 11px; cursor: pointer; min-width: 32px;
     }
     .speed-btn:hover { border-color: #5fd3ff; }
     .speed-btn.active { background: #4caf50; color: #fff; border-color: #4caf50; }
 
     /* 塔操作面板 */
     #towerPanel {
-      position: fixed; display: none; z-index: 30; width: 190px;
+      position: fixed; display: none; z-index: 30; width: 150px;
       background: #1c2238; border: 1px solid #3a4a6a; border-radius: 8px;
-      padding: 10px; box-shadow: 0 6px 24px rgba(0,0,0,0.5); color: #e0e0e0;
+      padding: 8px; box-shadow: 0 6px 24px rgba(0,0,0,0.5); color: #e0e0e0;
     }
     #towerPanel.show { display: block; }
-    #towerPanel .tp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    #towerPanel .tp-title { font-weight: bold; font-size: 16px; color: #ffe9b8; }
-    #towerPanel .tp-close { background: none; border: none; color: #8b8ba0; font-size: 20px; cursor: pointer; }
+    #towerPanel .tp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+    #towerPanel .tp-title { font-weight: bold; font-size: 12px; color: #ffe9b8; }
+    #towerPanel .tp-close { background: none; border: none; color: #8b8ba0; font-size: 14px; cursor: pointer; }
     #towerPanel .tp-close:hover { color: #fff; }
-    #towerPanel .tp-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 13px; color: #8b8ba0; }
+    #towerPanel .tp-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 11px; color: #8b8ba0; }
     #towerPanel button.act {
-      width: 100%; padding: 8px; margin-top: 6px; border-radius: 5px; font-size: 15px;
+      width: 100%; padding: 6px; margin-top: 4px; border-radius: 5px; font-size: 11px;
       border: 1px solid #3a4a6a; background: #2a3450; color: #e0e0e0; cursor: pointer;
     }
     #towerPanel button.act:hover:not(:disabled) { border-color: #5fd3ff; }
     #towerPanel button.act:disabled { opacity: 0.4; cursor: not-allowed; }
     #towerPanel button.act.danger { background: #4a2a2a; border-color: #6a3a3a; }
     #towerPanel button.act.danger:hover { border-color: #ff6b6b; }
-    #towerPanel .tp-small { font-size: 13px; color: #5fd3ff; }
+    #towerPanel .tp-small { font-size: 11px; color: #5fd3ff; }
 
     /* 选关界面 */
     #levelSelect {
@@ -224,28 +224,29 @@
     canvas {
       background: #0f1320; border: 2px solid #3a4a6a; border-radius: 8px;
       cursor: crosshair; box-shadow: 0 6px 28px rgba(0,0,0,0.5), inset 0 0 60px rgba(0,0,0,0.4);
-      width: 1280px;
+      flex: 1; min-height: 0; width: auto; aspect-ratio: 32 / 12;
+      max-width: 100%; display: block; margin: 0 auto;
     }
     #panel {
-      display: flex; gap: 12px; background: linear-gradient(180deg,#1e2a4a,#16213e);
-      border: 1px solid #3a4a6a; padding: 12px; border-radius: 8px; width: 100%; min-width: 1280px; flex-wrap: wrap;
+      display: flex; gap: 8px; background: linear-gradient(180deg,#1e2a4a,#16213e);
+      border: 1px solid #3a4a6a; padding: 8px; border-radius: 8px; width: 100%; flex-wrap: wrap;
     }
     .tower-btn {
       background: linear-gradient(180deg, #243056 0%, #1a2240 100%);
-      border: 2px solid #2a3450; border-radius: 8px;
-      padding: 12px 16px; cursor: pointer; color: #e0e0e0; min-width: 160px;
-      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      border: 1px solid #2a3450; border-radius: 6px;
+      padding: 6px 10px; cursor: pointer; color: #e0e0e0; flex: 1 1 100px;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
       transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
     }
-    .tower-btn:hover { border-color: #5fd3ff; transform: translateY(-2px); box-shadow: 0 4px 14px rgba(95,211,255,0.2); }
+    .tower-btn:hover { border-color: #5fd3ff; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(95,211,255,0.2); }
     .tower-btn.active { border-color: #ffd93d; background: linear-gradient(180deg, #3a3050 0%, #2a2440 100%); box-shadow: 0 0 14px rgba(255,217,61,0.3); }
-    .tower-btn .name { font-weight: bold; font-size: 18px; }
-    .tower-btn .cost { color: #5fd3ff; font-size: 15px; }
-    .tower-btn .desc { font-size: 13px; color: #8b8ba0; }
-    .tower-btn .stat-line { color: #5fd3ff !important; font-size: 12px; }
+    .tower-btn .name { font-weight: bold; font-size: 12px; }
+    .tower-btn .cost { color: #5fd3ff; font-size: 11px; }
+    .tower-btn .desc { font-size: 10px; color: #8b8ba0; }
+    .tower-btn .stat-line { color: #5fd3ff !important; font-size: 10px; }
     .tower-btn.disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; filter: grayscale(0.6); }
     .tower-btn.disabled .cost { color: #ff6b6b !important; text-decoration: line-through; }
-    #hint { font-size: 15px; color: #8b8ba0; width: 100%; min-width: 1280px; text-align: center; }
+    #hint { font-size: 11px; color: #8b8ba0; width: 100%; text-align: center; }
 
     /* 难度选择器 */
     .diff-bar { display: flex; gap: 6px; justify-content: center; margin-bottom: 14px; }
@@ -259,9 +260,9 @@
 
     /* 下一波预告 */
     #wavePreview {
-      width: 100%; min-width: 1280px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+      width: 100%; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
       background: linear-gradient(180deg,#1a2240,#141a2e); border: 1px solid #2a3450;
-      border-radius: 6px; padding: 8px 14px; font-size: 14px; color: #8b8ba0;
+      border-radius: 6px; padding: 5px 10px; font-size: 11px; color: #8b8ba0;
     }
     #wavePreview .wv-label { letter-spacing: 2px; }
     #wavePreview .wv-chip {
@@ -386,13 +387,38 @@
       padding:4px 10px; border-radius:4px; font-size:11px; cursor:pointer; opacity:0.5;
     }
     #debugToggle:hover { opacity:1; color:#5fd3ff; }
+    /* 无尽模式跳关横幅 */
+    #endlessSkipBanner {
+      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+      z-index:60; background:linear-gradient(135deg,#2a1a3a,#1a2a3a);
+      border:2px solid #ffd93d; border-radius:12px;
+      padding:18px 36px; font-size:28px; color:#ffd93d;
+      text-shadow:0 0 20px rgba(255,217,61,0.5);
+      font-family:var(--brush); letter-spacing:4px;
+      opacity:0; transition:opacity 0.3s; pointer-events:none;
+    }
+    #endlessSkipBanner.show { opacity:1; }
+    /* 无尽模式主动技能按钮 */
+    #endlessSkillBtn {
+      position:fixed; bottom:60px; right:30px; z-index:50;
+      width:72px; height:72px; border-radius:50%;
+      background:radial-gradient(circle,#3a2a5a,#1a1a3a);
+      border:2px solid #6a5acd; box-shadow:0 0 16px rgba(106,90,205,0.4);
+      font-size:13px; color:#c0b0ff; cursor:pointer;
+      display:none; flex-direction:column; align-items:center; justify-content:center;
+      transition:border-color 0.2s, box-shadow 0.2s;
+    }
+    #endlessSkillBtn:hover { border-color:#ffd93d; box-shadow:0 0 24px rgba(255,217,61,0.5); }
+    #endlessSkillBtn.ready { border-color:#ffd93d; }
+    #endlessSkillBtn.cooldown { opacity:0.4; pointer-events:none; }
   </style>
 </head>
 <body>
+  <div id="endlessSkipBanner"></div>
   <div id="app">
     <div id="hud"></div>
     <div id="wavePreview"></div>
-    <canvas id="board" width="1280" height="640"></canvas>
+    <canvas id="board" width="1920" height="720"></canvas>
     <div id="panel"></div>
     <div id="hint">波次自动来袭 · 点塔弹出操作面板（升级/出售/切目标）· 右键塔快捷出售 · 左键空地建塔 · 顶部可暂停/加速    </div>
   </div>
@@ -420,8 +446,21 @@
       <h2>🛡️ 塔 DPS（样本）</h2>
       <div style="max-height:200px;overflow-y:auto"><table><thead><tr><th>塔</th><th>DPS</th><th>总伤害</th><th>击杀</th><th>时间</th></tr></thead><tbody id="debugDps"></tbody></table></div>
     </div>
+    <div style="margin-top:8px">
+      <h2>📋 战报</h2>
+      <div style="max-height:300px;overflow-y:auto"><pre id="debugBattleReport" style="font-size:12px;color:#8b8ba0;white-space:pre-wrap"></pre></div>
+    </div>
+    <div style="margin-top:12px;border-top:1px solid #3a4a6a;padding-top:8px">
+      <h2 style="color:#ff6b6b">⚙️ 管理</h2>
+      <label style="color:#8b8ba0;font-size:13px">塔数量上限：
+        <input id="adminMaxTowers" type="number" value="60" min="1" max="999"
+          style="width:60px;background:#1a1a2a;border:1px solid #3a4a6a;color:#ffd93d;border-radius:4px;padding:2px 6px;text-align:center">
+      </label>
+      <span id="adminTowerCount" style="color:#8b8ba0;font-size:12px;margin-left:8px"></span>
+    </div>
   </div>
   <button id="debugToggle">📊 遥测</button>
+  <button id="endlessSkillBtn" style="display:none">天<br>雷</button>
   <div id="leakFlash"></div>
   <div id="profileSelect"><div class="ls-card">
     <h1>仙 侠 塔 防</h1>

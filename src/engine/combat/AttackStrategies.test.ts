@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  ProjectileStrategy, PierceStrategy, AoeStrategy, ChainStrategy, AttackStrategyRegistry, defaultAttackRegistry,
+  ProjectileStrategy, PierceStrategy, AoeStrategy, ChainStrategy, MineStrategy,
+  AttackStrategyRegistry, defaultAttackRegistry,
   rollDamage, pickPierceTargets,
   type AttackStrategy, type CombatContext,
 } from './AttackStrategies';
@@ -30,15 +31,19 @@ function ctxWith(opts: Partial<CombatContext> & { rng?: () => number; stats?: { 
 
 describe('rollDamage', () => {
   it('applies the damage multiplier on top of base damage', () => {
-    expect(rollDamage(20, 1.5, 0, () => 0.99)).toBeCloseTo(30, 5);
+    expect(rollDamage(20, 1.5, 0, () => 0.99).dmg).toBeCloseTo(30, 5);
   });
 
   it('doubles on crit roll', () => {
-    expect(rollDamage(80, 1, 0.20, () => 0.01)).toBeCloseTo(160, 5);
+    const r = rollDamage(80, 1, 0.20, () => 0.01);
+    expect(r.dmg).toBeCloseTo(160, 5);
+    expect(r.crit).toBe(true);
   });
 
   it('stays single when crit roll fails', () => {
-    expect(rollDamage(80, 1, 0.20, () => 0.99)).toBeCloseTo(80, 5);
+    const r = rollDamage(80, 1, 0.20, () => 0.99);
+    expect(r.dmg).toBeCloseTo(80, 5);
+    expect(r.crit).toBe(false);
   });
 });
 
@@ -168,5 +173,51 @@ describe('AttackStrategyRegistry', () => {
     const custom: AttackStrategy = { execute: () => {} };
     r.register('aura', custom);
     expect(r.get('aura')).toBe(custom);
+  });
+
+  it('default registry resolves mine behavior', () => {
+    const r = defaultAttackRegistry();
+    expect(r.get('mine')).toBeInstanceOf(MineStrategy);
+  });
+});
+
+describe('MineStrategy', () => {
+  it('damages primary and all enemies within aoeRadius', () => {
+    const damaged: number[] = [];
+    const ctx = ctxWith({
+      stats: { dmgMul: 1, rateMul: 1, rangeAdd: 0, critBonus: 0 },
+      rng: () => 0.5,
+      damage: (e) => { damaged.push(e.uid); },
+      enemiesNearPoint: () => [enemy(1, 5), enemy(2, 5), enemy(3, 5)],
+    });
+    new MineStrategy().execute(towerOf('mine_tower', 0), enemy(1, 5), ctx);
+    expect(damaged.sort((a, b) => a - b)).toEqual([1, 2, 3]);
+  });
+
+  it('applies damage multiplier and crit via effectiveStats', () => {
+    let appliedDmg = 0;
+    let appliedCrit = false;
+    const ctx = ctxWith({
+      effectiveStats: () => ({ dmgMul: 2, rateMul: 1, rangeAdd: 0, critBonus: 0 }),
+      rng: () => 0.5,
+      damage: (e, d, c) => { appliedDmg = d; appliedCrit = !!c; },
+      enemiesNearPoint: () => [enemy(1, 5)],
+    });
+    new MineStrategy().execute(towerOf('mine_tower', 0), enemy(1, 5), ctx);
+    // 炼气 mine dmg=80 × 2 = 160, rng 0.5 无暴击（crit=0）
+    expect(appliedDmg).toBe(160);
+    expect(appliedCrit).toBe(false);
+  });
+
+  it('no projectile spawned (no visual)', () => {
+    let visualCount = 0;
+    const ctx = ctxWith({
+      stats: { dmgMul: 1, rateMul: 1, rangeAdd: 0, critBonus: 0 },
+      rng: () => 0.5,
+      spawnProjectile: () => { visualCount++; },
+      enemiesNearPoint: () => [enemy(1, 5)],
+    });
+    new MineStrategy().execute(towerOf('mine_tower', 0), enemy(1, 5), ctx);
+    expect(visualCount).toBe(0);
   });
 });
