@@ -1,27 +1,31 @@
 import { IChallengeValidator } from '../../../domain/challenge';
-import { Difficulty, CHALLENGE_DIFF_MUL } from '../../../domain/challenge';
+
+function parseAllowed(raw: string | undefined): string[] {
+  if (!raw) return [];
+  return raw.split(',').map((s) => s.trim()).filter(Boolean);
+}
 
 export const monoSchoolValidator: IChallengeValidator = {
   kind: 'mono_school',
 
   validate(ctx) {
-    const allowed = ctx.allowedSchool;
-    if (!allowed) return { failed: false };
-    const bad = ctx.towers.find((t) => t.school !== allowed);
-    if (bad) return { failed: true, failedReason: `使用了非${allowed}流派塔：${bad.school}` };
+    const allowed = parseAllowed(ctx.allowedSchool);
+    if (allowed.length === 0) return { failed: false };
+    const bad = ctx.towers.find((t) => !allowed.includes(t.school));
+    if (bad) return { failed: true, failedReason: `使用了非允许流派塔：${bad.school}` };
     return { failed: false };
   },
 
   getProgress(ctx) {
-    const allowed = ctx.allowedSchool;
+    const allowed = parseAllowed(ctx.allowedSchool);
     return {
       kind: 'mono_school',
       isFailed: false,
-      allowed,
+      allowed: allowed.join(','),
     };
   },
 
-  calculateReward(base, difficulty) {
-    return Math.round(base * CHALLENGE_DIFF_MUL[difficulty]);
+  calculateReward(base, _difficulty) {
+    return base;
   },
 };

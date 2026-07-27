@@ -2,13 +2,12 @@
 import { Game } from '../engine/Game';
 import { registry } from '../data/Registry';
 import { resolveTitle, completedChapters } from '../data/config';
-import type { StoryBeat, Difficulty, LevelConfig } from '../types';
-import { DIFFICULTY_MUL } from '../types';
+import type { StoryBeat, LevelConfig } from '../types';
 import { audio } from '../audio/AudioManager';
 import { app, buildMods, lookup, telemetry } from './state';
 import { showStory, hideStory, type ConfirmBeat } from './storyModal';
 import { clearedKey } from '../repo/progress';
-import { isUnlocked, computeStars, recordResult, awardContribution, setDifficulty, isClearedOn, isClearedAny, recordEndless, awardMilestones, isEndlessUnlocked, endlessMaxTowerLevel, globalTowerLevel, clearedStageCount, unlockedTowerIds, TOWER_LEVEL_THRESHOLDS, ENDLESS_UNLOCK_STAGES, TOWER_UNLOCK_TABLE } from '../repo/progressLevel';
+import { isUnlocked, computeStars, recordResult, awardContribution, isCleared, recordEndless, awardMilestones, isEndlessUnlocked, endlessMaxTowerLevel, globalTowerLevel, clearedStageCount, unlockedTowerIds, TOWER_LEVEL_THRESHOLDS, ENDLESS_UNLOCK_STAGES, TOWER_UNLOCK_TABLE } from '../repo/progressLevel';
 import type { ChallengeDef } from '../types';
 import { consumeDestiny, reincarnate } from '../repo/progressMeta';
 import { generateWave, endlessHpMul, endlessContrib, MILESTONES, ENDLESS_PATHS, prepTime, calcSkip, SKIP_MESSAGES, BLESSINGS, pickBlessings, ENDLESS_FORMATIONS } from '../engine/EndlessMode';
@@ -28,15 +27,8 @@ export function renderLevelSelect(): void {
   const total = manifest.length;
   let cleared = 0, stars = 0;
   for (const entry of manifest) {
-    // 任意难度通关即算已通该关
-    const keys = Object.keys(app.progression.cleared);
-    const anyClear = keys.some((k) => k.startsWith(`${entry.levelId}:`));
-    if (anyClear) cleared += 1;
-    // 总星数取各难度最高星之和
-    ([ 'simple', 'normal', 'hard' ] as Difficulty[]).forEach((d) => {
-      const r = app.progression.cleared[clearedKey(entry.levelId, d)];
-      if (r) stars += r.stars;
-    });
+    const r = app.progression.cleared[clearedKey(entry.levelId)];
+    if (r) { cleared += 1; stars += r.stars; }
   }
   // 动态头衔（修真地位）：随通关章节晋升
   const title = resolveTitle(completedChapters(manifest, app.progression));
@@ -74,29 +66,13 @@ export function renderLevelSelect(): void {
     reincBtn.style.display = 'none';
   }
 
-  // 难度选择器
-  const diffBar = document.getElementById('diffBar')!;
-  const curDiff = app.progression.difficulty ?? 'normal';
-  diffBar.innerHTML = '';
-  (['simple', 'normal', 'hard'] as Difficulty[]).forEach((d) => {
-    const b = document.createElement('button');
-    b.className = 'diff-btn' + (d === curDiff ? ' active' : '');
-    b.textContent = DIFFICULTY_MUL[d].label;
-    b.onclick = () => {
-      app.progression = setDifficulty(app.progression, d);
-      renderLevelSelect();
-    };
-      diffBar.appendChild(b);
-    });
-
-    refreshEndlessButton();
-    // persist() 由 app.progression setter 自动触发
+  refreshEndlessButton();
   lsList.innerHTML = '';
   manifest.forEach((entry, i) => {
     const lvl = registry.level(entry.levelId);
     if (!lvl) return;
-    const unlocked = isUnlocked(manifest, i, app.progression, curDiff);
-    const lvlStars = app.progression.cleared[clearedKey(entry.levelId, curDiff)]?.stars ?? 0;
+    const unlocked = isUnlocked(manifest, i, app.progression);
+    const lvlStars = app.progression.cleared[clearedKey(entry.levelId)]?.stars ?? 0;
     const row = document.createElement('div');
     row.className = 'level-row' + (unlocked ? '' : ' locked');
     row.innerHTML = `
@@ -132,9 +108,9 @@ export function startLevel(id: string): void {
   const board = app.board;
   if (!lvl || !board) return;
 
-  // 挑战选择：只有该关至少通关过一次（任意难度）才显示挑战选择
+  // 挑战选择：只有该关至少通关过一次才显示挑战选择
   const challenges = lvl.challenges;
-  if (challenges && challenges.length > 0 && app.selectedChallenge === null && isClearedAny(app.progression, id)) {
+  if (challenges && challenges.length > 0 && app.selectedChallenge === null && isCleared(app.progression, id)) {
     showChallengeSelect(challenges, id);
     return;
   }
@@ -151,8 +127,7 @@ export function startLevel(id: string): void {
     app.progression = pAfterDestiny;
     app.destinyBoost = useScroll ? 1.08 : 1;
 
-    const diff = DIFFICULTY_MUL[app.progression.difficulty] ?? DIFFICULTY_MUL.normal;
-    app.game = new Game(lvl, lookup, 12345, undefined, buildMods(), diff.hp, diff.bounty, app.destinyBoost);
+    app.game = new Game(lvl, lookup, 12345, undefined, buildMods(), 1, 1, app.destinyBoost);
     // 传入选定的挑战
     if (app.selectedChallenge && app.selectedChallenge !== 'skip' && challenges) {
       const cd = challenges.find((c) => c.id === app.selectedChallenge);
@@ -282,8 +257,7 @@ export function settleWin(livesRemaining: number, startLives: number, levelId: s
   const beforeTitle = resolveTitle(completedChapters(manifest, app.progression)).index;
 
   const stars = computeStars(livesRemaining, startLives);
-  const diff = app.progression.difficulty ?? 'normal';
-  app.progression = recordResult(app.progression, levelId, diff, stars);
+  app.progression = recordResult(app.progression, levelId, stars);
   app.progression = awardContribution(app.progression, stars);
 
   // 挑战结算
@@ -424,8 +398,7 @@ export function startEndless(): void {
     app.progression = pAfterDestiny;
     app.destinyBoost = useScroll ? 1.08 : 1;
 
-    const diff = DIFFICULTY_MUL[app.progression.difficulty ?? 'normal'];
-    app.game = new Game(level, lookup, 12345, undefined, buildMods(), diff.hp, diff.bounty, app.destinyBoost);
+    app.game = new Game(level, lookup, 12345, undefined, buildMods(), 1, 1, app.destinyBoost);
     app.game.onEvent = onGameEvent;
     app.game.telemetry = telemetry;
 
@@ -613,4 +586,3 @@ export function settleEndless(): void {
     btn: '返 回 选 关',
   }, returnToSelect);
 }
-

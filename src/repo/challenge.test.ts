@@ -32,6 +32,18 @@ describe('checkChallenge pure logic', () => {
     const r = checkChallenge(mono, { elapsed: 10, towers, upgraded: false, totalSpent: 0 });
     expect(r.failed).toBe(false);
   });
+  it('mono_school: supports comma-separated allowed schools', () => {
+    const magic: ChallengeDef = { id: 'magic1', name: '纯法修', desc: '仅限法修', kind: 'mono_school', params: { allowed: 'fire,thunder,ice' }, rewardContrib: 30 };
+    const towers = [tower('fire', 'aoe'), tower('thunder', 'chain')];
+    const r = checkChallenge(magic, { elapsed: 10, towers, upgraded: false, totalSpent: 0 });
+    expect(r.failed).toBe(false);
+  });
+  it('mono_school: fails on non-allowed school with comma-separated list', () => {
+    const magic: ChallengeDef = { id: 'magic2', name: '纯法修', desc: '仅限法修', kind: 'mono_school', params: { allowed: 'fire,thunder,ice' }, rewardContrib: 30 };
+    const towers = [tower('fire', 'aoe'), tower('spear', 'pierce')];
+    const r = checkChallenge(magic, { elapsed: 10, towers, upgraded: false, totalSpent: 0 });
+    expect(r.failed).toBe(true);
+  });
   it('mono_school: passes when no towers placed', () => {
     const r = checkChallenge(mono, { elapsed: 10, towers: [], upgraded: false, totalSpent: 0 });
     expect(r.failed).toBe(false);

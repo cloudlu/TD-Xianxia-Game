@@ -209,11 +209,10 @@ import type { ManifestEntry } from '../types';
 
 type NoInfer<T> = [T][T extends any ? 0 : never];
 
-/** 判断是否所有关卡均已通关（至少任意难度一次） */
+/** 判断是否所有关卡均已通关 */
 function allLevelsCleared(cleared: Record<string, unknown>, manifest: ReadonlyArray<ManifestEntry>): boolean {
   for (const entry of manifest) {
-    const hasAny = Object.keys(cleared).some((k) => k.startsWith(`${entry.levelId}:`));
-    if (!hasAny) return false;
+    if (!cleared[entry.levelId]) return false;
   }
   return true;
 }
@@ -246,7 +245,6 @@ export function reincarnate(
       ...p,
       reincarnationLevel: level,
       cleared: {},
-      difficulty: 'simple' as const,
       endlessBest: null,
       endlessMilestones: [],
       challengesCompleted: {},

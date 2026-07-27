@@ -3,15 +3,9 @@
 
 export type TowerBehavior = 'projectile' | 'pierce' | 'aura' | 'aoe' | 'chain' | 'mine';
 
-/** 难度模式（独立命名，不用境界名避免混淆） */
+/** 保留类型向后兼容，不再使用 */
+/** @deprecated l1/l2/l3 已取代全局难度；保留类型防止引用报错 */
 export type Difficulty = 'simple' | 'normal' | 'hard';
-
-/** 难度乘数配置 */
-export const DIFFICULTY_MUL: Record<Difficulty, { hp: number; bounty: number; label: string }> = {
-  simple: { hp: 0.8, bounty: 1.1, label: '简单' },
-  normal: { hp: 1.0, bounty: 1.0, label: '普通' },
-  hard:   { hp: 1.5, bounty: 0.85, label: '困难' },
-};
 
 /** 装备槽位（设计文档 §9.2） */
 export type EquipSlot = 'weapon' | 'armor' | 'accessory';

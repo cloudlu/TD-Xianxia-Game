@@ -24,11 +24,10 @@ export interface Progression {
   ownedSkins: string[];
   equippedSkins: Record<string, string>;
   talents: Record<string, number>;
-  difficulty: Difficulty;
   endlessBest: { wave: number; score: number; date: string } | null;
   endlessMilestones: number[];
-  challengesCompleted: Record<string, number>; // key: `${levelId}:${challengeId}` -> bitmask (bit0=simple, bit1=normal, bit2=hard)
-  challengeMedals: Record<string, ChallengeMedal>; // key: `${levelId}:${challengeId}` -> medal data
+  challengesCompleted: Record<string, number>; // key: `${levelId}:${challengeId}`
+  challengeMedals: Record<string, ChallengeMedal>; // key: `${levelId}:${challengeId}`
   soulShards: number;
   destinyScrolls: number;
   equipFragments: number;
@@ -97,24 +96,22 @@ export function withDefaults(raw: Partial<Progression>): Progression {
   const rawCleared: Record<string, { stars: number }> = raw.cleared ?? ({} as Record<string, { stars: number }>);
   const migrated: Record<string, { stars: number }> = {};
   for (const k of Object.keys(rawCleared)) {
-    if (k.includes(':')) { migrated[k] = rawCleared[k]; }
-    else { migrated[clearedKey(k, 'normal')] = rawCleared[k]; }
+    // 旧格式 `${levelId}:${difficulty}` → 以 levelId 去重，保留最高星
+    const levelId = k.includes(':') ? k.split(':')[0] : k;
+    const prev = migrated[levelId]?.stars ?? 0;
+    const cur = rawCleared[k]?.stars ?? 0;
+    migrated[levelId] = { stars: Math.max(prev, cur) };
   }
 
-  // 迁移旧格式 challengesCompleted: Record<string, number> -> 新格式 Record<string, number> (bitmask)
-  // 旧 key: challengeId, 新 key: `${levelId}:${challengeId}`
+  // 旧挑战迁移
   const oldChallenges = raw.challengesCompleted ?? {};
   const migratedChallenges: Record<string, number> = {};
   for (const [oldKey, val] of Object.entries(oldChallenges)) {
     if (typeof val === 'number') {
-      // 尝试反查 levelId
-      const levelId = findLevelIdByChallengeId(oldKey);
-      if (levelId) {
-        migratedChallenges[`${levelId}:${oldKey}`] = 2; // 默认归入 normal (bit1)
-      } else {
-        console.warn(`[migrate] Orphan challenge key: ${oldKey}`);
-        migratedChallenges[`orphan:${oldKey}`] = val;
-      }
+      // 旧 key 可能是 challengeId 或 `${levelId}:${challengeId}`，直接保留
+      // 如果 oldKey 不含冒号则是旧格式，prefix 标记为 orphan
+      const fullKey = oldKey.includes(':') ? oldKey : `orphan:${oldKey}`;
+      migratedChallenges[fullKey] = 1;
     }
   }
 
@@ -130,7 +127,6 @@ export function withDefaults(raw: Partial<Progression>): Progression {
     ownedSkins: raw.ownedSkins ?? [],
     equippedSkins: raw.equippedSkins ?? {},
     talents: raw.talents ?? {},
-    difficulty: raw.difficulty ?? 'normal',
     endlessBest: raw.endlessBest ?? null,
     endlessMilestones: raw.endlessMilestones ?? [],
     challengesCompleted: migratedChallenges,
@@ -198,7 +194,7 @@ export class LocalSaveRepo implements SaveRepo {
     const lvl3: Progression = {
       cleared: p.cleared, contribution: p.contribution, jade: p.jade,
       totalRecharged: p.totalRecharged,
-      vipLevel: p.vipLevel, difficulty: p.difficulty,
+      vipLevel: p.vipLevel,
       ownedEquipment: p.ownedEquipment, equipped: p.equipped, equipLevels: p.equipLevels,
       talents: p.talents, soulShards: p.soulShards,
       ownedTreasures: p.ownedTreasures, treasureLevels: p.treasureLevels,
@@ -220,7 +216,7 @@ export class LocalSaveRepo implements SaveRepo {
   }
 }
 
-/** 按难度组成 cleared key */
-export function clearedKey(levelId: string, difficulty: Difficulty): string {
-  return `${levelId}:${difficulty}`;
+/** 按难度组成 cleared key（兼容无难度格式） */
+export function clearedKey(levelId: string, _difficulty?: string): string {
+  return levelId;
 }

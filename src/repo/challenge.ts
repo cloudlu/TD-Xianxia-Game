@@ -74,7 +74,6 @@ export function getChallengeProgress(challenge: ChallengeDef, ctx: ChallengeCont
   });
 }
 
-export function calculateChallengeReward(challenge: ChallengeDef, difficulty: string): number {
-  const validator = getValidator(challenge.kind);
-  return validator.calculateReward(challenge.rewardContrib, difficulty as any);
+export function calculateChallengeReward(challenge: ChallengeDef, _difficulty?: string): number {
+  return challenge.rewardContrib;
 }

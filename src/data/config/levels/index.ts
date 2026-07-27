@@ -187,11 +187,13 @@ export const LEVELS: Record<string, LevelConfig> = {
 };
 
 // 章节地图合并：将 CHAPTER_MAPS 中的路径/障碍/基地等覆盖到对应关卡
+// 同时 l3 关卡获得 hpMul ×1.5 数值难度（替代旧全局难度 toggle）
 for (const [chapterId, map] of Object.entries(CHAPTER_MAPS)) {
   for (const diff of ['l1', 'l2', 'l3'] as const) {
     const levelId = `${chapterId}-${diff}` as keyof typeof LEVELS;
     const level = LEVELS[levelId];
     if (!level) continue;
+    const hpMul = diff === 'l3' ? 1.5 : 1.0;
     LEVELS[levelId] = {
       ...level,
       cols: map.cols, rows: map.rows,
@@ -199,6 +201,7 @@ for (const [chapterId, map] of Object.entries(CHAPTER_MAPS)) {
       buildable: buildableFromPaths(map.cols, map.rows, map.paths, map.blocked),
       base: map.base, blocked: map.blocked, backgroundId: map.backgroundId,
       activePaths: map.actives[diff],
+      hpMul,
     };
   }
 }
