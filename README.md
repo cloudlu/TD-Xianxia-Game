@@ -1,6 +1,6 @@
 # 仙侠塔防
 
-一款文字 + 简易网格的仙侠塔防网页游戏。你是宗门护阵长老，布修士、设阵法，抵御五章节的妖潮魔劫。
+一款文字 + 简易网格的仙侠塔防网页游戏。你是宗门护阵长老，布修士、设阵法，抵御三十章节的妖潮魔劫。
 
 纯前端（TypeScript + Vite + Canvas + Web Audio），**单机可玩、预留联网接口**，无后端依赖。
 
@@ -8,10 +8,12 @@
 
 ## 特色
 
-- **15 关 / 5 章剧情**：从山门初劫到血煞魔尊，路径形态递进（单/L/U/双/三路径）
-- **6 种塔 × 5 境界**：飞剑、符箓、长枪、聚灵阵、火法（溅射）、雷法（链电），4 种攻击行为
-- **14 种敌人 × 9 种机制**：飞行 / 护盾 / 受击回血 / 高甲 / 撞塔 / 隐身 / 分裂 / BOSS 魅惑召唤 / 多阶段狂暴
+- **90 关 / 30 章剧情**：从山门初劫到道祖魔影，每章 3 关（单路/双路/三路+Boss），路径形态递进
+- **8 种塔 × 8 境界**：飞剑（单体）、符箓（对空）、长枪（穿透）、聚灵阵（光环增益）、火法（范围溅射）、雷法（链电）、寒冰（单体减速）、震地雷（埋雷），5 种攻击行为
+- **40+ 种敌人 × 12+ 种机制**：飞行 / 护盾 / 受击回血 / 高甲 / 撞塔 / 隐身 / 分裂 / 遁地 / 闪避 / BOSS 魅惑召唤 / 狂暴 / 多阶段
 - **完整 meta 养成**：法宝 / 天命阶（VIP）/ 天赋树 / 皮肤 / 充值，三货币闭环
+- **挑战系统**：每关有 2 个可选挑战（速通/单流派/禁升级/禁光环/经济约束），通关额外奖励贡献
+- **无尽模式**：随机路径 + 祝福选择 + 爬塔积分，解锁塔等级上限
 - **弹出式剧情** + **程序合成背景乐/音效**（Web Audio，无需音频文件）
 - **确定性引擎**（固定步长 + 种子化 PRNG），为联网重放校验铺路
 
@@ -70,30 +72,50 @@ src/
 ├── main.ts                  # 入口控制器：棋盘/HUD/塔栏/塔面板/输入/主循环
 ├── app/
 │   ├── state.ts             # 共享状态 + 持久服务 + Modifier 合成
-│   └── screens.ts           # 覆盖层：选关/剧情/修炼界面/关卡流程
+│   ├── levelSelect.ts       # 选关界面（含挑战选择）
+│   ├── screens.ts           # 覆盖层：剧情/修炼界面/关卡流程
+│   └── bestiary.ts          # 怪物图鉴
 ├── engine/
-│   ├── Game.ts              # 引擎核心（主循环/多路径/战斗/波次/经济/BOSS）
+│   ├── Game.ts              # 引擎核心（主循环/多路径/战斗/波次/经济/BOSS/挑战）
+│   ├── EndlessMode.ts       # 无尽模式：路径生成/祝福/积分
 │   ├── WaveDirector.ts      # 波次调度
 │   ├── PRNG.ts              # 种子化随机
+│   ├── TowerOperations.ts   # 塔的放置/升级/出售
 │   ├── combat/
-│   │   └── AttackStrategies.ts   # 攻击策略注册表（projectile/pierce/aoe/chain）
+│   │   ├── TowerCombat.ts       # 战斗循环（攻击/光环/破隐/击退）
+│   │   ├── AttackStrategies.ts  # 攻击策略注册表（projectile/pierce/aoe/chain/mine）
+│   │   └── BossAbilities.ts     # BOSS 技能（魅惑/召唤/狂暴）
 │   └── pure/                # 纯函数（可单测）：战斗/路径/经济/波次/目标
 ├── data/
 │   ├── Modifier.ts          # 加成管线（装备+VIP+天赋 统一封顶）
+│   ├── ConfigLoader.ts      # 配置校验
 │   ├── Registry.ts          # 按 id 查配置
-│   └── config/              # 策划改数值的总入口（塔/敌人/关卡/法宝/天命/天赋/皮肤）
+│   └── config/              # 策划改数值的总入口
+│       ├── towers.ts / enemies.ts / levels/ / backgrounds.ts
+│       ├── equipment.ts / skins.ts / talents.ts / vips.ts
+│       ├── challengeConfig.ts / titles.ts
+│       ├── gacha.ts / limited_treasures.ts / realmStories.ts
+│       └── layoutMap.ts（棋盘布局）
 ├── repo/
-│   ├── progress.ts          # SaveRepo + 进度/装备/天赋纯函数
-│   └── iap.ts               # IAPRepo（充值，本地 mock / 联网换 Remote）
+│   ├── progress.ts          # 进度/装备/天赋纯函数
+│   ├── progressLevel.ts     # 关卡记录/塔解锁/无尽塔等级
+│   ├── progressMeta.ts      # 转生/全通检测
+│   ├── challenge.ts         # 挑战验证入口
+│   ├── challenge/validators/# 策略模式验证器（speed/mono_school/budget/等）
+│   └── iap.ts               # IAPRepo（充值 mock）
+├── domain/
+│   └── challenge/           # 挑战领域类型 + 验证器接口
 ├── audio/
 │   └── AudioManager.ts      # Web Audio 合成背景乐 + 音效
 └── ui/
-    └── Board.ts             # Canvas 渲染 + 输入
+    ├── Board.ts             # Canvas 渲染 + 输入
+    ├── HUD.ts               # 状态栏
+    └── animations.ts        # 攻击/受击/升阶动画
 ```
 
 **分层**：引擎（纯逻辑，无 DOM）↔ 数据（配置 + Modifier）↔ UI（DOM/Canvas）↔ 仓储（接口，本地/远程可换）。加内容只动 `data/config/`，加机制走 `behavior/ability` 注册表。
 
-设计文档见根目录：[设计文档.md](设计文档.md)、[内容设计.md](内容设计.md)、[装备与皮肤设计.md](装备与皮肤设计.md)、[开发流程.md](开发流程.md)。
+设计文档见根目录：[设计文档.md](设计文档.md)、[内容设计.md](内容设计.md)。
 
 ---
 
@@ -110,11 +132,11 @@ src/
 ## 测试
 
 ```bash
-npm test         # 跑全部单测
+npm test         # 跑全部单测（280+）
 npm run typecheck
 ```
 
-共 **60+ 个单元测试**，覆盖：战斗结算（护甲/护盾/回血/暴击）、路径几何、波次队列、目标选择、攻击策略（projectile/pierce/aoe/chain）、Modifier 封顶与跨 stat 合并、BOSS 狂暴、经济、星级、解锁逻辑。
+共 **280+ 个单元测试**，覆盖：战斗结算（护甲/护盾/回血/暴击/闪避/遁地）、路径几何、波次队列、目标选择、攻击策略（projectile/pierce/aoe/chain/mine）、Modifier 封顶与跨 stat 合并、BOSS 狂暴/魅惑/召唤、击退、经济、星级、解锁逻辑、挑战验证（5 种 kind）、无尽模式、装备/天赋/皮肤配置、图鉴。
 
 ---
 
@@ -125,7 +147,8 @@ npm run typecheck
 | 新关卡 | `src/data/config/levels/` 加一个 `chX-lY.ts`，在 `index.ts` 的 `LEVELS` + `MANIFEST` 各加一行 |
 | 新塔（数值） | `towers.ts` 加一条，复用已有 `behavior` |
 | 新塔（新攻击机制） | `AttackStrategies.ts` 加策略类 + 注册（OCP，不改 Game） |
-| 新敌人（新能力） | `enemies.ts` 加条目；新机制在 `Game.ts` 接 `ability` 钩子 |
+| 新敌人（新能力） | `enemies.ts` 加条目；新机制在 `TowerCombat.ts` 接 `ability` 钩子 |
+| 新挑战 | `challengeConfig.ts` 加条目 + `validators/` 加验证器 |
 | 新装备/天赋/皮肤 | `equipment.ts` / `talents.ts` / `skins.ts` 各加一条 |
 | 联网 | `repo/` 加 `RemoteSaveRepo` / `RemoteIAPRepo`，启动时注入即可，引擎不动 |
 
