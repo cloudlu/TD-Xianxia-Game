@@ -194,14 +194,20 @@ for (const [chapterId, map] of Object.entries(CHAPTER_MAPS)) {
     const level = LEVELS[levelId];
     if (!level) continue;
     const hpMul = diff === 'l3' ? 1.5 : 1.0;
+    const active = map.actives[diff];
     LEVELS[levelId] = {
       ...level,
       cols: map.cols, rows: map.rows,
       paths: map.paths,
       buildable: buildableFromPaths(map.cols, map.rows, map.paths, map.blocked),
       base: map.base, blocked: map.blocked, backgroundId: map.backgroundId,
-      activePaths: map.actives[diff],
+      activePaths: active,
       hpMul,
+      // 过滤波次：只保留活跃路径上的怪物，非活跃路径的怪物不生成（避免走不该出现的路径）
+      waves: level.waves.map(w => ({
+        ...w,
+        spawns: w.spawns.filter(s => active.includes(s.path ?? 0)),
+      })),
     };
   }
 }
