@@ -44,4 +44,10 @@ export const TOWER_UNLOCK_STORIES: Record<string, StoryBeat> = {
     lines: ['雷霆崖顶，乌云密布，天雷滚滚。', '你以肉身引雷，领悟九霄雷法真意。', '雷法修士解锁：链电跳跃。'],
     btn: '承 雷',
   },
+  mine_tower: {
+    chapter: '地 脉 深 处',
+    title: '震 地 雷 法',
+    lines: ['你在地脉深处发现远古雷石碎片。', '以灵力激发，可埋入地中，震杀靠近之敌。', '震地雷解锁：范围地雷，可伤地下遁敌。'],
+    btn: '埋 雷',
+  },
 };

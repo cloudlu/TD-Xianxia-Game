@@ -48,6 +48,9 @@ const POOLS: ReadonlyArray<{ from: number; enemies: string[] }> = [
   { from: 10, enemies: ['magic_puppet', 'demon_knight', 'shadow_assassin', 'demon_serpent'] },
   { from: 15, enemies: ['dragon_young', 'ghost_cultivator', 'void_walker', 'celestial_demon'] },
   { from: 20, enemies: ['chaos_larva', 'chaos_beast', 'law_enforcer', 'void_devourer'] },
+  { from: 12, enemies: ['pangolin'] },
+  { from: 18, enemies: ['burrow_assassin'] },
+  { from: 25, enemies: ['earth_dragon'] },
 ];
 
 // BOSS 敌池

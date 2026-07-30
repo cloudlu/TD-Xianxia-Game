@@ -16,9 +16,9 @@ export const CH25_L3: LevelConfig = {
   buildable: buildableFromPaths(16, 8, P),
   hpMul: 3.5,
   waves: [
-    { spawns: [{ enemy: 'void_walker', count: 34, gap: 0.4, delay: 0, path: 0 }, { enemy: 'celestial_demon', count: 25, gap: 0.7, delay: 0, path: 1 }], clearBonus: 600 },
-    { spawns: [{ enemy: 'chaos_larva', count: 39, gap: 0.4, delay: 0, path: 2 }, { enemy: 'celestial_demon', count: 28, gap: 0.6, delay: 0, path: 0 }, { enemy: 'dragon_young', count: 8, gap: 1.4, delay: 1, path: 1 }], clearBonus: 640 },
-    { spawns: [{ enemy: 'tribulation_avatar', count: 11, gap: 0, delay: 0, path: 2 }, { enemy: 'celestial_demon', count: 25, gap: 0.7, delay: 1, path: 0 }, { enemy: 'void_walker', count: 31, gap: 0.4, delay: 1, path: 1 }], clearBonus: 700 },
+    { spawns: [{ enemy: 'void_walker', count: 30, gap: 0.4, delay: 0, path: 0 }, { enemy: 'celestial_demon', count: 22, gap: 0.7, delay: 0, path: 1 }, { enemy: 'earth_dragon', count: 3, gap: 1.5, delay: 2, path: 0 }], clearBonus: 600 },
+    { spawns: [{ enemy: 'chaos_larva', count: 35, gap: 0.4, delay: 0, path: 2 }, { enemy: 'celestial_demon', count: 25, gap: 0.6, delay: 0, path: 0 }, { enemy: 'dragon_young', count: 6, gap: 1.4, delay: 1, path: 1 }, { enemy: 'earth_dragon', count: 2, gap: 2.0, delay: 3, path: 1 }], clearBonus: 640 },
+    { spawns: [{ enemy: 'tribulation_avatar', count: 11, gap: 0, delay: 0, path: 2 }, { enemy: 'celestial_demon', count: 22, gap: 0.7, delay: 1, path: 0 }, { enemy: 'void_walker', count: 28, gap: 0.4, delay: 1, path: 1 }, { enemy: 'earth_dragon', count: 4, gap: 1.5, delay: 2, path: 2 }], clearBonus: 700 },
   ],
   story: {
     intro: {

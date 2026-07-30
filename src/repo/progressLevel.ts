@@ -52,6 +52,7 @@ export const TOWER_UNLOCK_TABLE: { stageCount: number; towerId: string }[] = [
   { stageCount: 3, towerId: 'ice_mage' },
   { stageCount: 5, towerId: 'fire_mage' },
   { stageCount: 10, towerId: 'thunder_mage' },
+  { stageCount: 15, towerId: 'mine_tower' },
 ];
 
 /** 根据进度返回所有已解锁的塔 id */

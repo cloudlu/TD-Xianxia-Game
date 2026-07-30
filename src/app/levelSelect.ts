@@ -47,8 +47,8 @@ export function renderLevelSelect(): void {
     : `当前修为：${curRealmName}（已至化境）`;
 
   const available = unlockedTowerIds(app.progression);
-  const allTowerIds = ['flying_sword','talisman','spear','aura','ice_mage','fire_mage','thunder_mage'];
-  const iconMap: Record<string, string> = { flying_sword:'剑', talisman:'符', spear:'枪', aura:'阵', ice_mage:'冰', fire_mage:'火', thunder_mage:'雷' };
+  const allTowerIds = ['flying_sword','talisman','spear','aura','ice_mage','fire_mage','thunder_mage','mine_tower'];
+  const iconMap: Record<string, string> = { flying_sword:'剑', talisman:'符', spear:'枪', aura:'阵', ice_mage:'冰', fire_mage:'火', thunder_mage:'雷', mine_tower:'地' };
   const unlockedStr = available.map((id) => iconMap[id] ?? id).join(' ');
   const lockedStr = allTowerIds
     .filter((id) => !available.includes(id))
