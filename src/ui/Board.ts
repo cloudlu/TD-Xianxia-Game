@@ -450,7 +450,7 @@ export class Board {
     // 隐身敌人：仅在光环内"现形"，否则半透明 + 虚线提示
     const stealth = !!e.def.stealth;
     const revealed = !stealth || auraTowers.some((t) => {
-      const r = t.def.levels[t.level].range;
+      const r = t.def.levels[t.level].range + this.rangeAdd;
       const dx = t.x - e.x, dy = t.y - e.y;
       return dx * dx + dy * dy <= r * r;
     });

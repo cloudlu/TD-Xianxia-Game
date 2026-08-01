@@ -94,13 +94,16 @@ export function renderLevelSelect(): void {
   let firstUnclearedBtn: HTMLElement | null = null;
   for (const chap of chapters) {
     const card = document.createElement('div');
-    card.className = 'chapter-card';
+    const chapCleared = chap.levels.every((l) => l.stars > 0)
+      && chap.levels.every((l) => !l.lvl.challenges || l.lvl.challenges.every((c) => app.progression.challengesCompleted[c.id] != null));
+    card.className = 'chapter-card' + (chapCleared ? ' cleared' : '');
     const chapStars = chap.levels.reduce((s, l) => s + l.stars, 0);
     const head = document.createElement('div');
     head.className = 'cc-head';
     head.innerHTML = `
       <span class="cc-num">第${cnNum(Number(chap.chapterId.replace('ch', '')))}章</span>
       <span class="cc-title">${chap.chapterTitle.replace(/^第.*章 · /, '')}</span>
+      ${chapCleared ? '<span class="cc-done">✓ 已通关</span>' : ''}
       <span class="cc-stars" title="本章 ★">★${chapStars}/${chap.levels.length * 3}</span>`;
     card.appendChild(head);
     chap.levels.forEach((l, li) => {
@@ -120,7 +123,7 @@ export function renderLevelSelect(): void {
         btn.onclick = () => startLevel(l.entry.levelId);
         if (l.stars === 0 && firstUnclearedBtn === null) {
           firstUnclearedBtn = btn;
-          card.classList.add('current');
+          btn.classList.add('next');
         }
       }
       card.appendChild(btn);

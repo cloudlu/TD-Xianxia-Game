@@ -17,7 +17,7 @@ function enemyCard(e: EnemyConfig): string {
   const desc = traitDesc(e);
   return `<div class="eq-card bestiary-card">
     <div class="eq-name">
-      <span style="display:inline-block;width:30px;height:30px;line-height:30px;border-radius:6px;background:${e.color};color:#fff;font-weight:bold;text-align:center;margin-right:8px;font-size:16px;">${e.icon}</span>${e.name}
+      <span style="display:inline-block;min-width:34px;width:34px;height:34px;line-height:34px;border-radius:6px;background:${e.color};color:#fff;font-weight:bold;text-align:center;margin-right:8px;font-size:13px;letter-spacing:0;white-space:nowrap;flex-shrink:0;">${e.icon}</span>${e.name}
     </div>
     <div class="eq-desc" style="line-height:1.7;">
       HP <b>${e.hp}</b>　甲 <b>${e.armor}</b>（减伤 ${Math.round(100 - 10000/(100+e.armor))}%）　速 <b>${e.speed}</b> 格/秒　赏金 <b>${e.bounty}</b><br>

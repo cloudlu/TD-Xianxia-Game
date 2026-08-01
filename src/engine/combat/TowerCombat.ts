@@ -254,7 +254,7 @@ export class TowerCombat {
   private auraCovers(e: EnemyR, towers: TowerR[]): boolean {
     for (const t of towers) {
       if (t.def.behavior !== 'aura') continue;
-      const r = t.def.levels[t.level].range;
+      const r = t.def.levels[t.level].range + this.ctx.mods.rangeAdd();
       const dx = t.x - e.x, dy = t.y - e.y;
       if (dx * dx + dy * dy <= r * r) return true;
     }

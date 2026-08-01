@@ -134,7 +134,16 @@
       transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
     }
     .chapter-card:hover { border-color: #5fd3ff66; box-shadow: 0 4px 18px rgba(0,0,0,0.45); transform: translateY(-2px); }
-    .chapter-card.current { border-color: #ffd93d; box-shadow: 0 0 0 1px #ffd93d66, 0 4px 20px rgba(255,217,61,0.12); }
+    .chapter-card.cleared {
+      background: linear-gradient(180deg, #2a3a1f 0%, #1c2a18 100%);
+      border-color: #7a9a4a;
+      box-shadow: 0 0 0 1px #7a9a4a44, 0 4px 20px rgba(122,154,74,0.15);
+    }
+    .chapter-card.cleared:hover { border-color: #9abe5a; box-shadow: 0 0 0 1px #9abe5a66, 0 4px 22px rgba(154,190,90,0.22); }
+    .chapter-card .cc-done {
+      font-size: 11px; color: #9abe5a; border: 1px solid #7a9a4a;
+      border-radius: 10px; padding: 1px 8px; flex-shrink: 0; white-space: nowrap;
+    }
     .chapter-card .cc-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #3a4a6a; }
     .chapter-card .cc-num { font-size: 24px; font-family: var(--brush); color: #ffe9b8; margin-right: 8px; flex-shrink: 0; }
     .chapter-card .cc-title { font-size: 11px; color: #8b8ba0; letter-spacing: 1px; flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -148,6 +157,17 @@
     }
     .level-btn:last-child { margin-bottom: 0; }
     .level-btn:hover:not(.locked) { border-color: #ffd93d; transform: translateX(3px); }
+    .level-btn.next {
+      border-color: #ff5a4e;
+      background: linear-gradient(180deg, #4a2222 0%, #3a1a1a 100%);
+      box-shadow: 0 0 0 1px #ff5a4e55, 0 0 14px rgba(255,90,78,0.25);
+      animation: nextPulse 2s ease-in-out infinite;
+    }
+    .level-btn.next:hover { border-color: #ff7a6e; transform: translateX(3px); }
+    @keyframes nextPulse {
+      0%, 100% { box-shadow: 0 0 0 1px #ff5a4e55, 0 0 10px rgba(255,90,78,0.2); }
+      50% { box-shadow: 0 0 0 1px #ff5a4e88, 0 0 18px rgba(255,90,78,0.45); }
+    }
     .level-btn.locked { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.6); }
     .level-btn .lb-num { font-size: 11px; color: #5fd3ff; border: 1px solid #5fd3ff55; border-radius: 4px; padding: 1px 4px; flex-shrink: 0; }
     .level-btn .lb-name { flex: 1; text-align: left; font-size: 13px; color: #ffe9b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
