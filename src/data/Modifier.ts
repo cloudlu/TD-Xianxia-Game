@@ -126,3 +126,34 @@ export class ModifierSet {
   /** 召唤灵兽数量（扁平） */
   petSummonCount(): number { return this.addFor('petSummon'); }
 }
+
+/** stat → 中文显示名（装备/至宝/天赋/详情共用） */
+export const STAT_LABELS: Record<string, string> = {
+  dmg: '全伤害',
+  swordDmg: '剑修',
+  talismanDmg: '符箓',
+  spearDmg: '长枪',
+  fireDmg: '火法',
+  thunderDmg: '雷法',
+  iceDmg: '冰法',
+  earthDmg: '土法',
+  rate: '攻速',
+  crit: '暴击',
+  range: '射程',
+  bountyMul: '赏金',
+  doubleAtkChance: '双重攻击',
+  armorPierce: '护甲穿透',
+  waveRefund: '清波返还',
+  leakToStone: '漏怪扣灵石',
+  densityRate: '密度攻速',
+  killStackDmg: '击杀叠伤',
+  killStackCap: '叠伤上限',
+  bossCooldown: 'BOSS 技能冷却',
+  contribBonus: '贡献加成',
+  extraDestiny: '额外天命符位',
+  enemySlowAura: '减速光环',
+  enemyPullBack: '敌人拉回',
+  elementBonus: '元素加成',
+  petSummon: '灵兽召唤',
+  _soulMul: '仙魂',
+};

@@ -7,6 +7,11 @@ const PRODUCTS: Record<string, { id: string; jade: number }> = {
   jade_2280: { id: 'jade_2280', jade: 2280 },
   jade_3980: { id: 'jade_3980', jade: 3980 },
   jade_8080: { id: 'jade_8080', jade: 8080 },
+  jade_4200: { id: 'jade_4200', jade: 4200 },
+  jade_14000: { id: 'jade_14000', jade: 14000 },
+  jade_29500: { id: 'jade_29500', jade: 29500 },
+  jade_52000: { id: 'jade_52000', jade: 52000 },
+  jade_110000: { id: 'jade_110000', jade: 110000 },
 };
 
 const router = Router();

@@ -37,7 +37,8 @@ export function renderRechargeTab(): void {
     if (pwd !== DEV_PASSWORD) { if (pwd !== null) alert('密码错误'); return; }
     const r = await iap.purchase((b as HTMLElement).dataset.iap!);
     if (r.jade > 0) { 
-      let p = grantJade(app.progression, r.jade);
+      const prod = iap.getProducts().find((x) => x.id === r.productId);
+      let p = grantJade(app.progression, r.jade, prod?.priceCny ?? 0);
       // 累计充值达标自动升 VIP（不扣仙玉）
       while (true) {
         const next = VIP_LEVELS[p.vipLevel + 1];

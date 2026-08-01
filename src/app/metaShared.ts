@@ -1,6 +1,7 @@
 // 宗门修真各 tab 共享的工具函数
 import type { EquipSlot } from '../types';
 import { EQUIPMENT, LIMITED_TREASURES } from '../data/config';
+import { STAT_LABELS } from '../data/Modifier';
 import { app, GENERATED_EQUIPMENT } from './state';
 
 export function updateBalance(): void {
@@ -20,7 +21,6 @@ export function equipDesc(id: string): string {
   return '';
 }
 export function modLabel(m: { stat: string; op: string; value: number }): string {
-  const names: Record<string, string> = { dmg: '全伤害', swordDmg: '剑修', rate: '攻速', range: '射程', crit: '暴击', bountyMul: '赏金', talismanDmg: '符箓', spearDmg: '长枪', fireDmg: '火法', thunderDmg: '雷法' };
-  const label = names[m.stat] ?? m.stat;
+  const label = STAT_LABELS[m.stat] ?? m.stat;
   return m.op === 'add' ? `${label}+${m.value}` : `${label}+${Math.round(m.value * 100)}%`;
 }

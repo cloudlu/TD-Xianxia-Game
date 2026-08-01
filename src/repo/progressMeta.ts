@@ -33,8 +33,13 @@ export function upgradeEquip(p: Progression, equipId: string, cost: number, maxL
 // —— 充值 ——
 
 /** 充值获得仙玉（设计文档 §10.2，由 IAPRepo 发货后调用） */
-export function grantJade(p: Progression, amount: number): Progression {
-  return { ...p, jade: p.jade + amount, totalRecharged: p.totalRecharged + amount };
+export function grantJade(p: Progression, amount: number, cny?: number): Progression {
+  return {
+    ...p,
+    jade: p.jade + amount,
+    totalRecharged: p.totalRecharged + amount,
+    totalRechargedCny: (p.totalRechargedCny ?? 0) + (cny ?? 0),
+  };
 }
 
 /** 升级天命阶：累计充值达标即升（不扣仙玉）；已满级返回 null */

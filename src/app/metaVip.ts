@@ -58,6 +58,7 @@ export function renderVipTab(): void {
         <span class="vip-name">${cur.name}</span>
         <span class="vip-level">LV.${p.vipLevel}</span>
       </div>
+      <div class="vip-recharged" style="margin-top:6px;font-size:13px;color:#8f8fa5">累计充值 <b style="color:#ffd93d">${p.totalRecharged}</b> 仙玉（约 ￥<b style="color:#ffd93d">${(p.totalRechargedCny ?? 0).toLocaleString()}</b>）</div>
     </div>
   `;
 

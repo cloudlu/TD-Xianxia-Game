@@ -24,6 +24,12 @@ export const JADE_PRODUCTS: readonly Product[] = [
   { id: 'jade_2280', label: '2280 仙玉', priceCny: 198, jade: 2280 },
   { id: 'jade_3980', label: '3980 仙玉', priceCny: 328, jade: 3980 },
   { id: 'jade_8080', label: '8080 仙玉', priceCny: 648, jade: 8080 },
+  // 大额档位（比例递增）
+  { id: 'jade_4200', label: '4200 仙玉', priceCny: 300, jade: 4200 },
+  { id: 'jade_14000', label: '14000 仙玉', priceCny: 980, jade: 14000 },
+  { id: 'jade_29500', label: '29500 仙玉', priceCny: 1980, jade: 29500 },
+  { id: 'jade_52000', label: '52000 仙玉', priceCny: 3280, jade: 52000 },
+  { id: 'jade_110000', label: '110000 仙玉', priceCny: 6480, jade: 110000 },
 ];
 
 export class LocalIAPRepo implements IAPRepo {

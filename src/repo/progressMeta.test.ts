@@ -4,6 +4,7 @@ import {
   claimVipDaily,
   claimVipWeekly,
   claimVipOneTime,
+  grantJade,
   upgradeVipTo,
   todayKey,
   weekKey,
@@ -141,6 +142,21 @@ describe('VIP 领取业务函数', () => {
     });
     it('weekKey 格式 YYYY-WWW', () => {
       expect(weekKey()).toMatch(/^\d{4}-W\d{2}$/);
+    });
+  });
+
+  describe('grantJade', () => {
+    it('未传 cny 时人民币总额保持 0', () => {
+      const r = grantJade(withDefaults({}), 328);
+      expect(r.jade).toBe(328);
+      expect(r.totalRecharged).toBe(328);
+      expect(r.totalRechargedCny).toBe(0);
+    });
+    it('累计仙玉与人民币', () => {
+      const r = grantJade(withDefaults({ totalRecharged: 60, totalRechargedCny: 6 }), 4200, 300);
+      expect(r.jade).toBe(4200);
+      expect(r.totalRecharged).toBe(4260);
+      expect(r.totalRechargedCny).toBe(306);
     });
   });
 });

@@ -17,6 +17,7 @@ export interface Progression {
   contribution: number;
   jade: number;
   totalRecharged: number;  // 累计充值总额（VIP 升级依据，不扣减）
+  totalRechargedCny: number; // 累计充值人民币总额（按实际档位累加）
   vipLevel: number;
   ownedEquipment: string[];
   equipped: Partial<Record<string, string>>;
@@ -117,6 +118,7 @@ export function withDefaults(raw: Partial<Progression>): Progression {
     contribution: raw.contribution ?? 0,
     jade: raw.jade ?? 0,
     totalRecharged: raw.totalRecharged ?? 0,
+    totalRechargedCny: raw.totalRechargedCny ?? 0,
     vipLevel: raw.vipLevel ?? 0,
     ownedEquipment: raw.ownedEquipment ?? [],
     equipped: raw.equipped ?? {},
@@ -184,7 +186,7 @@ export class LocalSaveRepo implements SaveRepo {
     // 第 3 级：只保留核心进度
     const lvl3: Progression = {
       cleared: p.cleared, contribution: p.contribution, jade: p.jade,
-      totalRecharged: p.totalRecharged,
+      totalRecharged: p.totalRecharged, totalRechargedCny: p.totalRechargedCny,
       vipLevel: p.vipLevel,
       ownedEquipment: p.ownedEquipment, equipped: p.equipped, equipLevels: p.equipLevels,
       talents: p.talents, soulShards: p.soulShards,

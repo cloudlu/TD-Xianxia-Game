@@ -1,4 +1,5 @@
 import type { Modifier } from '../Modifier';
+import { STAT_LABELS } from '../Modifier';
 import type { EquipSlot } from '../../types';
 
 export interface EquipmentConfig {
@@ -166,9 +167,8 @@ export function generateRandomEquip(
   });
 
   const desc = mods.map((m) => {
-    const label: Record<string, string> = { dmg: '全体伤害', swordDmg: '剑修伤害', rate: '攻速', range: '射程', crit: '暴击', bountyMul: '赏金' };
     const v = m.op === 'add' ? `+${m.value}` : `+${Math.round(m.value * 100)}%`;
-    return `${label[m.stat] ?? m.stat} ${v}`;
+    return `${STAT_LABELS[m.stat] ?? m.stat} ${v}`;
   }).join('，');
 
   return {
