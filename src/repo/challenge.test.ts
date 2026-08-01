@@ -25,7 +25,7 @@ describe('checkChallenge pure logic', () => {
     const towers = [tower('sword', 'projectile'), tower('talisman', 'pierce')];
     const r = checkChallenge(mono, { elapsed: 10, towers, upgraded: false, totalSpent: 0 });
     expect(r.failed).toBe(true);
-    expect(r.failedReason).toContain('talisman');
+    expect(r.failedReason).toContain('符修');
   });
   it('mono_school: passes when all towers have allowed school', () => {
     const towers = [tower('sword', 'projectile'), tower('sword', 'aura')];

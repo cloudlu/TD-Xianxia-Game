@@ -6,6 +6,8 @@ import { TOWERS, FAILED_STORY, SKINS, ENEMIES } from './data/config';
 import { audio } from './audio/AudioManager';
 import { app, buildMods, useRemote } from './app/state';
 import { damageStatsFor } from './data/Modifier';
+import { towerRange } from './engine/combat/effectiveRange';
+import { schoolLabel } from './domain/challenge/SchoolLabels';
 import { showStory } from './app/storyModal';
 import { returnToSelect, settleWin, startEndless, tickEndless, settleEndless } from './app/levelSelect';
 import { unlockedTowerIds } from './repo/progressLevel';
@@ -182,7 +184,7 @@ for (const id of Object.keys(TOWERS)) {
         <span style="color:#5fd3ff">${def.cost} 灵石</span>
       </div>
       <div style="color:#8b8ba0;font-size:12px;margin-bottom:6px">${def.desc}</div>
-      <div style="font-size:12px;color:#8b8ba0;margin-bottom:4px">${BEHAVIOR_LABEL[def.behavior] ?? def.behavior} · ${def.hitsAir ? '对空+对地' : '仅对地'} · ${def.school}</div>
+      <div style="font-size:12px;color:#8b8ba0;margin-bottom:4px">${BEHAVIOR_LABEL[def.behavior] ?? def.behavior} · ${def.hitsAir ? '对空+对地' : '仅对地'} · ${schoolLabel(def.school)}</div>
       <table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr style="color:#8b8ba0"><th>境界</th><th>DPS</th><th>射程</th><th>暴击</th></tr></thead><tbody>${rows}</tbody></table>`;
     statCard.style.display = 'block';
     statCard.style.left = Math.min(rect.right + 8, window.innerWidth - 200) + 'px';
@@ -212,7 +214,7 @@ function refreshTowerButtonStats(): void {
       const baseDps = Math.round(lv0.dmg * lv0.rate);
       const buffedDps = Math.round(baseDps * mods.damageMul(damageStatsFor(def.school)) * mods.rateMul());
       const baseRange = lv0.range;
-      const buffedRange = Math.round((baseRange + mods.rangeAdd()) * 10) / 10;
+      const buffedRange = towerRange(baseRange, mods.rangeAdd(), null);
       const baseCrit = Math.round((lv0.crit ?? 0) * 100);
       const buffedCrit = Math.min(60, baseCrit + Math.round(mods.critBonus() * 100));
       const dpsTxt = buffedDps > baseDps ? `DPS ${baseDps}(${buffedDps})` : `DPS ${baseDps}`;
@@ -295,7 +297,7 @@ function updateTowerPanel(s: ReturnType<Game['snapshot']>): void {
     const totalMul = mods.damageMul(damageStatsFor(t.def.school)) * mods.rateMul() * (1 + aura.dmgMul) * (1 + aura.rateMul);
     const buffedDps = Math.round(baseDps * totalMul);
     const baseRange = lv.range;
-    const buffedRange = Math.round((baseRange + mods.rangeAdd()) * 10) / 10;
+    const buffedRange = towerRange(baseRange, mods.rangeAdd(), t.onFormation);
     const baseCrit = Math.round((lv.crit ?? 0) * 100);
     const buffedCrit = Math.min(60, baseCrit + Math.round(mods.critBonus() * 100));
     const dpsTxt = buffedDps > baseDps ? `DPS ${baseDps}(${buffedDps})` : `DPS ${baseDps}`;
@@ -420,7 +422,7 @@ function frame(now: number): void {
             progressTxt = ` ${Math.ceil(p.elapsed ?? 0)}/${p.limit}s`;
             break;
           case 'mono_school':
-            progressTxt = p.allowed ? ` 仅${p.allowed}` : '';
+            progressTxt = p.allowed ? ` 仅${p.allowed.split(',').map((s) => schoolLabel(s.trim())).join('/')}` : '';
             break;
           case 'no_upgrade':
             progressTxt = p.upgraded ? ' ❌已升级' : '';

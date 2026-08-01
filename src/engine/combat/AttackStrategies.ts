@@ -4,7 +4,8 @@
 // 依赖抽象而非 Game 内部类型：策略只依赖这里定义的最小接口，
 // Game 的运行时对象（EnemyR/TowerR）结构兼容即可注入。
 
-import type { TowerBehavior, TowerConfig } from '../../types';
+import type { TowerBehavior, TowerConfig, FormationType } from '../../types';
+import { towerRange } from './effectiveRange';
 
 /** 策略需要读到/操作的敌人信息（Game 的 EnemyR 结构兼容） */
 export interface CombatEnemy {
@@ -21,6 +22,7 @@ export interface CombatTower {
   x: number; y: number;
   level: number;
   def: TowerConfig;
+  onFormation?: FormationType | null;
 }
 
 /** 飞行物（Game 的 ProjectileR 结构兼容） */
@@ -103,7 +105,7 @@ export class PierceStrategy implements AttackStrategy {
     const stats = ctx.effectiveStats(tower);
     const critChance = Math.min(CRIT_CAP, (lv.crit ?? 0) + stats.critBonus);
     const { dmg, crit } = rollDamage(lv.dmg, stats.dmgMul, critChance, ctx.rng);
-    const range = lv.range + stats.rangeAdd;
+    const range = towerRange(lv.range, stats.rangeAdd, tower.onFormation);
     const hits = ctx.enemiesInRange(tower, range);   // 范围内全部敌人（扫荡）
     for (const e of hits) ctx.damage(e, dmg, crit);
     // 视觉弹道（伤害已即时结算，dmg=0）
@@ -158,7 +160,7 @@ export class MineStrategy implements AttackStrategy {
     const stats = ctx.effectiveStats(tower);
     const critChance = Math.min(CRIT_CAP, (lv.crit ?? 0) + stats.critBonus);
     const { dmg, crit } = rollDamage(lv.dmg, stats.dmgMul, critChance, ctx.rng);
-    const range = lv.range + stats.rangeAdd;
+    const range = towerRange(lv.range, stats.rangeAdd, tower.onFormation);
     const radius = lv.aoeRadius ?? 0.8;
     const hits = radius > 0 ? ctx.enemiesNearPoint(primary.x, primary.y, radius) : [primary];
     for (const e of hits) ctx.damage(e, dmg, crit);

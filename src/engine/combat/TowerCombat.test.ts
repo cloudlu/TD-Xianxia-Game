@@ -222,6 +222,16 @@ describe('TowerCombat', () => {
     expect(s!.dps).toBeGreaterThan(100 * 10); // base DPS = 100*10 = 1000, with killStack bonus should be higher
   });
 
+  it('effectiveStats range includes wind formation bonus via towerRange', () => {
+    const mods = new ModifierSet([{ stat: 'range', op: 'add', value: 1.0 }]);
+    const tc = freshCombat(mods);
+    const t = makeTower({ onFormation: 'wind' });
+    const s = tc.getEffectiveStats(t.uid, [t], [makeEnemy()]);
+    expect(s).not.toBeNull();
+    // range 10 + mods 1.0 + wind 1.5 = 12.5
+    expect(s!.range).toBe(12.5);
+  });
+
   it('auraBuffFor returns null for invalid uid', () => {
     const tc = freshCombat();
     expect(tc.auraBuffFor(999, [])).toBeNull();

@@ -7,6 +7,7 @@ import { targetPriorityKey } from '../pure/targeting';
 import type { EnemyR } from '../WaveManager';
 import type { TowerR } from '../TowerOperations';
 import type { TargetPolicy } from '../../types';
+import { towerRange } from './effectiveRange';
 import {
   type AttackStrategyRegistry,
   type CombatContext, type CombatEnemy, type CombatTower, type TowerStats,
@@ -100,7 +101,7 @@ export class TowerCombat {
       dps: Math.round(baseDps * totalMul),
       baseDps: Math.round(baseDps),
       buffPct: Math.round((totalMul - 1) * 100),
-      range: Math.round((lv.range + stats.rangeAdd) * 10) / 10,
+      range: towerRange(lv.range, stats.rangeAdd, t.onFormation),
       rate: Math.round(lv.rate * stats.rateMul * 10) / 10,
       crit: Math.round(Math.min(0.6, (lv.crit ?? 0) + stats.critBonus) * 100),
     };
@@ -139,7 +140,7 @@ export class TowerCombat {
       if (t.cooldown > 0) continue;
       const lv = t.def.levels[t.level];
       const stats = this.effectiveStats(t, towers, enemies);
-      const range = lv.range + stats.rangeAdd;
+      const range = towerRange(lv.range, stats.rangeAdd, t.onFormation);
       const densityRate = this.ctx.mods.densityRate();
       const densityBonus = densityRate > 0 ? 1 + densityRate * this.countEnemiesInRange(t, range, enemies) : 1;
       const target = this.acquireTarget(t, range, t.targetPolicy, enemies, towers);
@@ -175,7 +176,7 @@ export class TowerCombat {
     if (doubleAtk > 0 && this.ctx.rng() < doubleAtk) {
       const lv = t.def.levels[t.level];
       const stats = this.effectiveStats(t, towers, enemies);
-      const range = lv.range + stats.rangeAdd;
+      const range = towerRange(lv.range, stats.rangeAdd, t.onFormation);
       const secondary = this.acquireTarget(t, range, t.targetPolicy, enemies, towers);
       if (secondary && secondary.uid !== primary.uid) {
         strategy.execute(t, secondary, this.combatContext(towers, enemies));
@@ -210,11 +211,10 @@ export class TowerCombat {
     // 阵眼加成
     const ft = towers.find((x) => x.uid === t.uid);
     const fmt = ft?.onFormation;
-    let fmtDmgMul = 1, fmtRateMul = 1, fmtRangeAdd = 0;
+    let fmtDmgMul = 1, fmtRateMul = 1;
     if (fmt) {
       fmtDmgMul = fmt === 'earth' ? 1.5 : fmt === 'spirit' ? 1.15 : 1;
       fmtRateMul = fmt === 'thunder' ? 1.4 : fmt === 'spirit' ? 1.15 : 1;
-      fmtRangeAdd = fmt === 'wind' ? 1.5 : 0;
     }
     // 灵眼：周围额外阵眼格上的塔提供叠加加成
     let spiritAdjacent = 0;
@@ -230,7 +230,7 @@ export class TowerCombat {
 
     const dmgMul = (1 + aura.dmgMul + killStackBonus) * this.ctx.mods.damageMul(damageStatsFor(school)) * this.ctx.towerMul * this.ctx.destinyBoost * this.ctx.mods.soulShardMul() * fmtDmgMul * spiritMul;
     const rateMul = (1 + aura.rateMul) * this.ctx.mods.rateMul() * this.ctx.towerMul * fmtRateMul;
-    const rangeAdd = this.ctx.mods.rangeAdd() + fmtRangeAdd;
+    const rangeAdd = this.ctx.mods.rangeAdd();
     return { dmgMul, rateMul, rangeAdd, critBonus: this.ctx.mods.critBonus() };
   }
 
@@ -254,7 +254,8 @@ export class TowerCombat {
   private auraCovers(e: EnemyR, towers: TowerR[]): boolean {
     for (const t of towers) {
       if (t.def.behavior !== 'aura') continue;
-      const r = t.def.levels[t.level].range + this.ctx.mods.rangeAdd();
+      const lv = t.def.levels[t.level];
+      const r = towerRange(lv.range, this.ctx.mods.rangeAdd(), t.onFormation);
       const dx = t.x - e.x, dy = t.y - e.y;
       if (dx * dx + dy * dy <= r * r) return true;
     }
@@ -267,8 +268,9 @@ export class TowerCombat {
     for (const a of towers) {
       if (a.def.behavior !== 'aura' || a === (t as any)) continue;
       const al = a.def.levels[a.level];
+      const r = towerRange(al.range, this.ctx.mods.rangeAdd(), a.onFormation);
       const dx = a.x - t.x, dy = a.y - t.y;
-      if (dx * dx + dy * dy <= al.range * al.range) {
+      if (dx * dx + dy * dy <= r * r) {
         dmgMul += al.auraBuff?.dmgMul ?? 0;
         rateMul += al.auraBuff?.rateMul ?? 0;
       }

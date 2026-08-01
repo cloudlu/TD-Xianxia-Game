@@ -4,6 +4,7 @@
 import type { GameState } from '../engine/Game';
 import type { FormationTile, FormationType, GridPoint, BlockedCell } from '../types';
 import { BACKGROUNDS, DEFAULT_BACKGROUND } from '../data/config/backgrounds';
+import { towerRange } from '../engine/combat/effectiveRange';
 
 const CELL = 60;
 
@@ -315,15 +316,26 @@ export class Board {
     const tower = state.towers.find((t) => t.col === c && t.row === r);
 
     if (tower) {
-      // 显示该塔射程
+      // 显示该塔射程：原始范围（淡）+ 加成范围（亮，若有加成）
       const lv = tower.def.levels[tower.level];
+      const baseR = lv.range * CELL;
+      const finalR = towerRange(lv.range, this.rangeAdd, tower.onFormation) * CELL;
       ctx.fillStyle = tower.def.color + '22';
       ctx.strokeStyle = tower.def.color + 'aa';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(tower.x * CELL, tower.y * CELL, (lv.range + this.rangeAdd) * CELL, 0, Math.PI * 2);
+      ctx.arc(tower.x * CELL, tower.y * CELL, baseR, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
+      if (finalR > baseR + 0.001) {
+        ctx.strokeStyle = '#ffd93d';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.arc(tower.x * CELL, tower.y * CELL, finalR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
       // 选中描边
       ctx.strokeStyle = '#ffd93d';
       ctx.lineWidth = 2;
@@ -336,12 +348,24 @@ export class Board {
       const def = this.activeBuildDef;
       if (def) {
         const lv = def.levels[0];
+        const fmt = this.formations?.find((f) => f.col === c && f.row === r)?.type ?? null;
+        const baseR = lv.range * CELL;
+        const finalR = towerRange(lv.range, this.rangeAdd, fmt) * CELL;
         ctx.fillStyle = def.color + '18';
         ctx.strokeStyle = def.color + '66';
         ctx.beginPath();
-        ctx.arc((c + 0.5) * CELL, (r + 0.5) * CELL, (lv.range + this.rangeAdd) * CELL, 0, Math.PI * 2);
+        ctx.arc((c + 0.5) * CELL, (r + 0.5) * CELL, baseR, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
+        if (finalR > baseR + 0.001) {
+          ctx.strokeStyle = '#ffd93d';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 4]);
+          ctx.beginPath();
+          ctx.arc((c + 0.5) * CELL, (r + 0.5) * CELL, finalR, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
       }
     }
 
@@ -450,7 +474,8 @@ export class Board {
     // 隐身敌人：仅在光环内"现形"，否则半透明 + 虚线提示
     const stealth = !!e.def.stealth;
     const revealed = !stealth || auraTowers.some((t) => {
-      const r = t.def.levels[t.level].range + this.rangeAdd;
+      const lv = t.def.levels[t.level];
+      const r = towerRange(lv.range, this.rangeAdd, t.onFormation);
       const dx = t.x - e.x, dy = t.y - e.y;
       return dx * dx + dy * dy <= r * r;
     });
