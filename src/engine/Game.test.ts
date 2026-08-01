@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Game } from './Game';
 import type { ConfigLookup } from './Game';
-import type { LevelConfig, TowerConfig, EnemyConfig } from '../types';
+import type { LevelConfig, TowerConfig, EnemyConfig, ChallengeDef } from '../types';
 import { ModifierSet, type Modifier } from '../data/Modifier';
 
 const mod = (stat: string, op: 'add' | 'mul_pct', value: number): Modifier => ({ stat, op, value });
@@ -134,5 +134,42 @@ describe('Game tower combat integration', () => {
     // 无穿透几乎没掉血，穿透应全清
     expect(s0.enemies.length).toBeGreaterThan(0);
     expect(s1.enemies.length).toBe(0);
+  });
+});
+
+describe('Game multi-challenge settlement', () => {
+  const chSpeed: ChallengeDef = { id: 'spd', name: '速通', desc: '', kind: 'speed', params: { limit: 0.01 }, rewardContrib: 10 };
+  const chMono: ChallengeDef = { id: 'mono', name: '纯剑', desc: '', kind: 'mono_school', params: { allowed: 'sword' }, rewardContrib: 20 };
+  const chBudget: ChallengeDef = { id: 'bud', name: '精打', desc: '', kind: 'budget', params: { limit: 100 }, rewardContrib: 30 };
+
+  function makeGame(): Game {
+    const g = new Game(level, defaultReg, 42, undefined, ModifierSet.empty, 1, 1, 1);
+    g.setChallenge([chSpeed, chMono, chBudget]);
+    return g;
+  }
+
+  it('all challenges are tracked at once and each settles independently', () => {
+    const g = makeGame();
+    g.placeTower(0, 0, 'test_tower'); // 花钱 100，预算 100 仍达标
+    g.startWave();
+    run(g, 60); // 通关（用时远超 1s → speed 失败）
+
+    const res = g.getChallengeResults();
+    const byId = Object.fromEntries(res.map((r) => [r.challenge.id, r]));
+    // speed 超时失败；mono 全剑修达标；budget 花费 100 达标
+    expect(byId['spd'].failed).toBe(true);
+    expect(byId['mono'].failed).toBe(false);
+    expect(byId['bud'].failed).toBe(false);
+    // 快照同时暴露全部挑战状态
+    const s = g.snapshot();
+    expect(s.challenges?.length).toBe(3);
+    expect(s.challenges?.find((c) => c.id === 'spd')?.failed).toBe(true);
+    expect(s.challenges?.find((c) => c.id === 'bud')?.progress).toMatchObject({ totalSpent: 100 });
+  });
+
+  it('snapshot reports no challenges when none set', () => {
+    const g = new Game(level, defaultReg, 42, undefined, ModifierSet.empty, 1, 1, 1);
+    const s = g.snapshot();
+    expect(s.challenges).toEqual([]);
   });
 });

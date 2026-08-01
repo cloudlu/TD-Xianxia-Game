@@ -224,3 +224,18 @@ describe('level result & unlock (no difficulty)', () => {
     expect(isUnlocked(manifest, 1, p1)).toBe(true);
   });
 });
+
+describe('challenge migration (withDefaults)', () => {
+  it('preserves pure challengeId keys (no orphan prefix)', () => {
+    const p = withDefaults({ challengesCompleted: { 'ch1-l1_speed': 1 } });
+    expect(p.challengesCompleted['ch1-l1_speed']).toBe(1);
+    expect(Object.keys(p.challengesCompleted)).toContain('ch1-l1_speed');
+    expect(Object.keys(p.challengesCompleted).some((k) => k.startsWith('orphan:'))).toBe(false);
+  });
+
+  it('drops non-numeric challenge values', () => {
+    const p = withDefaults({ challengesCompleted: { 'ch1-l1_speed': 1, bad: 'yes' as any } });
+    expect(p.challengesCompleted['ch1-l1_speed']).toBe(1);
+    expect(p.challengesCompleted['bad']).toBeUndefined();
+  });
+});

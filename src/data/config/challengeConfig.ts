@@ -14,15 +14,15 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   // 第一章 · 山门初劫（hpMul 1.0，教学关）
   // ════════════════════════════════════════════
   'ch1-l1': [
-    { id: 'ch1-l1_speed', name: '迅雷不及掩耳', desc: '60 秒内通关', kind: 'speed', params: { limit: 60 }, rewardContrib: 30 },
+    { id: 'ch1-l1_speed', name: '迅雷不及掩耳', desc: '205 秒内通关', kind: 'speed', params: { limit: 205 }, rewardContrib: 30 },
     { id: 'ch1-l1_noup', name: '不越雷池', desc: '不升级任何塔通关', kind: 'no_upgrade', rewardContrib: 25 },
   ],
   'ch1-l2': [
-    { id: 'ch1-l2_speed', name: '松林疾行', desc: '65 秒内通关', kind: 'speed', params: { limit: 65 }, rewardContrib: 35 },
+    { id: 'ch1-l2_speed', name: '松林疾行', desc: '310 秒内通关', kind: 'speed', params: { limit: 310 }, rewardContrib: 35 },
     { id: 'ch1-l2_sword', name: '一剑破万法', desc: '仅使用剑修塔通关', kind: 'mono_school', params: { allowed: 'sword' }, rewardContrib: 30 },
   ],
   'ch1-l3': [
-    { id: 'ch1-l3_speed', name: '关门打狗', desc: '70 秒内通关', kind: 'speed', params: { limit: 70 }, rewardContrib: 40 },
+    { id: 'ch1-l3_speed', name: '关门打狗', desc: '240 秒内通关', kind: 'speed', params: { limit: 240 }, rewardContrib: 40 },
     { id: 'ch1-l3_budget', name: '精打细算', desc: '总消费不超过 500 灵石', kind: 'budget', params: { limit: 500 }, rewardContrib: 35 },
   ],
 
@@ -34,7 +34,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
     { id: 'ch2-l1_speed', name: '北风扫叶', desc: '65 秒内通关', kind: 'speed', params: { limit: 65 }, rewardContrib: 40 },
   ],
   'ch2-l2': [
-    { id: 'ch2-l2_speed', name: '蝠影穿梭', desc: '60 秒内通关', kind: 'speed', params: { limit: 60 }, rewardContrib: 40 },
+    { id: 'ch2-l2_speed', name: '蝠影穿梭', desc: '145 秒内通关', kind: 'speed', params: { limit: 145 }, rewardContrib: 40 },
     { id: 'ch2-l2_magic', name: '雷霆万钧', desc: '仅使用法修塔通关', kind: 'mono_school', params: { allowed: 'fire,thunder,ice' }, rewardContrib: 35 },
   ],
   'ch2-l3': [
@@ -46,7 +46,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   // 第三章 · 魔修乱世（hpMul 1.2，魔修登场）
   // ════════════════════════════════════════════
   'ch3-l1': [
-    { id: 'ch3-l1_speed', name: '破阵先锋', desc: '65 秒内通关', kind: 'speed', params: { limit: 65 }, rewardContrib: 40 },
+    { id: 'ch3-l1_speed', name: '破阵先锋', desc: '120 秒内通关', kind: 'speed', params: { limit: 120 }, rewardContrib: 40 },
     { id: 'ch3-l1_budget', name: '阵法大家', desc: '总消费不超过 600 灵石', kind: 'budget', params: { limit: 600 }, rewardContrib: 35 },
   ],
   'ch3-l2': [
@@ -54,7 +54,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
     { id: 'ch3-l2_noup', name: '血不染刃', desc: '不升级任何塔通关', kind: 'no_upgrade', rewardContrib: 40 },
   ],
   'ch3-l3': [
-    { id: 'ch3-l3_speed', name: '斩首行动', desc: '75 秒内通关', kind: 'speed', params: { limit: 75 }, rewardContrib: 50 },
+    { id: 'ch3-l3_speed', name: '斩首行动', desc: '260 秒内通关', kind: 'speed', params: { limit: 260 }, rewardContrib: 50 },
     { id: 'ch3-l3_sword', name: '剑气纵横', desc: '仅使用剑修塔通关', kind: 'mono_school', params: { allowed: 'sword' }, rewardContrib: 45 },
   ],
 
@@ -78,7 +78,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   // 第五章 · 血煞魔尊（hpMul 1.5，章末高潮）
   // ════════════════════════════════════════════
   'ch5-l1': [
-    { id: 'ch5-l1_speed', name: '先锋破阵', desc: '80 秒内通关', kind: 'speed', params: { limit: 80 }, rewardContrib: 50 },
+    { id: 'ch5-l1_speed', name: '先锋破阵', desc: '150 秒内通关', kind: 'speed', params: { limit: 150 }, rewardContrib: 50 },
     { id: 'ch5-l1_magic', name: '血煞克星', desc: '仅使用法修塔通关', kind: 'mono_school', params: { allowed: 'fire,thunder,ice' }, rewardContrib: 45 },
   ],
   'ch5-l2': [
@@ -86,7 +86,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
     { id: 'ch5-l2_noup', name: '以弱胜强', desc: '不升级任何塔通关', kind: 'no_upgrade', rewardContrib: 45 },
   ],
   'ch5-l3': [
-    { id: 'ch5-l3_speed', name: '魔尊伏法', desc: '85 秒内通关', kind: 'speed', params: { limit: 85 }, rewardContrib: 60 },
+    { id: 'ch5-l3_speed', name: '魔尊伏法', desc: '160 秒内通关', kind: 'speed', params: { limit: 160 }, rewardContrib: 60 },
     { id: 'ch5-l3_magic', name: '五雷轰顶', desc: '仅使用法修塔通关', kind: 'mono_school', params: { allowed: 'fire,thunder,ice' }, rewardContrib: 55 },
   ],
 
@@ -190,7 +190,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   // 第十二章（hpMul 2.2）
   // ════════════════════════════════════════════
   'ch12-l1': [
-    { id: 'ch12-l1_speed', name: '十二重楼', desc: '60 秒内通关', kind: 'speed', params: { limit: 60 }, rewardContrib: 55 },
+    { id: 'ch12-l1_speed', name: '十二重楼', desc: '85 秒内通关', kind: 'speed', params: { limit: 85 }, rewardContrib: 55 },
     { id: 'ch12-l1_magic', name: '雷火破影', desc: '仅使用法修塔通关', kind: 'mono_school', params: { allowed: 'fire,thunder,ice' }, rewardContrib: 50 },
   ],
   'ch12-l2': [
@@ -206,7 +206,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   // 第十三章（hpMul 2.3）
   // ════════════════════════════════════════════
   'ch13-l1': [
-    { id: 'ch13-l1_speed', name: '风驰电掣', desc: '60 秒内通关', kind: 'speed', params: { limit: 60 }, rewardContrib: 55 },
+    { id: 'ch13-l1_speed', name: '风驰电掣', desc: '85 秒内通关', kind: 'speed', params: { limit: 85 }, rewardContrib: 55 },
     { id: 'ch13-l1_noaura', name: '阵锁妖蛟', desc: '不建造聚灵阵通关', kind: 'no_aura', rewardContrib: 50 },
   ],
   'ch13-l2': [
@@ -222,7 +222,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   // 第十四章（hpMul 2.4）
   // ════════════════════════════════════════════
   'ch14-l1': [
-    { id: 'ch14-l1_speed', name: '光影交错', desc: '60 秒内通关', kind: 'speed', params: { limit: 60 }, rewardContrib: 60 },
+    { id: 'ch14-l1_speed', name: '光影交错', desc: '80 秒内通关', kind: 'speed', params: { limit: 80 }, rewardContrib: 60 },
     { id: 'ch14-l1_magic', name: '闪电链', desc: '仅使用法修塔通关', kind: 'mono_school', params: { allowed: 'fire,thunder,ice' }, rewardContrib: 55 },
   ],
   'ch14-l2': [
@@ -230,7 +230,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
     { id: 'ch14-l2_budget', name: '十四俭修', desc: '总消费不超过 1450 灵石', kind: 'budget', params: { limit: 1450 }, rewardContrib: 60 },
   ],
   'ch14-l3': [
-    { id: 'ch14-l3_speed', name: '先锋破阵', desc: '65 秒内通关', kind: 'speed', params: { limit: 65 }, rewardContrib: 65 },
+    { id: 'ch14-l3_speed', name: '先锋破阵', desc: '85 秒内通关', kind: 'speed', params: { limit: 85 }, rewardContrib: 65 },
     { id: 'ch14-l3_spear', name: '长枪破影', desc: '仅使用枪修塔通关', kind: 'mono_school', params: { allowed: 'spear' }, rewardContrib: 60 },
   ],
 
@@ -238,7 +238,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   // 第十五章 · 魔帅（hpMul 2.5，联盟篇终章）
   // ════════════════════════════════════════════
   'ch15-l1': [
-    { id: 'ch15-l1_speed', name: '魔帅先锋', desc: '60 秒内通关', kind: 'speed', params: { limit: 60 }, rewardContrib: 60 },
+    { id: 'ch15-l1_speed', name: '魔帅先锋', desc: '80 秒内通关', kind: 'speed', params: { limit: 80 }, rewardContrib: 60 },
     { id: 'ch15-l1_noaura', name: '无阵之阵', desc: '不建造聚灵阵通关', kind: 'no_aura', rewardContrib: 55 },
   ],
   'ch15-l2': [
@@ -286,7 +286,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   // 第十八章（hpMul 2.8）
   // ════════════════════════════════════════════
   'ch18-l1': [
-    { id: 'ch18-l1_speed', name: '大步流星', desc: '60 秒内通关', kind: 'speed', params: { limit: 60 }, rewardContrib: 60 },
+    { id: 'ch18-l1_speed', name: '大步流星', desc: '80 秒内通关', kind: 'speed', params: { limit: 80 }, rewardContrib: 60 },
     { id: 'ch18-l1_magic', name: '龙息克星', desc: '仅使用法修塔通关', kind: 'mono_school', params: { allowed: 'fire,thunder,ice' }, rewardContrib: 55 },
   ],
   'ch18-l2': [
@@ -302,7 +302,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   // 第十九章（hpMul 2.9）
   // ════════════════════════════════════════════
   'ch19-l1': [
-    { id: 'ch19-l1_speed', name: '烽火狼烟', desc: '60 秒内通关', kind: 'speed', params: { limit: 60 }, rewardContrib: 65 },
+    { id: 'ch19-l1_speed', name: '烽火狼烟', desc: '85 秒内通关', kind: 'speed', params: { limit: 85 }, rewardContrib: 65 },
     { id: 'ch19-l1_magic', name: '万法归宗', desc: '仅使用法修塔通关', kind: 'mono_school', params: { allowed: 'fire,thunder,ice' }, rewardContrib: 60 },
   ],
   'ch19-l2': [
@@ -318,7 +318,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   // 第二十章 · 天妖蛊王（hpMul 3.0，百族篇终章）
   // ════════════════════════════════════════════
   'ch20-l1': [
-    { id: 'ch20-l1_speed', name: '蛊王先锋', desc: '60 秒内通关', kind: 'speed', params: { limit: 60 }, rewardContrib: 65 },
+    { id: 'ch20-l1_speed', name: '蛊王先锋', desc: '80 秒内通关', kind: 'speed', params: { limit: 80 }, rewardContrib: 65 },
     { id: 'ch20-l1_budget', name: '阵镇天妖', desc: '总消费不超过 1500 灵石', kind: 'budget', params: { limit: 1500 }, rewardContrib: 60 },
   ],
   'ch20-l2': [
@@ -382,7 +382,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   // 第二十四章（hpMul 3.4）
   // ════════════════════════════════════════════
   'ch24-l1': [
-    { id: 'ch24-l1_speed', name: '电光朝露', desc: '60 秒内通关', kind: 'speed', params: { limit: 60 }, rewardContrib: 65 },
+    { id: 'ch24-l1_speed', name: '电光朝露', desc: '80 秒内通关', kind: 'speed', params: { limit: 80 }, rewardContrib: 65 },
     { id: 'ch24-l1_sword', name: '天道之剑', desc: '仅使用剑修塔通关', kind: 'mono_school', params: { allowed: 'sword' }, rewardContrib: 60 },
   ],
   'ch24-l2': [
@@ -398,7 +398,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   // 第二十五章 · 天劫化身（hpMul 3.5，界域篇终章）
   // ════════════════════════════════════════════
   'ch25-l1': [
-    { id: 'ch25-l1_speed', name: '天劫先锋', desc: '60 秒内通关', kind: 'speed', params: { limit: 60 }, rewardContrib: 70 },
+    { id: 'ch25-l1_speed', name: '天劫先锋', desc: '80 秒内通关', kind: 'speed', params: { limit: 80 }, rewardContrib: 70 },
     { id: 'ch25-l1_budget', name: '阵御天劫', desc: '总消费不超过 1800 灵石', kind: 'budget', params: { limit: 1800 }, rewardContrib: 65 },
   ],
   'ch25-l2': [
@@ -422,7 +422,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
     { id: 'ch26-l2_budget', name: '二十六精算', desc: '总消费不超过 2150 灵石', kind: 'budget', params: { limit: 2150 }, rewardContrib: 70 },
   ],
   'ch26-l3': [
-    { id: 'ch26-l3_speed', name: '混沌退却', desc: '65 秒内通关', kind: 'speed', params: { limit: 65 }, rewardContrib: 75 },
+    { id: 'ch26-l3_speed', name: '混沌退却', desc: '90 秒内通关', kind: 'speed', params: { limit: 90 }, rewardContrib: 75 },
     { id: 'ch26-l3_bow', name: '符破混沌', desc: '仅使用符修塔通关', kind: 'mono_school', params: { allowed: 'talisman' }, rewardContrib: 70 },
   ],
 
@@ -430,7 +430,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   // 第二十七章（hpMul 3.7）
   // ════════════════════════════════════════════
   'ch27-l1': [
-    { id: 'ch27-l1_speed', name: '天外飞星', desc: '60 秒内通关', kind: 'speed', params: { limit: 60 }, rewardContrib: 70 },
+    { id: 'ch27-l1_speed', name: '天外飞星', desc: '90 秒内通关', kind: 'speed', params: { limit: 90 }, rewardContrib: 70 },
     { id: 'ch27-l1_sword', name: '破天一剑', desc: '仅使用剑修塔通关', kind: 'mono_school', params: { allowed: 'sword' }, rewardContrib: 65 },
   ],
   'ch27-l2': [
@@ -438,7 +438,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
     { id: 'ch27-l2_budget', name: '二十七俭', desc: '总消费不超过 2200 灵石', kind: 'budget', params: { limit: 2200 }, rewardContrib: 70 },
   ],
   'ch27-l3': [
-    { id: 'ch27-l3_speed', name: '天外之战', desc: '65 秒内通关', kind: 'speed', params: { limit: 65 }, rewardContrib: 75 },
+    { id: 'ch27-l3_speed', name: '天外之战', desc: '100 秒内通关', kind: 'speed', params: { limit: 100 }, rewardContrib: 75 },
     { id: 'ch27-l3_noaura', name: '天道之阵', desc: '不建造聚灵阵通关', kind: 'no_aura', rewardContrib: 70 },
   ],
 
@@ -446,7 +446,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   // 第二十八章（hpMul 3.8）
   // ════════════════════════════════════════════
   'ch28-l1': [
-    { id: 'ch28-l1_speed', name: '二十八宿', desc: '60 秒内通关', kind: 'speed', params: { limit: 60 }, rewardContrib: 70 },
+    { id: 'ch28-l1_speed', name: '二十八宿', desc: '80 秒内通关', kind: 'speed', params: { limit: 80 }, rewardContrib: 70 },
     { id: 'ch28-l1_spear', name: '天道之枪', desc: '仅使用枪修塔通关', kind: 'mono_school', params: { allowed: 'spear' }, rewardContrib: 65 },
   ],
   'ch28-l2': [
@@ -454,7 +454,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
     { id: 'ch28-l2_magic', name: '万法归宗', desc: '仅使用法修塔通关', kind: 'mono_school', params: { allowed: 'fire,thunder,ice' }, rewardContrib: 65 },
   ],
   'ch28-l3': [
-    { id: 'ch28-l3_speed', name: '天道裁决', desc: '65 秒内通关', kind: 'speed', params: { limit: 65 }, rewardContrib: 75 },
+    { id: 'ch28-l3_speed', name: '天道裁决', desc: '95 秒内通关', kind: 'speed', params: { limit: 95 }, rewardContrib: 75 },
     { id: 'ch28-l3_sword', name: '终极之剑', desc: '仅使用剑修塔通关', kind: 'mono_school', params: { allowed: 'sword' }, rewardContrib: 70 },
   ],
 
@@ -462,7 +462,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   // 第二十九章（hpMul 3.9）
   // ════════════════════════════════════════════
   'ch29-l1': [
-    { id: 'ch29-l1_speed', name: '大限将至', desc: '60 秒内通关', kind: 'speed', params: { limit: 60 }, rewardContrib: 70 },
+    { id: 'ch29-l1_speed', name: '大限将至', desc: '100 秒内通关', kind: 'speed', params: { limit: 100 }, rewardContrib: 70 },
     { id: 'ch29-l1_bow', name: '天外之符', desc: '仅使用符修塔通关', kind: 'mono_school', params: { allowed: 'talisman' }, rewardContrib: 65 },
   ],
   'ch29-l2': [
@@ -470,7 +470,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
     { id: 'ch29-l2_budget', name: '二十九省', desc: '总消费不超过 2300 灵石', kind: 'budget', params: { limit: 2300 }, rewardContrib: 70 },
   ],
   'ch29-l3': [
-    { id: 'ch29-l3_speed', name: '末路之战', desc: '65 秒内通关', kind: 'speed', params: { limit: 65 }, rewardContrib: 75 },
+    { id: 'ch29-l3_speed', name: '末路之战', desc: '105 秒内通关', kind: 'speed', params: { limit: 105 }, rewardContrib: 75 },
     { id: 'ch29-l3_sword', name: '剑问终极', desc: '仅使用剑修塔通关', kind: 'mono_school', params: { allowed: 'sword' }, rewardContrib: 70 },
   ],
 
@@ -478,7 +478,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   // 第三十章 · 道祖魔影（hpMul 4.0，最终章）
   // ════════════════════════════════════════════
   'ch30-l1': [
-    { id: 'ch30-l1_speed', name: '最终序曲', desc: '60 秒内通关', kind: 'speed', params: { limit: 60 }, rewardContrib: 75 },
+    { id: 'ch30-l1_speed', name: '最终序曲', desc: '105 秒内通关', kind: 'speed', params: { limit: 105 }, rewardContrib: 75 },
     { id: 'ch30-l1_magic', name: '天罚之雷', desc: '仅使用法修塔通关', kind: 'mono_school', params: { allowed: 'fire,thunder,ice' }, rewardContrib: 70 },
   ],
   'ch30-l2': [
@@ -486,7 +486,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
     { id: 'ch30-l2_spear', name: '终焉之枪', desc: '仅使用枪修塔通关', kind: 'mono_school', params: { allowed: 'spear' }, rewardContrib: 70 },
   ],
   'ch30-l3': [
-    { id: 'ch30-l3_speed', name: '道祖伏法', desc: '70 秒内通关', kind: 'speed', params: { limit: 70 }, rewardContrib: 100 },
+    { id: 'ch30-l3_speed', name: '道祖伏法', desc: '100 秒内通关', kind: 'speed', params: { limit: 100 }, rewardContrib: 100 },
     { id: 'ch30-l3_noup', name: '凡人证道', desc: '不升级任何塔通关', kind: 'no_upgrade', rewardContrib: 90 },
   ],
 };

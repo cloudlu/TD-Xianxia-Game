@@ -47,27 +47,30 @@ export interface GameState {
   waveKilled: number;
   nextWaveSpawns?: ReadonlyArray<{ enemy: string; count: number; path?: number }>;
   msg: string;
-  challengeActive: boolean;
-  challengeFailed: boolean;
-  challengeFailedReason: string;
-  challengeId: string | null;
-  challengeName: string;
   backgroundId?: string;
   base?: { x: number; y: number };
   blocked?: ReadonlyArray<{ col: number; row: number; terrain: string }>;
   activePaths?: ReadonlyArray<number>;
-  challengeProgress?: {
+  /** 当前关卡全部活跃挑战（复刷已通关关卡时自动开启），每个的实时状态 */
+  challenges?: ReadonlyArray<{
+    id: string;
+    name: string;
     kind: string;
-    elapsed?: number;
-    limit?: number;
-    totalSpent?: number;
-    budgetLimit?: number;
-    towersPlaced?: number;
-    totalTowers?: number;
-    auraTowers?: number;
-    upgraded?: boolean;
-    allowed?: string;
-  };
+    failed: boolean;
+    failedReason?: string;
+    progress?: {
+      kind: string;
+      elapsed?: number;
+      limit?: number;
+      totalSpent?: number;
+      budgetLimit?: number;
+      towersPlaced?: number;
+      totalTowers?: number;
+      auraTowers?: number;
+      upgraded?: boolean;
+      allowed?: string;
+    };
+  }>;
 }
 
 export class Game {
@@ -93,13 +96,10 @@ export class Game {
   telemetry?: TelemetryRepo;
   private prevStones = 0;
 
-  // —— 挑战玩法状态 ——
-  activeChallenge: ChallengeDef | null = null;
-  challengeFailed = false;
-  challengeFailedReason = '';
+  // —— 挑战玩法状态（复刷已通关关卡时，该关全部挑战同时开启）——
+  activeChallenges: ChallengeDef[] = [];
   private challengeUpgraded = false;
   private challengeTotalSpent = 0;
-  private challengeStartTime = 0;
 
   // —— 无尽模式跳关 + 阵眼 + 战报 ——
   endlessBlessings: string[] = [];
@@ -110,14 +110,24 @@ export class Game {
   getWaveClearTime(): number { return this.lastWaveClearTime; }
 
   setChallenge(levelChallenges: ChallengeDef[] | undefined): void {
-    if (!levelChallenges || levelChallenges.length === 0) { this.activeChallenge = null; return; }
-    // 在实际 UI 中，玩家会在进关前选择挑战。此处默认取第一个。
-    this.activeChallenge = levelChallenges[0];
-    this.challengeFailed = false;
-    this.challengeFailedReason = '';
+    // 全部挑战同时开启，通关时逐个判定（达成几个算几个）
+    this.activeChallenges = (levelChallenges ?? []).slice();
     this.challengeUpgraded = false;
     this.challengeTotalSpent = 0;
-    this.challengeStartTime = 0;
+  }
+
+  /** 通关后返回各挑战的判定结果（按达成顺序） */
+  getChallengeResults(): ReadonlyArray<{ challenge: ChallengeDef; failed: boolean; failedReason: string }> {
+    const towers = this.towerOps.towers.map((t) => ({ school: t.def.school, behavior: t.def.behavior }));
+    return this.activeChallenges.map((ch) => {
+      const r = checkChallenge(ch, {
+        elapsed: this.waveManager.elapsed,
+        towers,
+        upgraded: this.challengeUpgraded,
+        totalSpent: this.challengeTotalSpent,
+      });
+      return { challenge: ch, failed: r.failed, failedReason: r.failedReason ?? '' };
+    });
   }
 
   /** 兼容测试/外部代码直接读取灵石 */
@@ -260,17 +270,6 @@ export class Game {
       if (this.level.id !== 'endless' && this.waveManager.waveIndex >= this.waves.length) {
         this.status = 'won';
         this.msg = '守阵成功！山门无恙。';
-        // 挑战检测（speed/budget 只在通关时最终判断）
-        if (this.activeChallenge && !this.challengeFailed) {
-          const towers = this.towerOps.towers.map((t) => ({ school: t.def.school, behavior: t.def.behavior }));
-          const r = checkChallenge(this.activeChallenge, {
-            elapsed: this.waveManager.elapsed,
-            towers,
-            upgraded: this.challengeUpgraded,
-            totalSpent: this.challengeTotalSpent,
-          });
-          if (r.failed) { this.challengeFailed = true; this.challengeFailedReason = r.failedReason ?? ''; }
-        }
         this.emit({ type: 'win' });
       } else {
         this.status = 'prep';
@@ -304,17 +303,6 @@ export class Game {
       this.recordEconomy(this.towerOps.stones - before, 'placeTower');
       const cost = def.cost;
       this.challengeTotalSpent += cost;
-      // 实时检测挑战违例
-      if (this.activeChallenge && !this.challengeFailed) {
-        const towers = this.towerOps.towers.map((t) => ({ school: t.def.school, behavior: t.def.behavior }));
-        const r = checkChallenge(this.activeChallenge, {
-          elapsed: this.waveManager.elapsed,
-          towers,
-          upgraded: this.challengeUpgraded,
-          totalSpent: this.challengeTotalSpent,
-        });
-        if (r.failed) { this.challengeFailed = true; this.challengeFailedReason = r.failedReason ?? ''; }
-      }
     }
     return ok;
   }
@@ -352,17 +340,6 @@ export class Game {
       this.recordEconomy(delta, 'upgrade');
       this.challengeUpgraded = true;
       this.challengeTotalSpent -= delta;  // delta is negative, so this adds the cost
-      // 实时检测 no_upgrade
-      if (this.activeChallenge && !this.challengeFailed) {
-        const towers = this.towerOps.towers.map((t) => ({ school: t.def.school, behavior: t.def.behavior }));
-        const r = checkChallenge(this.activeChallenge, {
-          elapsed: this.waveManager.elapsed,
-          towers,
-          upgraded: this.challengeUpgraded,
-          totalSpent: this.challengeTotalSpent,
-        });
-        if (r.failed) { this.challengeFailed = true; this.challengeFailedReason = r.failedReason ?? ''; }
-      }
       const t = this.towerOps.towers.find((x) => x.uid === uid);
       if (t) {
         this.towerCombat.effects.push({
@@ -500,7 +477,7 @@ export class Game {
 
   // ---------- 挑战 ----------
   get challengeSucceeded(): boolean {
-    return this.activeChallenge !== null && !this.challengeFailed;
+    return this.activeChallenges.length > 0;
   }
 
   // ---------- 快照 ----------
@@ -522,36 +499,30 @@ export class Game {
       waveKilled: this.waveManager.waveKilled,
       nextWaveSpawns: this.waveManager.peekNextWave(),
       msg: this.msg,
-      challengeActive: this.activeChallenge !== null,
-      challengeFailed: this.challengeFailed,
-      challengeFailedReason: this.challengeFailedReason,
-      challengeId: this.activeChallenge?.id ?? null,
-      challengeName: this.activeChallenge?.name ?? '',
       backgroundId: this.level.backgroundId,
       base: this.level.base,
       blocked: this.level.blocked,
       activePaths: this.level.activePaths,
     };
 
-    // 挑战进度
-    if (this.activeChallenge) {
-      const ch = this.activeChallenge;
-      const towers = this.towerOps.towers;
-      let progress: GameState['challengeProgress'];
+    // 全部活跃挑战的实时状态（失败判定基于已收集的统计数据）
+    const towers = this.towerOps.towers;
+    const results = this.getChallengeResults();
+    const challenges = this.activeChallenges.map((ch, i) => {
+      const res = results[i];
+      let progress: NonNullable<GameState['challenges']>[number]['progress'];
       switch (ch.kind) {
         case 'speed':
           progress = { kind: 'speed', elapsed: this.waveManager.elapsed, limit: (ch.params?.limit as number) ?? 60 };
           break;
         case 'mono_school':
-          const allowed = ch.params?.allowed as string;
-          progress = { kind: 'mono_school', towersPlaced: towers.length, totalTowers: towers.length, allowed };
+          progress = { kind: 'mono_school', towersPlaced: towers.length, totalTowers: towers.length, allowed: ch.params?.allowed as string };
           break;
         case 'no_upgrade':
           progress = { kind: 'no_upgrade', upgraded: this.challengeUpgraded };
           break;
         case 'no_aura':
-          const auraTowers = towers.filter((t) => t.def.behavior === 'aura').length;
-          progress = { kind: 'no_aura', auraTowers, totalTowers: towers.length };
+          progress = { kind: 'no_aura', auraTowers: towers.filter((t) => t.def.behavior === 'aura').length, totalTowers: towers.length };
           break;
         case 'budget':
           progress = { kind: 'budget', totalSpent: this.challengeTotalSpent, budgetLimit: (ch.params?.limit as number) ?? 800 };
@@ -559,9 +530,16 @@ export class Game {
         default:
           progress = { kind: ch.kind };
       }
-      return { ...state, challengeProgress: progress };
-    }
+      return {
+        id: ch.id,
+        name: ch.name,
+        kind: ch.kind,
+        failed: res.failed,
+        failedReason: res.failed ? res.failedReason : undefined,
+        progress,
+      };
+    });
 
-    return state;
+    return { ...state, challenges };
   }
 }

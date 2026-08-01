@@ -26,8 +26,8 @@ export interface Progression {
   talents: Record<string, number>;
   endlessBest: { wave: number; score: number; date: string } | null;
   endlessMilestones: number[];
-  challengesCompleted: Record<string, number>; // key: `${levelId}:${challengeId}`
-  challengeMedals: Record<string, ChallengeMedal>; // key: `${levelId}:${challengeId}`
+  challengesCompleted: Record<string, number>; // key: challengeId（如 `ch1-l1_speed`），1 = 已达成
+  challengeMedals: Record<string, ChallengeMedal>; // key: challengeId
   soulShards: number;
   destinyScrolls: number;
   equipFragments: number;
@@ -103,15 +103,12 @@ export function withDefaults(raw: Partial<Progression>): Progression {
     migrated[levelId] = { stars: Math.max(prev, cur) };
   }
 
-  // 旧挑战迁移
+  // 旧挑战迁移：key 即 challengeId（如 `ch1-l1_speed`），原样保留
   const oldChallenges = raw.challengesCompleted ?? {};
   const migratedChallenges: Record<string, number> = {};
   for (const [oldKey, val] of Object.entries(oldChallenges)) {
-    if (typeof val === 'number') {
-      // 旧 key 可能是 challengeId 或 `${levelId}:${challengeId}`，直接保留
-      // 如果 oldKey 不含冒号则是旧格式，prefix 标记为 orphan
-      const fullKey = oldKey.includes(':') ? oldKey : `orphan:${oldKey}`;
-      migratedChallenges[fullKey] = 1;
+    if (typeof val === 'number' && val > 0) {
+      migratedChallenges[oldKey] = 1;
     }
   }
 
@@ -146,12 +143,6 @@ export function withDefaults(raw: Partial<Progression>): Progression {
     vipWeeklyClaimed: raw.vipWeeklyClaimed ?? [],
     vipOneTimeClaimed: raw.vipOneTimeClaimed ?? [],
   };
-}
-
-function findLevelIdByChallengeId(challengeId: string): string | null {
-  // 这里需要从 manifest 反查，暂时返回 null 让迁移标记为 orphan
-  // 实际项目中应该在游戏启动时预建立索引
-  return null;
 }
 
 export class LocalSaveRepo implements SaveRepo {

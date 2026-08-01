@@ -56,6 +56,25 @@ describe('challengeConfig', () => {
     }
   });
 
+  it('speed limits are reachable: >= spawn-only time of the level', () => {
+    for (const levelId of Object.keys(LEVELS)) {
+      const level = LEVELS[levelId];
+      const spawnOnly = level.waves.reduce(
+        (sum, w) => sum + Math.max(0, ...w.spawns.map(s => s.delay + (s.count - 1) * s.gap)),
+        0,
+      );
+      for (const c of getLevelChallenges(levelId)) {
+        if (c.kind === 'speed') {
+          const limit = (c.params as any).limit;
+          expect(
+            limit,
+            `speed limit ${limit}s on ${levelId} is below spawn-only time ${spawnOnly.toFixed(1)}s`,
+          ).toBeGreaterThanOrEqual(spawnOnly);
+        }
+      }
+    }
+  });
+
   it('mono_school challenges have allowed param', () => {
     for (const levelId of Object.keys(LEVELS)) {
       for (const c of getLevelChallenges(levelId)) {

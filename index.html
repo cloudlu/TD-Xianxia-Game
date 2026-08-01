@@ -117,29 +117,45 @@
       opacity: 1; transition: opacity 0.28s ease;
     }
     #levelSelect.fade-out { opacity: 0; }
-    .ls-card { width: 720px; max-width: 92vw; text-align: center; color: #f0e6d2; }
+    .ls-card { width: min(1280px, 95vw); text-align: center; color: #f0e6d2; }
     .ls-card h1 { font-size: 40px; color: #ffe9b8; font-weight: normal; letter-spacing: 10px; margin: 0 0 6px; font-family: var(--brush); text-shadow: 0 0 16px rgba(255,217,61,0.4); }
     .ls-card .sub { color: #8b8ba0; letter-spacing: 4px; margin-bottom: 6px; }
     .ls-card .progress { color: #ffd93d; letter-spacing: 2px; font-size: 14px; margin-bottom: 28px; }
-    .ls-list { display: flex; flex-direction: column; gap: 12px; max-height: 58vh; overflow-y: auto; padding-right: 6px; }
+    .ls-list {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px; max-height: 58vh; overflow-y: auto; padding-right: 6px; align-content: start;
+    }
     .ls-list::-webkit-scrollbar { width: 8px; }
     .ls-list::-webkit-scrollbar-thumb { background: #3a4a6a; border-radius: 4px; }
-    .level-row {
-      display: flex; align-items: center; justify-content: space-between;
-      background: linear-gradient(180deg, #243056 0%, #1c2640 100%);
-      border: 1px solid #3a4a6a; border-left: 3px solid #5fd3ff66;
-      border-radius: 8px; padding: 16px 22px;
-      cursor: pointer; transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+    .chapter-card {
+      background: linear-gradient(180deg, #232f52 0%, #1a2340 100%);
+      border: 1px solid #3a4a6a; border-radius: 10px;
+      padding: 12px 14px 14px;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
     }
-    .level-row:hover:not(.locked) { border-color: #ffd93d; border-left-color: #ffd93d; transform: translateX(4px); box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
-    .level-row.locked { opacity: 0.4; cursor: not-allowed; filter: grayscale(0.5); }
-    .level-row .lr-title { text-align: left; }
-    .level-row .lr-name { font-size: 20px; color: #ffe9b8; }
-    .level-row .lr-chap { font-size: 13px; color: #8b8ba0; }
-    .level-row .lr-stars { font-size: 22px; color: #ffd93d; letter-spacing: 2px; min-width: 90px; text-align: right; }
-    .level-row .lr-lock { font-size: 22px; color: #8b8ba0; }
-    .lr-challenges { display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; font-size:12px; }
-    .ch-tag { background:#1a2a1a; border:1px solid #3a5a3a; border-radius:4px; padding:2px 8px; color:#8b8ba0; }
+    .chapter-card:hover { border-color: #5fd3ff66; box-shadow: 0 4px 18px rgba(0,0,0,0.45); transform: translateY(-2px); }
+    .chapter-card.current { border-color: #ffd93d; box-shadow: 0 0 0 1px #ffd93d66, 0 4px 20px rgba(255,217,61,0.12); }
+    .chapter-card .cc-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #3a4a6a; }
+    .chapter-card .cc-num { font-size: 24px; font-family: var(--brush); color: #ffe9b8; margin-right: 8px; flex-shrink: 0; }
+    .chapter-card .cc-title { font-size: 11px; color: #8b8ba0; letter-spacing: 1px; flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chapter-card .cc-stars { font-size: 11px; color: #ffd93d; letter-spacing: 1px; white-space: nowrap; flex-shrink: 0; margin-left: 6px; }
+    .level-btn {
+      display: flex; align-items: center; gap: 8px;
+      background: linear-gradient(180deg, #2a3556 0%, #222d4a 100%);
+      border: 1px solid #3a4a6a; border-radius: 6px;
+      padding: 7px 10px; margin-bottom: 6px; cursor: pointer;
+      transition: border-color 0.12s, transform 0.12s;
+    }
+    .level-btn:last-child { margin-bottom: 0; }
+    .level-btn:hover:not(.locked) { border-color: #ffd93d; transform: translateX(3px); }
+    .level-btn.locked { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.6); }
+    .level-btn .lb-num { font-size: 11px; color: #5fd3ff; border: 1px solid #5fd3ff55; border-radius: 4px; padding: 1px 4px; flex-shrink: 0; }
+    .level-btn .lb-name { flex: 1; text-align: left; font-size: 13px; color: #ffe9b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .level-btn.locked .lb-name { color: #8b8ba0; }
+    .level-btn .lb-stars { font-size: 13px; color: #ffd93d; letter-spacing: 0; white-space: nowrap; }
+    .level-btn .lb-lock { font-size: 13px; }
+    .level-btn .lb-ch { display: flex; gap: 4px; flex-shrink: 0; }
+    .ch-tag { background:#1a2a1a; border:1px solid #3a5a3a; border-radius:4px; padding:1px 5px; color:#8b8ba0; font-size:10px; }
     .ch-tag.done { background:#1a3a1a; border-color:#5a8a5a; color:#4caf50; }
 
     /* 法宝阁按钮 & 弹窗 */
@@ -179,7 +195,7 @@
     .eq-card .eq-desc { font-size: 13px; color: #8b8ba0; margin: 4px 0; }
     .eq-actions { margin-top: 6px; }
     .eq-slots { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
-    .eq-card button, .level-row button { background: linear-gradient(180deg,#2a3450,#1f2a4a); border: 1px solid #3a4a6a; color: #e0e0e0; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 13px; transition: border-color 0.12s; }
+    .eq-card button { background: linear-gradient(180deg,#2a3450,#1f2a4a); border: 1px solid #3a4a6a; color: #e0e0e0; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 13px; transition: border-color 0.12s; }
     .eq-card button:hover:not(:disabled) { border-color: #5fd3ff; }
     .eq-card button:disabled { opacity: 0.4; cursor: not-allowed; }
     .eq-card button.equip, .eq-card button.upgrade { background: linear-gradient(180deg,#3a5a3a,#2a4a2a); border-color: #5a8a5a; }

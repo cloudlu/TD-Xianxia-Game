@@ -42,7 +42,7 @@ hud.insertAdjacentHTML('afterbegin', `
   <div class="stat"><span class="label">灵石</span><span class="val stones" id="h-stones">0</span></div>
   <div class="stat"><span class="label">命</span><span class="val lives" id="h-lives"></span></div>
   <div class="stat"><span class="label">波次</span><span class="val wave" id="h-wave">0/0</span></div>
-  <div class="stat" style="flex:1; justify-content:flex-end;"><span class="val" id="h-status" style="font-size:14px;color:#8b8ba0;"></span><span id="h-destiny" style="display:none;font-size:13px;color:#ffd93d;margin-left:10px;background:#2a2a1a;border:1px solid #8a7a3a;border-radius:4px;padding:2px 8px;">📜 天命+8%</span><span id="h-challenge" style="display:none;font-size:13px;margin-left:10px;background:#1a2a1a;border:1px solid #5a8a5a;border-radius:4px;padding:2px 8px;"></span></div>`);
+  <div class="stat" style="flex:1; justify-content:flex-end;"><span class="val" id="h-status" style="font-size:14px;color:#8b8ba0;"></span><span id="h-destiny" style="display:none;font-size:13px;color:#ffd93d;margin-left:10px;background:#2a2a1a;border:1px solid #8a7a3a;border-radius:4px;padding:2px 8px;">📜 天命+8%</span><span id="h-challenge" style="display:none;font-size:13px;margin-left:10px;"></span></div>`);
 const elStones = document.getElementById('h-stones')!;
 const elLives = document.getElementById('h-lives')!;
 const elWave = document.getElementById('h-wave')!;
@@ -408,34 +408,36 @@ function frame(now: number): void {
   }
   elStatus.textContent = s.msg;
   elDestiny.style.display = app.destinyBoost > 1 && app.currentLevel?.id !== 'endless' ? '' : 'none';
-  if (s.challengeActive) {
+  if (s.challenges && s.challenges.length > 0) {
     elChallenge.style.display = '';
-    const statusTxt = s.challengeFailed ? `❌ ${s.challengeName}` : `⚔ ${s.challengeName}`;
-    let progressTxt = '';
-    if (s.challengeProgress && !s.challengeFailed) {
-      const p = s.challengeProgress;
-      switch (p.kind) {
-        case 'speed':
-          progressTxt = ` — 用时 ${Math.ceil(p.elapsed ?? 0)} / ${p.limit}s`;
-          break;
-        case 'mono_school':
-          progressTxt = ` — ${p.allowed ? `仅允许${p.allowed}流派` : '单流派'}`;
-          break;
-        case 'no_upgrade':
-          progressTxt = p.upgraded ? ` — ❌已升级` : ` — 未升级`;
-          break;
-        case 'no_aura':
-          progressTxt = p.auraTowers && p.auraTowers > 0 ? ` — ❌已放置${p.auraTowers}个光环塔` : ` — 0光环塔`;
-          break;
-        case 'budget':
-          progressTxt = ` — 花费 ${p.totalSpent ?? 0} / ${p.budgetLimit}灵石`;
-          break;
+    const chips = s.challenges.map((c) => {
+      const icon = c.failed ? '❌' : '⚔';
+      let progressTxt = '';
+      const p = c.progress;
+      if (p && !c.failed) {
+        switch (p.kind) {
+          case 'speed':
+            progressTxt = ` ${Math.ceil(p.elapsed ?? 0)}/${p.limit}s`;
+            break;
+          case 'mono_school':
+            progressTxt = p.allowed ? ` 仅${p.allowed}` : '';
+            break;
+          case 'no_upgrade':
+            progressTxt = p.upgraded ? ' ❌已升级' : '';
+            break;
+          case 'no_aura':
+            progressTxt = p.auraTowers && p.auraTowers > 0 ? ` ❌光环${p.auraTowers}` : '';
+            break;
+          case 'budget':
+            progressTxt = ` ${p.totalSpent ?? 0}/${p.budgetLimit}`;
+            break;
+        }
       }
-    }
-    elChallenge.textContent = statusTxt + progressTxt;
-    elChallenge.style.borderColor = s.challengeFailed ? '#ff6b6b' : '#5a8a5a';
-    elChallenge.style.background = s.challengeFailed ? '#2a1a1a' : '#1a2a1a';
-    elChallenge.title = s.challengeFailed ? s.challengeFailedReason : `挑战「${s.challengeName}」进行中${progressTxt ? ' ' + progressTxt : ''}`;
+      const color = c.failed ? '#ff6b6b' : '#5a8a5a';
+      const bg = c.failed ? '#2a1a1a' : '#1a2a1a';
+      return `<span style="display:inline-block;margin-left:10px;font-size:13px;background:${bg};border:1px solid ${color};border-radius:4px;padding:2px 8px;white-space:nowrap" title="${(c.failed ? `${c.name} 失败：${c.failedReason ?? ''}` : `${c.name} 进行中`).replace(/"/g, '&quot;')}">${icon} ${c.name}${progressTxt}</span>`;
+    }).join('');
+    elChallenge.innerHTML = chips;
   } else {
     elChallenge.style.display = 'none';
   }

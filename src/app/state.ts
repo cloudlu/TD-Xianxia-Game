@@ -39,7 +39,6 @@ export const app = {
   prevStatus: 'prep' as string,
   last: 0,
   destinyBoost: 1 as number,
-  selectedChallenge: null as string | null,
   profileId: null as string | null,
   profileName: '' as string,
   save: null as SaveRepo | null,

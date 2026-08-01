@@ -1,4 +1,4 @@
-// 选关 / 关卡流程 / 通关结算
+// 选关 / 关卡流程 / 通关结算（复刷已通关关卡时该关全部挑战自动开启，通关达成几个算几个）
 import { Game } from '../engine/Game';
 import { registry } from '../data/Registry';
 import { resolveTitle, completedChapters } from '../data/config';
@@ -68,33 +68,76 @@ export function renderLevelSelect(): void {
 
   refreshEndlessButton();
   lsList.innerHTML = '';
+
+  // 章节卡片分组：每章 1 张卡片（章节名 + 3 个关卡按钮）
+  const CN_NUM = ['零','一','二','三','四','五','六','七','八','九'];
+  const cnNum = (n: number): string =>
+    n < 10 ? CN_NUM[n] : n < 20 ? '十' + (n % 10 === 0 ? '' : CN_NUM[n % 10])
+      : CN_NUM[Math.floor(n / 10)] + '十' + (n % 10 === 0 ? '' : CN_NUM[n % 10]);
+  const chapters: Array<{
+    chapterId: string; chapterTitle: string;
+    levels: Array<{ entry: typeof manifest[number]; unlocked: boolean; stars: number; lvl: NonNullable<ReturnType<typeof registry.level>> }>;
+  }> = [];
   manifest.forEach((entry, i) => {
     const lvl = registry.level(entry.levelId);
     if (!lvl) return;
-    const unlocked = isUnlocked(manifest, i, app.progression);
-    const lvlStars = app.progression.cleared[clearedKey(entry.levelId)]?.stars ?? 0;
-    const row = document.createElement('div');
-    row.className = 'level-row' + (unlocked ? '' : ' locked');
-    row.innerHTML = `
-      <div class="lr-title">
-        <div class="lr-name">${unlocked ? lvl.name : '？？？'}</div>
-        <div class="lr-chap">${entry.chapterTitle}</div>
-      </div>
-      <div class="${unlocked ? 'lr-stars' : 'lr-lock'}">${unlocked ? starsText(lvlStars) : '🔒'}</div>
-      ${unlocked && lvl.challenges ? `<div class="lr-challenges">${lvl.challenges.map((c) => {
-        const done = app.progression.challengesCompleted[c.id] != null;
-        return `<span class="ch-tag${done ? ' done' : ''}" title="${c.desc}">${done ? '✓' : '⚔'} ${c.name}</span>`;
-      }).join('')}</div>` : ''}`;
-    if (unlocked) row.onclick = () => startLevel(entry.levelId);
-    lsList.appendChild(row);
+    const existing = chapters.find((c) => c.chapterId === entry.chapterId);
+    const level = {
+      entry, unlocked: isUnlocked(manifest, i, app.progression),
+      stars: app.progression.cleared[clearedKey(entry.levelId)]?.stars ?? 0,
+      lvl,
+    };
+    if (existing) { existing.levels.push(level); }
+    else { chapters.push({ chapterId: entry.chapterId, chapterTitle: entry.chapterTitle, levels: [level] }); }
   });
+
+  let firstUnclearedBtn: HTMLElement | null = null;
+  for (const chap of chapters) {
+    const card = document.createElement('div');
+    card.className = 'chapter-card';
+    const chapStars = chap.levels.reduce((s, l) => s + l.stars, 0);
+    const head = document.createElement('div');
+    head.className = 'cc-head';
+    head.innerHTML = `
+      <span class="cc-num">第${cnNum(Number(chap.chapterId.replace('ch', '')))}章</span>
+      <span class="cc-title">${chap.chapterTitle.replace(/^第.*章 · /, '')}</span>
+      <span class="cc-stars" title="本章 ★">★${chapStars}/${chap.levels.length * 3}</span>`;
+    card.appendChild(head);
+    chap.levels.forEach((l, li) => {
+      const btn = document.createElement('div');
+      btn.className = 'level-btn' + (l.unlocked ? '' : ' locked');
+      const numTxt = ['壹', '贰', '叁'][li] ?? '·';
+      const chTags = l.unlocked && l.lvl.challenges
+        ? `<span class="lb-ch">${l.lvl.challenges.map((c) => {
+            const done = app.progression.challengesCompleted[c.id] != null;
+            return `<span class="ch-tag${done ? ' done' : ''}" title="${c.desc}">${done ? '✓' : '⚔'}</span>`;
+          }).join('')}</span>` : '';
+      btn.innerHTML = `
+        <span class="lb-num">${numTxt}</span>
+        <span class="lb-name">${l.unlocked ? l.lvl.name : '？？？'}</span>
+        <span class="${l.unlocked ? 'lb-stars' : 'lb-lock'}">${l.unlocked ? starsText(l.stars) : '🔒'}</span>${chTags}`;
+      if (l.unlocked) {
+        btn.onclick = () => startLevel(l.entry.levelId);
+        if (l.stars === 0 && firstUnclearedBtn === null) {
+          firstUnclearedBtn = btn;
+          card.classList.add('current');
+        }
+      }
+      card.appendChild(btn);
+    });
+    lsList.appendChild(card);
+  }
+
+  // 自动滚动到第一个未通关关卡
+  if (firstUnclearedBtn) {
+    requestAnimationFrame(() => firstUnclearedBtn!.scrollIntoView({ block: 'center', behavior: 'auto' }));
+  }
 }
 
 export function returnToSelect(): void {
   app.game = null;
   app.currentLevel = null;
   app.selectedUid = null;
-  app.selectedChallenge = null;
   app.destinyBoost = 1;
   towerPanel.classList.remove('show');
   hideStory();
@@ -108,12 +151,8 @@ export function startLevel(id: string): void {
   const board = app.board;
   if (!lvl || !board) return;
 
-  // 挑战选择：只有该关至少通关过一次才显示挑战选择
-  const challenges = lvl.challenges;
-  if (challenges && challenges.length > 0 && app.selectedChallenge === null && isCleared(app.progression, id)) {
-    showChallengeSelect(challenges, id);
-    return;
-  }
+  // 复刷已通关关卡：该关全部挑战自动同时开启，通关时达成几个算几个
+  const challenges = isCleared(app.progression, id) ? lvl.challenges : undefined;
 
   const doStart = () => {
     app.currentLevel = lvl;
@@ -128,13 +167,8 @@ export function startLevel(id: string): void {
     app.destinyBoost = useScroll ? 1.08 : 1;
 
     app.game = new Game(lvl, lookup, 12345, undefined, buildMods(), 1, 1, app.destinyBoost);
-    // 传入选定的挑战
-    if (app.selectedChallenge && app.selectedChallenge !== 'skip' && challenges) {
-      const cd = challenges.find((c) => c.id === app.selectedChallenge);
-      if (cd) app.game.setChallenge([cd]);
-    }
-    // 重置，下一关重新选择
-    app.selectedChallenge = null;
+    // 开启该关全部挑战（复刷时）
+    if (challenges && challenges.length > 0) app.game.setChallenge(challenges);
     app.game.onEvent = onGameEvent;
     app.game.telemetry = telemetry;
 
@@ -168,49 +202,6 @@ export function startLevel(id: string): void {
   } else {
     doStart();
   }
-}
-
-/** 弹窗选择挑战 */
-function showChallengeSelect(challenges: ChallengeDef[], levelId: string): void {
-  const already = new Set(Object.keys(app.progression.challengesCompleted));
-  const challengeButtons = challenges.map((c) => {
-    const done = already.has(c.id);
-    return `<button class="ch-opt${done ? ' done' : ''}" data-cid="${c.id}" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px 16px;background:linear-gradient(180deg,#2a3450,#1c2640);border:1px solid #3a4a6a;border-radius:6px;color:#e0e0e0;cursor:pointer;font-size:16px">
-      <span style="color:#ffd93d;font-weight:bold">${c.name}</span>
-      <span style="color:#8b8ba0;margin-left:12px">${c.desc}</span>
-      <span style="color:#5fd3ff;float:right">+${c.rewardContrib} 贡献</span>
-      ${done ? '<span style="color:#4caf50;margin-left:8px">✓ 已达成</span>' : ''}
-    </button>`;
-  }).join('');
-
-  const beat: ConfirmBeat = {
-    chapter: '挑 战',
-    title: '选 择 挑 战',
-    lines: ['可选挑战（通关额外奖励宗门贡献）：', '', `<div style="text-align:left;font-size:16px;line-height:2">${challengeButtons}</div>`, '', '点击上方任一挑战直接进入，或点下方跳过。'],
-    btn: '跳 过（不选挑战）',
-    btnCancel: '取 消',
-    onCancel: () => { renderLevelSelect(); },
-    html: true,
-  };
-  showStory(beat, () => {
-    // 跳过，不选挑战
-    app.selectedChallenge = 'skip';
-    startLevel(levelId);
-  });
-
-  // 绑定挑战按钮点击
-  setTimeout(() => {
-    const body = document.getElementById('storyBody');
-    if (!body) return;
-    body.querySelectorAll('.ch-opt').forEach((el) => {
-      el.addEventListener('click', () => {
-        const cid = (el as HTMLElement).dataset.cid!;
-        app.selectedChallenge = cid;
-        hideStory();
-        startLevel(levelId);
-      });
-    });
-  }, 0);
 }
 
 function onGameEvent(e: GameEventLike): void {
@@ -260,25 +251,32 @@ export function settleWin(livesRemaining: number, startLives: number, levelId: s
   app.progression = recordResult(app.progression, levelId, stars);
   app.progression = awardContribution(app.progression, stars);
 
-  // 挑战结算
+  // 挑战结算：通关时该关全部挑战逐个判定，达成几个算几个
   let challengeTxt = '';
-  if (app.game?.activeChallenge && app.game?.challengeSucceeded) {
-    const cid = app.game.activeChallenge.id;
-    if (!app.progression.challengesCompleted[cid]) {
-      app.progression = {
-        ...app.progression,
-        challengesCompleted: { ...app.progression.challengesCompleted, [cid]: 1 },
-        contribution: app.progression.contribution + app.game.activeChallenge.rewardContrib,
-      };
-      challengeTxt = `\n🌟 挑战「${app.game.activeChallenge.name}」达成！+${app.game.activeChallenge.rewardContrib} 宗门贡献！`;
-    } else {
-      challengeTxt = `\n挑战「${app.game.activeChallenge.name}」已达成过。`;
+  let challengeGain = 0;
+  const newlyDone: string[] = [];
+  const failedNames: string[] = [];
+  if (app.game?.challengeSucceeded) {
+    for (const res of app.game.getChallengeResults()) {
+      const cid = res.challenge.id;
+      if (res.failed) {
+        if (!app.progression.challengesCompleted[cid]) failedNames.push(res.challenge.name);
+        continue;
+      }
+      if (!app.progression.challengesCompleted[cid]) {
+        newlyDone.push(res.challenge.name);
+        challengeGain += res.challenge.rewardContrib;
+        app.progression = {
+          ...app.progression,
+          challengesCompleted: { ...app.progression.challengesCompleted, [cid]: 1 },
+          contribution: app.progression.contribution + res.challenge.rewardContrib,
+        };
+      }
     }
-  } else if (app.game?.activeChallenge && app.game?.challengeFailed) {
-    challengeTxt = `\n挑战「${app.game.activeChallenge.name}」失败：${app.game.challengeFailedReason}`;
+    if (newlyDone.length > 0) challengeTxt = `\n🌟 挑战达成：${newlyDone.join('、')}！+${challengeGain} 宗门贡献！`;
+    if (failedNames.length > 0) challengeTxt += `\n未达成：${failedNames.join('、')}`;
   }
   const afterTitle = resolveTitle(completedChapters(manifest, app.progression));
-  app.selectedChallenge = null;
 
   // 检测境界突破 + 塔解锁
   const afterClear = clearedStageCount(app.progression);
