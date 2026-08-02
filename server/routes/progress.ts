@@ -4,6 +4,7 @@ import { loadProgress, saveProgress } from '../storage/fileStore.js';
 const router = Router();
 
 router.get('/:id/progress', (req, res) => {
+  res.set('Cache-Control', 'no-store');
   const raw = loadProgress(req.params.id);
   if (raw === null) return res.json(null);
   try { res.json(JSON.parse(raw)); }

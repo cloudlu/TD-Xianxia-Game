@@ -13,14 +13,26 @@ export const CH4_L3: LevelConfig = {
   hpMul: 1.3,
   maxTowerLevel: 6,
   waves: [
-    { spawns: [{ enemy: 'shadow_fox', count: 5, gap: 1.4, delay: 0 }], clearBonus: 140 },
-    { spawns: [{ enemy: 'splitter', count: 7, gap: 1.2, delay: 0 }, { enemy: 'shadow_fox', count: 5, gap: 1.4, delay: 1 }], clearBonus: 170 },
-    { spawns: [{ enemy: 'shadow_fox', count: 7, gap: 1.2, delay: 0 }, { enemy: 'splitter', count: 10, gap: 1, delay: 1 }], clearBonus: 200 },
+    { spawns: [
+      { enemy: 'shadow_fox', count: 5, gap: 1.4, delay: 0, path: 0 },
+      { enemy: 'shadow_fox', count: 4, gap: 1.4, delay: 1, path: 1 },
+      { enemy: 'splitter', count: 4, gap: 1.4, delay: 2, path: 2 },
+    ], clearBonus: 140 },
+    { spawns: [
+      { enemy: 'splitter', count: 7, gap: 1.2, delay: 0, path: 0 },
+      { enemy: 'shadow_fox', count: 5, gap: 1.4, delay: 1, path: 1 },
+      { enemy: 'shadow_fox', count: 4, gap: 1.4, delay: 2, path: 2 },
+    ], clearBonus: 170 },
+    { spawns: [
+      { enemy: 'shadow_fox', count: 7, gap: 1.2, delay: 0, path: 0 },
+      { enemy: 'splitter', count: 10, gap: 1, delay: 1, path: 1 },
+      { enemy: 'splitter', count: 6, gap: 1.2, delay: 2, path: 2 },
+    ], clearBonus: 200 },
     // 末波：九尾天狐降临（周期魅惑+召唤狐妖）+ 杂兵压场
     { spawns: [
-      { enemy: 'nine_tails', count: 11, gap: 1, delay: 2 },
-      { enemy: 'shadow_fox', count: 5, gap: 1.4, delay: 0 },
-      { enemy: 'splitter', count: 5, gap: 1.6, delay: 1 },
+      { enemy: 'nine_tails', count: 11, gap: 1, delay: 2, path: 0 },
+      { enemy: 'shadow_fox', count: 5, gap: 1.4, delay: 0, path: 1 },
+      { enemy: 'splitter', count: 5, gap: 1.6, delay: 1, path: 2 },
     ], clearBonus: 250 },
   ],
   story: {
