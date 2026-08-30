@@ -3,6 +3,8 @@ import { app, selectProfile, persist } from './state';
 import { withDefaults } from '../repo/progress';
 import { listProfiles, createProfile, deleteProfile, saveRepoFor } from '../repo/profiles';
 import { renderLevelSelect } from './levelSelect';
+import { showStory } from './storyModal';
+import { PROLOGUE_STORY, backfillChronicle } from '../data/config';
 
 const profileSelect = document.getElementById('profileSelect')!;
 const profileList = document.getElementById('profileList')!;
@@ -44,8 +46,23 @@ export async function renderProfileSelect(): Promise<void> {
 async function enterProfile(id: string, name: string): Promise<void> {
   await selectProfile(id, name);
   profileSelect.style.display = 'none';
-  renderLevelSelect();
-  document.getElementById('levelSelect')!.style.display = 'flex';
+  const showSelect = () => {
+    renderLevelSelect();
+    document.getElementById('levelSelect')!.style.display = 'flex';
+  };
+  const p = app.progression;
+  // 老存档自动补全宗门编年史：按已通关关卡回填剧情 id（不重放弹窗），新档从零开始
+  const backfilled = backfillChronicle(p.cleared, p.chronicle, p.prologueShown);
+  const isNew = Object.keys(p.cleared).length === 0 && (p.reincarnationLevel ?? 0) === 0 && !p.prologueShown;
+  if (isNew) {
+    // 全新档：先看序章，再由 showStory 打点记录
+    app.progression = { ...p, prologueShown: true };
+    showStory(PROLOGUE_STORY, showSelect);
+  } else {
+    // 老档：补记序章（已看/已通关），不重放；编年史按通关进度回填
+    app.progression = { ...p, prologueShown: true, chronicle: backfilled };
+    showSelect();
+  }
 }
 
 document.getElementById('profileCreateBtn')!.onclick = async () => {

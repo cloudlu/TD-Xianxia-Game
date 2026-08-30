@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { getLevelChallenges } from './challengeConfig';
 import { LEVELS } from '../config/levels';
+import { ENEMIES } from './enemies';
+import { TOWERS } from './towers';
 import type { ChallengeKind } from '../../types';
 
 const VALID_KINDS: ChallengeKind[] = ['speed', 'mono_school', 'no_upgrade', 'no_aura', 'budget'];
@@ -125,6 +127,31 @@ describe('challengeConfig', () => {
     for (const levelId of Object.keys(LEVELS)) {
       const kinds = getLevelChallenges(levelId).map(c => c.kind);
       expect(new Set(kinds).size).toBe(kinds.length);
+    }
+  });
+
+  it('no no_aura challenge is offered on levels containing stealth enemies', () => {
+    const airSchools = new Set<string>();
+    for (const t of Object.values(TOWERS)) if (t.hitsAir) airSchools.add(t.school);
+    for (const levelId of Object.keys(LEVELS)) {
+      const level = LEVELS[levelId];
+      const enemyIds = new Set(level.waves.flatMap(w => w.spawns.map(s => s.enemy)));
+      const hasStealth = [...enemyIds].some(id => ENEMIES[id]?.stealth);
+      const hasFly = [...enemyIds].some(id => ENEMIES[id]?.fly);
+      for (const c of getLevelChallenges(levelId)) {
+        if (c.kind === 'no_aura') {
+          expect(hasStealth, `no_aura 挑战 ${c.id} 出现在含隐身敌人的关卡 ${levelId}`).toBe(false);
+        }
+        if (c.kind === 'mono_school') {
+          const allowed = (c.params as any).allowed.split(',').map((s: string) => s.trim());
+          if (hasFly) {
+            expect(
+              allowed.some((s: string) => airSchools.has(s)),
+              `mono_school 挑战 ${c.id} 在含飞行敌人的关卡 ${levelId} 无对空流派`,
+            ).toBe(true);
+          }
+        }
+      }
     }
   });
 });

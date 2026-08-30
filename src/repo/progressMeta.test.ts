@@ -103,12 +103,12 @@ describe('VIP 领取业务函数', () => {
 
   describe('upgradeVipTo', () => {
     it('直升成功不扣仙玉', () => {
-      const p = baseProgression({ vipLevel: 1, totalRecharged: 500 });
+      const p = baseProgression({ vipLevel: 1, totalRecharged: 1100 });
       const r = upgradeVipTo(p, 3);
       expect(r).not.toBeNull();
       expect(r!.vipLevel).toBe(3);
       // upgradeVipTo 不修改 jade / totalRecharged
-      expect(r!.totalRecharged).toBe(500);
+      expect(r!.totalRecharged).toBe(1100);
     });
 
     it('目标等级 <= 当前等级返回 null', () => {
@@ -124,7 +124,7 @@ describe('VIP 领取业务函数', () => {
 
     it('累计充值不足返回 null', () => {
       const p = baseProgression({ vipLevel: 1, totalRecharged: 100 });
-      expect(upgradeVipTo(p, 3)).toBeNull(); // need 240
+      expect(upgradeVipTo(p, 3)).toBeNull(); // need 1098
     });
 
     it('直升多级正确', () => {

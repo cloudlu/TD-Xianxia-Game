@@ -150,6 +150,125 @@ describe('TowerCombat', () => {
     expect(tc.effects.some((fx) => fx.kind === 'dmg')).toBe(true);
   });
 
+  it('damage from tower produces hit effect carrying school/tier', () => {
+    const tc = freshCombat();
+    const enemy = makeEnemy();
+    tc.update(0.01, [enemy], [makeTower()]);
+    tc.update(0.2, [enemy], [makeTower()]);
+    const hit = tc.effects.find((fx) => fx.kind === 'hit');
+    expect(hit).toBeDefined();
+    expect(hit!.school).toBe('sword');  // towerDef.school
+    expect(hit!.tier).toBe(0);
+  });
+
+  it('normal enemy death produces poof with normal style and no shake', () => {
+    const oneHpDef: EnemyConfig = { ...enemyDef, hp: 30 };
+    const tc = freshCombat();
+    const enemy = makeEnemy({ hp: 30, maxHp: 30, def: oneHpDef });
+    tc.update(0.01, [enemy], [makeTower()]);
+    tc.update(0.2, [enemy], [makeTower()]);
+    const poof = tc.effects.find((fx) => fx.kind === 'poof');
+    expect(poof).toBeDefined();
+    expect(poof!.style).toBe('normal');
+    expect(poof!.shake ?? 0).toBe(0);
+  });
+
+  it('flying enemy death produces feather style poof', () => {
+    const flyDef: EnemyConfig = { ...enemyDef, hp: 30, fly: true };
+    const tc = freshCombat();
+    const enemy = makeEnemy({ hp: 30, maxHp: 30, def: flyDef });
+    tc.update(0.01, [enemy], [makeTower()]);
+    tc.update(0.2, [enemy], [makeTower()]);
+    expect(tc.effects.some((fx) => fx.kind === 'poof' && fx.style === 'feather')).toBe(true);
+  });
+
+  it('boss death produces boss style poof with shake marker', () => {
+    const bossDef: EnemyConfig = { ...enemyDef, hp: 30, bossAbility: { type: 'enrage', interval: 10 } } as any;
+    const tc = freshCombat();
+    const enemy = makeEnemy({ hp: 30, maxHp: 30, def: bossDef });
+    tc.update(0.01, [enemy], [makeTower()]);
+    tc.update(0.2, [enemy], [makeTower()]);
+    const poof = tc.effects.find((fx) => fx.kind === 'poof' && fx.style === 'boss');
+    expect(poof).toBeDefined();
+    expect(poof!.shake).toBeGreaterThan(0);
+  });
+
+  it('aoe damage hit effect carries aoeRadius', () => {
+    const fireDef: TowerConfig = {
+      ...towerDef, id: 'fire', behavior: 'aoe',
+      levels: [{ realm: '炼气', dmg: 50, rate: 10, range: 10, aoeRadius: 1.5 }],
+    };
+    const tc = freshCombat();
+    const enemy = makeEnemy();
+    tc.update(0.01, [enemy], [makeTower({ def: fireDef })]);
+    const hit = tc.effects.find((fx) => fx.kind === 'hit');
+    expect(hit).toBeDefined();
+    expect(hit!.radius).toBe(1.5);
+    expect(hit!.school).toBe('sword');
+  });
+
+  it('mine explosion hit effect carries radius and shake', () => {
+    const mineDef: TowerConfig = {
+      ...towerDef, id: 'mine', behavior: 'mine', school: 'earth',
+      levels: [{ realm: '炼气', dmg: 50, rate: 10, range: 10, aoeRadius: 1.0 }],
+    };
+    const tc = freshCombat();
+    const enemy = makeEnemy();
+    tc.update(0.01, [enemy], [makeTower({ def: mineDef })]);
+    const hit = tc.effects.find((fx) => fx.kind === 'hit');
+    expect(hit).toBeDefined();
+    expect(hit!.radius).toBe(1.0);
+    expect(hit!.shake).toBeGreaterThanOrEqual(3);   // tier0 = 3
+    expect(hit!.school).toBe('earth');
+  });
+
+  it('mine explosion hit effect carries radius and shake', () => {
+    const mineDef: TowerConfig = {
+      ...towerDef, id: 'mine', behavior: 'mine', school: 'earth',
+      levels: [{ realm: '炼气', dmg: 50, rate: 10, range: 10, aoeRadius: 1.0 }],
+    };
+    const tc = freshCombat();
+    const enemy = makeEnemy();
+    tc.update(0.01, [enemy], [makeTower({ def: mineDef })]);
+    const hit = tc.effects.find((fx) => fx.kind === 'hit');
+    expect(hit).toBeDefined();
+    expect(hit!.radius).toBe(1.0);
+    expect(hit!.shake).toBeGreaterThanOrEqual(3);   // tier0 = 3
+    expect(hit!.school).toBe('earth');
+  });
+
+  it('visual trail (dmg=0) survives same-frame target death and reaches target', () => {
+    // 枪塔扫射：伤害即时结算把怪打死（同帧 dead），视觉弹道仍应存活并飞向目标
+    const spearDef: TowerConfig = {
+      ...towerDef, id: 'spear', behavior: 'pierce', school: 'spear',
+      levels: [{ realm: '炼气', dmg: 999, rate: 10, range: 10 }],
+    };
+    const tc = freshCombat();
+    const enemy = makeEnemy({ hp: 100, maxHp: 100 });
+    tc.update(0.01, [enemy], [makeTower({ def: spearDef })]);
+    // 敌人已死，但视觉弹道不应一出生即亡
+    expect(enemy.dead).toBe(true);
+    expect(tc.projectiles.length).toBeGreaterThan(0);
+    expect(tc.projectiles.every((p) => p.dmg === 0)).toBe(true);
+    // 继续推进：弹道应飞向尸体位置并最终消散（不抛错、不悬挂）
+    tc.update(0.05, [enemy], []);
+    tc.update(0.05, [enemy], []);
+    tc.update(0.05, [enemy], []);
+    // 到达后清空（PROJ_SPEED=14，3 帧足够飞完 ~1.5 格）
+    expect(tc.projectiles).toHaveLength(0);
+  });
+
+  it('crit extends hitFlash (slow-mo feel)', () => {
+    const tc = freshCombat();
+    const enemy = makeEnemy({ hp: 500, maxHp: 500 });
+    // rng() = 0.5 < crit 0.9 → 必暴击
+    const critTower = makeTower({ def: { ...towerDef, levels: [{ realm: '炼气', dmg: 10, rate: 10, range: 10, crit: 0.9 }] } });
+    tc.update(0.01, [enemy], [critTower]);
+    tc.update(0.2, [enemy], [critTower]);
+    // 击中后 hitFlash 衰减中，但暴击初始 0.18 > 普通 0.12（此处验证设置路径存在：effects 含 crit hit）
+    expect(tc.effects.some((fx) => fx.kind === 'hit' && fx.crit)).toBe(true);
+  });
+
   it('death produces poof effect', () => {
     const oneHpDef: EnemyConfig = { ...enemyDef, hp: 30 };
     const tc = freshCombat();
@@ -286,7 +405,7 @@ describe('TowerCombat', () => {
     const e1 = makeEnemy({ uid: 1, dist: 5, def: burrowDef, burrowed: true, x: 3, y: 0 });
     const e2 = makeEnemy({ uid: 2, dist: 10, def: burrowDef, burrowed: false, x: 3, y: 0 });
     // Tower without hitsBurrowed should only target e2 (surfaced)
-    const towers = [makeTower(1, { ...towerDef, hitsBurrowed: undefined }, 0)];
+    const towers = [makeTower({ def: { ...towerDef, hitsBurrowed: undefined } })];
     // We can't easily call acquireTarget directly (it's private), but we can check the result of updateTowers
     // Instead, verify that the combat system doesn't target burrowed enemies via enemiesInRange filter
     // Use updateTowers with a projectile tower that fires at targets

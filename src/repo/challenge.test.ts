@@ -44,6 +44,16 @@ describe('checkChallenge pure logic', () => {
     const r = checkChallenge(magic, { elapsed: 10, towers, upgraded: false, totalSpent: 0 });
     expect(r.failed).toBe(true);
   });
+  it('mono_school: passes when an aura support tower (聚灵阵) is placed alongside allowed schools', () => {
+    const towers = [tower('sword', 'projectile'), tower('aura', 'aura')];
+    const r = checkChallenge(mono, { elapsed: 10, towers, upgraded: false, totalSpent: 0 });
+    expect(r.failed).toBe(false);
+  });
+  it('mono_school: still fails on non-allowed attack tower even with aura present', () => {
+    const towers = [tower('sword', 'projectile'), tower('aura', 'aura'), tower('talisman', 'pierce')];
+    const r = checkChallenge(mono, { elapsed: 10, towers, upgraded: false, totalSpent: 0 });
+    expect(r.failed).toBe(true);
+  });
   it('mono_school: passes when no towers placed', () => {
     const r = checkChallenge(mono, { elapsed: 10, towers: [], upgraded: false, totalSpent: 0 });
     expect(r.failed).toBe(false);

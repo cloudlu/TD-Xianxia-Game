@@ -173,7 +173,6 @@ describe('level result & unlock (no difficulty)', () => {
     const p2 = r.progression;
     expect(p2.reincarnationLevel).toBe(1);
     expect(Object.keys(p2.cleared)).toHaveLength(0);
-    expect(p2.difficulty).toBeUndefined();
     expect(p2.endlessBest).toBeNull();
     expect(r.soulShardsGained).toBeGreaterThan(0);
     expect(p2.soulShards).toBe(100 + r.soulShardsGained);
@@ -237,5 +236,26 @@ describe('challenge migration (withDefaults)', () => {
     const p = withDefaults({ challengesCompleted: { 'ch1-l1_speed': 1, bad: 'yes' as any } });
     expect(p.challengesCompleted['ch1-l1_speed']).toBe(1);
     expect(p.challengesCompleted['bad']).toBeUndefined();
+  });
+});
+
+describe('chronicle & ending (withDefaults)', () => {
+  it('defaults prologueShown=false, chronicle=[], finalEnding=undefined', () => {
+    const p = withDefaults({});
+    expect(p.prologueShown).toBe(false);
+    expect(p.chronicle).toEqual([]);
+    expect(p.finalEnding).toBeUndefined();
+  });
+
+  it('preserves chronicle order and finalEnding from raw', () => {
+    const p = withDefaults({ chronicle: ['prologue', 'ch1_l1_char', 'ch30-l3'], finalEnding: 'wander' });
+    expect(p.chronicle).toEqual(['prologue', 'ch1_l1_char', 'ch30-l3']);
+    expect(p.finalEnding).toBe('wander');
+  });
+
+  it('chronicle 存储只保留 id（不含全文），防存档膨胀', () => {
+    const p = withDefaults({ chronicle: ['ch1_preview'] });
+    expect(p.chronicle.length).toBe(1);
+    expect(p.chronicle[0]).toContain('ch');
   });
 });

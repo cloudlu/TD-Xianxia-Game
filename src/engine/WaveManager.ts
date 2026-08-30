@@ -35,6 +35,8 @@ export interface EnemyR {
 /** 每帧波次事件，Game 据此更新 stones/lives/status */
 export interface WaveEvents {
   leacked: number;       // 本帧漏怪总数
+  killed: number;        // 累计击杀（战报快照用）
+  spawned: number;       // 累计生成（战报快照用）
   waveCleared: boolean;  // 本帧是否清完一波
   allCleared: boolean;   // 所有波次是否已清完
 }
@@ -110,7 +112,7 @@ export class WaveManager {
   /** 推进一帧波次（生成 + 移动 + 漏怪判定），返回本帧事件 */
   update(dt: number, mods: ModifierSet, regLookup: { enemy(id: string): EnemyConfig | undefined }, hpMul: number, bountyMul?: number): WaveEvents {
     this.elapsed += dt;
-    const result: WaveEvents = { leacked: 0, waveCleared: false, allCleared: false };
+    const result: WaveEvents = { leacked: 0, killed: this.waveKilled, spawned: this.waveTotalSpawned, waveCleared: false, allCleared: false };
 
     // 生成
     this.waveDir.update(dt, (id, pathIndex) => {

@@ -25,6 +25,10 @@ function finish(): void {
 }
 
 export function showStory(beat: StoryBeat, onClose: () => void): void {
+  if (beat.id) {
+    const list = app.progression?.chronicle ?? [];
+    if (!list.includes(beat.id)) app.progression.chronicle = [...list, beat.id];
+  }
   const cb = beat as ConfirmBeat;
   sChapter.textContent = cb.chapter ?? '';
   sTitle.textContent = cb.title;

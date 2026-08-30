@@ -13,6 +13,7 @@ import { consumeDestiny, reincarnate } from '../repo/progressMeta';
 import { generateWave, endlessHpMul, endlessContrib, MILESTONES, ENDLESS_PATHS, prepTime, calcSkip, SKIP_MESSAGES, BLESSINGS, pickBlessings, ENDLESS_FORMATIONS } from '../engine/EndlessMode';
 import { buildableFromPaths } from '../data/config/levels/buildable';
 import { REALM_STORIES, TOWER_UNLOCK_STORIES } from '../data/config/realmStories';
+import { CHAPTER_CHAR_BEATS, chapterTitleByIndex, storyById, ENDING_STORIES, REALM_CHAR_LINES, CHARACTER_NAMES } from '../data/config';
 
 const levelSelect = document.getElementById('levelSelect')!;
 const lsList = document.getElementById('lsList')!;
@@ -21,6 +22,12 @@ const lsSub = document.getElementById('lsSub')!;
 const towerPanel = document.getElementById('towerPanel')!;
 
 function starsText(n: number): string { return '★'.repeat(n) + '☆'.repeat(3 - n); }
+
+/** 由 levelId（如 ch12-l3）解析章节索引（0 起），非主线返回 -1 */
+function chapterIndexOf(levelId: string): number {
+  const m = /^ch(\d+)-/.exec(levelId);
+  return m ? Number(m[1]) - 1 : -1;
+}
 
 export function renderLevelSelect(): void {
   const manifest = registry.manifest();
@@ -35,7 +42,9 @@ export function renderLevelSelect(): void {
   const destinyTxt = app.progression.destinyScrolls > 0 ? `　天命符 ${app.progression.destinyScrolls} 张` : '';
   lsSub.textContent = `${title.title}　·　${app.profileName || '修士'}${destinyTxt}`;
   const soulMul = Math.sqrt(app.progression.soulShards) * 0.008;
-  lsProgress.textContent = `通关 ${cleared}/${total}    星 ★ ${stars}/${total * 3}${app.progression.reincarnationLevel > 0 ? `    转生 ${app.progression.reincarnationLevel} 世` : ''}${soulMul > 0 ? `    仙魂 +${(soulMul * 100).toFixed(2)}%` : ''}`;
+  const endingLabel: Record<string, string> = { ascend: '· 结局：成 道', wander: '· 结局：执 子 之 手', reincarnate: '· 隐藏结局：轮 回 重 逢' };
+  const endingTxt = app.progression.finalEnding ? endingLabel[app.progression.finalEnding] ?? '' : '';
+  lsProgress.textContent = `通关 ${cleared}/${total}    星 ★ ${stars}/${total * 3}${app.progression.reincarnationLevel > 0 ? `    转生 ${app.progression.reincarnationLevel} 世` : ''}${soulMul > 0 ? `    仙魂 +${(soulMul * 100).toFixed(2)}%` : ''}${endingTxt}`;
 
   // 塔境界 + 解锁状态
   const clearedCount = clearedStageCount(app.progression);
@@ -98,11 +107,13 @@ export function renderLevelSelect(): void {
       && chap.levels.every((l) => !l.lvl.challenges || l.lvl.challenges.every((c) => app.progression.challengesCompleted[c.id] != null));
     card.className = 'chapter-card' + (chapCleared ? ' cleared' : '');
     const chapStars = chap.levels.reduce((s, l) => s + l.stars, 0);
+    const chapIdx = chapterIndexOf(chap.chapterId + '-l1');
+    const chapTitle = chapIdx >= 0 ? chapterTitleByIndex(chapIdx) : chap.chapterTitle.replace(/^第.*章 · /, '');
     const head = document.createElement('div');
     head.className = 'cc-head';
     head.innerHTML = `
       <span class="cc-num">第${cnNum(Number(chap.chapterId.replace('ch', '')))}章</span>
-      <span class="cc-title">${chap.chapterTitle.replace(/^第.*章 · /, '')}</span>
+      <span class="cc-title">${chapTitle}</span>
       ${chapCleared ? '<span class="cc-done">✓ 已通关</span>' : ''}
       <span class="cc-stars" title="本章 ★">★${chapStars}/${chap.levels.length * 3}</span>`;
     card.appendChild(head);
@@ -181,7 +192,21 @@ export function startLevel(id: string): void {
     app.prevStatus = 'prep';
     app.paused = true;
     app.last = performance.now();
-    showStory(lvl.story?.intro ?? { title: lvl.name, lines: ['守卫此关。'], btn: '开 始' }, () => { app.paused = false; });
+    // 剧情链：关卡旁白 intro →（仅章首 l1 关）章首人物对白 → 开战
+    // 已读剧情（chronicle 中已有 id）自动跳过，复刷关卡直接开始
+    const chapterIdx = chapterIndexOf(lvl.id);
+    const isL1 = /-l1$/.test(lvl.id);
+    const charBeat = chapterIdx >= 0 && isL1 ? CHAPTER_CHAR_BEATS[chapterIdx]?.l1 : undefined;
+    const rawIntro = lvl.story?.intro ?? { title: lvl.name, lines: ['守卫此关。'], btn: '开 始' };
+    const intro: StoryBeat = { ...rawIntro, id: `${lvl.id}_intro` };
+    const seen = new Set(app.progression?.chronicle ?? []);
+    const chain: StoryBeat[] = [];
+    if (!seen.has(intro.id!)) chain.push(intro);
+    if (charBeat && !seen.has(charBeat.id!)) chain.push(charBeat);
+    const begin = () => { app.paused = false; };
+    if (chain.length === 0) { begin(); }
+    else if (chain.length === 1) { showStory(chain[0], begin); }
+    else { showStory(chain[0], () => showStory(chain[1], begin)); }
   };
 
   // 天命符确认：有符时询问玩家是否使用
@@ -291,21 +316,24 @@ export function settleWin(livesRemaining: number, startLives: number, levelId: s
   const settlementBeat: StoryBeat = outro ?? { title: '守阵成功', lines, btn: '返 回 选 关' };
 
   function finalSettlement(): void {
+    const finish = () => {
+      if (levelId === 'ch30-l3') showEndingChoice(returnToSelect);
+      else showChapterEpilogue(levelId, returnToSelect);
+    };
+    // 先弹结算对白（异步），再走晋升 / 章末剧情 / 结局；切勿在 frame 内同步 returnToSelect
     if (afterTitle.index > beforeTitle) {
-      showStory(settlementBeat, () => showPromotion(afterTitle.title, returnToSelect));
+      showStory(settlementBeat, () => showPromotion(afterTitle.title, finish));
     } else {
-      showStory(settlementBeat, returnToSelect);
+      showStory(settlementBeat, finish);
     }
   }
 
   function playNextUnlock(level: number, towerIdx: number): void {
     if (level < afterLevel) {
-      showStory({
-        chapter: '境 界 突 破',
-        title: REALM_STORIES[level + 1].title,
-        lines: REALM_STORIES[level + 1].lines,
-        btn: '继 续',
-      }, () => playNextUnlock(level + 1, towerIdx));
+      const s = REALM_STORIES[level + 1];
+      const charLine = REALM_CHAR_LINES[level + 1];
+      const fullLines = charLine ? [...s.lines, '', charLine.line] : s.lines;
+      showStory({ chapter: s.chapter, title: s.title, lines: fullLines, btn: s.btn }, () => playNextUnlock(level + 1, towerIdx));
       return;
     }
     if (towerIdx < newTowers.length) {
@@ -320,6 +348,58 @@ export function settleWin(livesRemaining: number, startLives: number, levelId: s
   } else {
     finalSettlement();
   }
+}
+
+/** 章末剧情链：l3 通关后追加该章角色收尾对白 + 「下回预告」（ch30 不追加，转结局抉择） */
+function showChapterEpilogue(levelId: string, onDone: () => void): void {
+  const chapIdx = chapterIndexOf(levelId);
+  const isL3 = /-l3$/.test(levelId);
+  if (chapIdx < 0 || !isL3) { onDone(); return; }
+  const charL3 = CHAPTER_CHAR_BEATS[chapIdx]?.l3;
+  const preview = storyById(`ch${chapIdx + 1}_preview`);
+  const finish = () => onDone();
+  if (charL3 && preview) {
+    showStory(charL3, () => showStory(preview, finish));
+  } else if (charL3) {
+    showStory(charL3, finish);
+  } else if (preview) {
+    showStory(preview, finish);
+  } else {
+    finish();
+  }
+}
+
+/** 终章（ch30-l3）结局抉择：成道 / 归隐（道侣） / 转生隐藏结局 */
+function showEndingChoice(onDone: () => void): void {
+  const reinc = (app.progression.reincarnationLevel ?? 0) >= 1;
+  const choice: ConfirmBeat = {
+    chapter: '天 道 之 问',
+    title: '你 愿 意 成 为 新 的 天 道 吗 ？',
+    lines: reinc
+      ? [
+          '道祖魔影再次消散，天外天归于宁静。',
+          '轮回数世，你已仙魂通透。',
+          '天道的声音再度响起，却带着一丝迟疑——',
+          '「轮回之人……你还要拒绝本座吗？」',
+        ]
+      : [
+          '道祖魔影消散，天外天归于宁静。',
+          '回望修真界——那个你从外门弟子开始守护的小小宗门。',
+          '天道问：「你愿意成为新的天道吗？」',
+        ],
+    btn: '成 为 天 道',
+    btnCancel: reinc ? '再 世 寻 她' : '归 于 人 间',
+    onCancel: () => applyEnding(reinc ? 'reincarnate' : 'wander', onDone),
+  };
+  showStory(choice, () => applyEnding('ascend', onDone));
+}
+
+/** 应用结局并展示结局剧情（记录 finalEnding，互斥） */
+function applyEnding(kind: 'ascend' | 'wander' | 'reincarnate', onDone: () => void): void {
+  app.progression = { ...app.progression, finalEnding: kind };
+  const beat = ENDING_STORIES[`ending_${kind}`];
+  if (beat) showStory(beat, onDone);
+  else onDone();
 }
 
 /** 头衔晋升庆典弹窗 */

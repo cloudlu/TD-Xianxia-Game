@@ -68,6 +68,8 @@ export interface EnemyConfig {
     summon?: { enemy: string; count: number }; // 召唤
     enrageBelow?: { hpPct: number; speedMul: number; summonCount?: number }; // 狂暴：血量低于阈值加速/多召唤
   };
+  /** 出身/传说/典故（妖兽录叙事，纯展示） */
+  lore?: string;
 }
 
 export interface SpawnEntry {
@@ -117,6 +119,8 @@ export interface ChapterMapConfig {
 
 /** 剧情片段（设计文档 §8.4，弹窗渲染层消费） */
 export interface StoryBeat {
+  /** 剧情唯一 ID（编年史打点/回看索引；缺省不记录） */
+  id?: string;
   chapter?: string;
   title: string;
   lines: string[];

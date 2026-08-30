@@ -24,7 +24,11 @@ export function buildableFromPaths(
   const onPath = cellsOnPaths(paths);
   const blockedSet = new Set<string>();
   if (blocked) {
-    for (const b of blocked) blockedSet.add(`${b.col},${b.row}`);
+    for (const b of blocked) {
+      const col = (b as BlockedCell).col ?? (b as GridPoint).x;
+      const row = (b as BlockedCell).row ?? (b as GridPoint).y;
+      blockedSet.add(`${col},${row}`);
+    }
   }
   const grid: boolean[][] = [];
   for (let r = 0; r < rows; r++) {

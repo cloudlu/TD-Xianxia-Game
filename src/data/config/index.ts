@@ -16,3 +16,6 @@ export { REALM_STORIES, TOWER_UNLOCK_STORIES } from './realmStories';
 export type { LimitedTreasureConfig } from './limited_treasures';
 export { CHAPTER_MAPS } from './chapterMaps';
 export { BACKGROUNDS } from './backgrounds';
+export { CHAPTER_TITLES } from './chapterTitles';
+export { CHAPTER_CHAR_BEATS, REALM_CHAR_LINES, CHARACTER_NAMES } from './characters';
+export { PROLOGUE_STORY, ENDING_STORIES, storyById, chronicleGroups, chapterTitleByIndex, backfillChronicle } from './chronicleIndex';

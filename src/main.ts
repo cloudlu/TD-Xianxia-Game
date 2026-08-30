@@ -16,6 +16,7 @@ import { towerConfig } from './engine/TowerOperations';
 import { renderProfileSelect, switchProfile } from './app/profileScreen';
 import './app/metaScreen';   // 模块加载时绑定 metaBtn 等
 import { renderBestiary } from './app/bestiary';
+import { renderChronicle } from './app/chronicle';
 import { validateConfigs } from './data/ConfigLoader';
 import type { Game } from './engine/Game';
 import { telemetry, persist } from './app/state';
@@ -267,7 +268,17 @@ const tpUpgrade = document.getElementById('tpUpgrade') as HTMLButtonElement;
 const tpSell = document.getElementById('tpSell') as HTMLButtonElement;
 const tpStats = document.getElementById('tpStats')!;
 document.getElementById('tpClose')!.onclick = () => { app.selectedUid = null; };
-tpUpgrade.onclick = () => { if (app.game && app.selectedUid !== null && app.game.upgradeTower(app.selectedUid)) audio.sfx('upgrade'); };
+tpUpgrade.onclick = () => {
+  if (app.game && app.selectedUid !== null) {
+    const lvBefore = app.game.towerOps.towers.find((t) => t.uid === app.selectedUid)?.level ?? 0;
+    if (app.game.upgradeTower(app.selectedUid)) {
+      // 境界分档 sting：tier 由升级后 level 推算（3-5=元婴档 / 6+=大乘档）
+      const lvAfter = Math.max(lvBefore, lvBefore + 1);
+      const tier = lvAfter >= 6 ? 2 : lvAfter >= 3 ? 1 : 0;
+      audio.sfx(tier === 2 ? 'realmup2' : tier === 1 ? 'realmup1' : 'realmup0');
+    }
+  }
+};
 tpSell.onclick = () => { if (app.game && app.selectedUid !== null && app.game.sellTower(app.selectedUid)) { audio.sfx('sell'); app.selectedUid = null; } };
 tpTarget.onclick = () => { if (app.game && app.selectedUid !== null) app.game.cycleTargetPolicy(app.selectedUid); };
 
@@ -358,7 +369,17 @@ canvas.addEventListener('contextmenu', (ev) => {
 // ---------- 主循环 ----------
 app.last = performance.now();
 
+// 主循环外壳：任何一帧出错都只记录错误、继续下一帧，避免一次异常杀死渲染循环导致黑屏
 function frame(now: number): void {
+  try {
+    frameStep(now);
+  } catch (err) {
+    console.error('[frame]', err);
+  }
+  requestAnimationFrame(frame);
+}
+
+function frameStep(now: number): void {
   const dt = (now - app.last) / 1000;
   app.last = now;
 
@@ -376,7 +397,7 @@ function frame(now: number): void {
   refreshTowerVisibility();    // 塔类型解锁过滤
   board.rangeAdd = buildMods().rangeAdd();
 
-  if (!app.game || !app.currentLevel) { requestAnimationFrame(frame); return; }
+  if (!app.game || !app.currentLevel) { return; }
 
   if (!app.paused && app.speedMul > 0) app.game.tick(dt * app.speedMul);
 
@@ -422,7 +443,7 @@ function frame(now: number): void {
             progressTxt = ` ${Math.ceil(p.elapsed ?? 0)}/${p.limit}s`;
             break;
           case 'mono_school':
-            progressTxt = p.allowed ? ` 仅${p.allowed.split(',').map((s) => schoolLabel(s.trim())).join('/')}` : '';
+            progressTxt = p.allowed ? ` 仅${p.allowed.split(',').map((s) => schoolLabel(s.trim())).join('/')}（聚灵阵可用）` : '';
             break;
           case 'no_upgrade':
             progressTxt = p.upgraded ? ' ❌已升级' : '';
@@ -498,8 +519,8 @@ function frame(now: number): void {
       }
     }
   }
-  // 无尽模式：自动推进到下一波
-  if (app.currentLevel.id === 'endless' && s.status === 'prep' && app.game) {
+  // 无尽模式：自动推进到下一波（结算回调可能已切回选关，需判空）
+  if (app.currentLevel?.id === 'endless' && s.status === 'prep' && app.game) {
     tickEndless();
   }
   // 无尽模式跳关横幅显示
@@ -522,13 +543,13 @@ function frame(now: number): void {
   if (app.currentLevel?.id === 'endless') {
     skillBtn.style.display = 'flex';
     skillBtn.className = app.endlessSkillReady ? 'ready' : 'cooldown';
-    skillBtn.title = app.endlessSkillReady ? '天雷·灭：全屏真伤（每 25 波可用一次）' : `冷却中（还需 ${25 - ((app.game?.waveIndex ?? 0) - (app.game as any)?.skillLastUsedWave ?? 0)} 波）`;
+    const curWave = app.game?.waveIndex ?? 0;
+    const lastUsed = (app.game as any)?.skillLastUsedWave ?? 0;
+    skillBtn.title = app.endlessSkillReady ? '天雷·灭：全屏真伤（每 25 波可用一次）' : `冷却中（还需 ${25 - (curWave - lastUsed)} 波）`;
   } else {
     skillBtn.style.display = 'none';
   }
   app.prevStatus = s.status;
-
-  requestAnimationFrame(frame);
 }
 
 // ---------- 遥测调试面板 ----------
@@ -624,6 +645,12 @@ document.getElementById('bestiaryBtn')!.onclick = () => {
   card.innerHTML = renderBestiary() + `<div class="close-row"><button id="bestiaryClose">返 回 选 关</button></div>`;
   document.getElementById('bestiaryClose')!.onclick = () => document.getElementById('bestiaryOverlay')!.classList.remove('show');
   document.getElementById('bestiaryOverlay')!.classList.add('show');
+};
+document.getElementById('chronicleBtn')!.onclick = () => {
+  const card = document.getElementById('chronicleCard')!;
+  card.innerHTML = renderChronicle();
+  document.getElementById('chronicleClose')!.onclick = () => document.getElementById('chronicleOverlay')!.classList.remove('show');
+  document.getElementById('chronicleOverlay')!.classList.add('show');
 };
 document.getElementById('endlessBtn')!.onclick = startEndless;
 requestAnimationFrame(frame);

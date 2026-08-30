@@ -16,7 +16,8 @@ export const monoSchoolValidator: IChallengeValidator = {
   validate(ctx) {
     const allowed = parseAllowed(ctx.allowedSchool);
     if (allowed.length === 0) return { failed: false };
-    const bad = ctx.towers.find((t) => !allowed.includes(t.school));
+    // 光环塔（聚灵阵）为辅助塔，不参与"单流派"限制——隐身敌人需聚灵阵破隐
+    const bad = ctx.towers.find((t) => t.behavior !== 'aura' && !allowed.includes(t.school));
     if (bad) return { failed: true, failedReason: `使用了非允许流派塔：${schoolLabel(bad.school)}（仅限 ${allowedTxt(allowed)}）` };
     return { failed: false };
   },

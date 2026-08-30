@@ -5,7 +5,8 @@
 //
 // 注意：音频属反馈层，不参与引擎确定性模拟（引擎不调用音频），故可自由用 Math.random。
 
-type SfxType = 'place' | 'upgrade' | 'sell' | 'kill' | 'leak' | 'wave' | 'win' | 'lose' | 'promote' | 'click' | 'boss';
+type SfxType = 'place' | 'upgrade' | 'sell' | 'kill' | 'leak' | 'wave' | 'win' | 'lose' | 'promote' | 'click' | 'boss'
+  | 'realmup0' | 'realmup1' | 'realmup2';
 
 class AudioManager {
   private ctx: AudioContext | null = null;
@@ -15,6 +16,7 @@ class AudioManager {
   private musicTimer: number | null = null;
   private droneOsc: OscillatorNode | null = null;
   private lastKill = 0;
+  private killCombo = 0;
   muted = false;
 
   /** 必须在用户手势（如点击）中调用，浏览器才允许发声 */
@@ -142,14 +144,34 @@ class AudioManager {
         this.blip(523, 0.10, 'triangle', 0.25);
         window.setTimeout(() => this.blip(784, 0.16, 'triangle', 0.25), 90);
         break;
+      case 'realmup0':
+        // 低境界突破：短促双音
+        this.blip(587, 0.12, 'triangle', 0.22);
+        window.setTimeout(() => this.blip(880, 0.15, 'triangle', 0.2), 80);
+        break;
+      case 'realmup1':
+        // 元婴~渡劫：三音和弦 + 低音垫
+        [523, 659, 784].forEach((f, i) => this.blip(f, 0.3, 'triangle', 0.18 + i * 0.02));
+        this.blip(131, 0.5, 'sine', 0.15);
+        break;
+      case 'realmup2':
+        // 大乘/飞升：五音上行 arpeggio + 长尾
+        [523, 659, 784, 1046, 1318].forEach((f, i) =>
+          window.setTimeout(() => this.blip(f, 0.4, 'triangle', 0.22), i * 90));
+        window.setTimeout(() => this.sweep(1318, 523, 0.9, 'sine', 0.1), 480);
+        this.blip(98, 0.9, 'sine', 0.16);
+        break;
       case 'sell':
         this.blip(330, 0.12, 'sine', 0.2);
         break;
       case 'kill': {
         const t = this.ctx.currentTime;
         if (t - this.lastKill < 0.05) break;
+        // 连击音调递增：2 秒内连续击杀每杀 +1 半音，最高 +12（清群爽感）
+        const combo = t - this.lastKill < 2 ? Math.min(12, this.killCombo + 1) : 0;
+        this.killCombo = combo;
         this.lastKill = t;
-        const semitone = Math.pow(2, (Math.random() - 0.5) * 2 / 12);
+        const semitone = Math.pow(2, (combo + (Math.random() - 0.5)) / 12);
         this.sweep(440 * semitone, 180 * semitone, 0.13, 'triangle', 0.16);
         break;
       }

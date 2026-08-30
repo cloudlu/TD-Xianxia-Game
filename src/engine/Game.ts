@@ -12,6 +12,8 @@ import { ModifierSet } from '../data/Modifier';
 import { WaveManager, type EnemyR } from './WaveManager';
 import { TowerOperations, type TowerR } from './TowerOperations';
 import { TowerCombat, type VisEffect, type CombatUpdateCtx, type CombatGameEvent } from './combat/TowerCombat';
+import { visualTier } from '../data/config/towerVisuals';
+import { triggerShake } from './pure/shake';
 import type { EnemyConfig } from '../types';
 import type { TelemetryRepo } from '../repo/telemetry';
 
@@ -39,10 +41,14 @@ export interface GameState {
   waveActive: boolean;
   nextWaveIn: number;
   elapsed: number;
+  /** 当前波开始时间（表现层：波次开场演出用） */
+  waveStartTime: number;
   enemies: EnemyR[];
   towers: TowerR[];
   projectiles: any[];
   effects: VisEffect[];
+  /** 屏幕震动状态（表现层读 snapshot 渲染，确定性相位驱动） */
+  shake: { intensity: number; until: number };
   waveSpawned: number;
   waveKilled: number;
   nextWaveSpawns?: ReadonlyArray<{ enemy: string; count: number; path?: number }>;
@@ -89,6 +95,8 @@ export class Game {
 
   lives: number;
   status: GameStatus = 'prep';
+  /** 屏幕震动状态（表现层读 snapshot 渲染，确定性相位驱动） */
+  shake: { intensity: number; until: number } = { intensity: 0, until: 0 };
   private acc = 0;
   nextWaveIn = PREP_FIRST;
   msg = '';
@@ -202,7 +210,7 @@ export class Game {
         if (e && def?.bossAbility) {
           this.towerCombat.effects.push({
             kind: 'shockwave', x: e.x, y: e.y, color: def.color || '#ff4444',
-            life: 0.6, maxLife: 0.6, vy: 0,
+            life: 0.6, maxLife: 0.6, vy: 0, shake: 6,
           });
           this.emit({ type: 'boss' });
         }
@@ -240,6 +248,12 @@ export class Game {
       this.processWaveEvents(events);
     }
     this.towerCombat.update(dt, this.waveManager.enemies, this.towerOps.towers);
+    // 屏幕震动：扫描本帧新特效的 shake 标记（取最强，不叠加）
+    for (const fx of this.towerCombat.effects) {
+      if (fx.shake && fx.shake > 0 && fx.life >= fx.maxLife - FIXED_DT - 1e-9) {
+        this.shake = triggerShake(this.shake, fx.shake, 0.35, this.waveManager.elapsed);
+      }
+    }
     this.waveManager.cleanup();
     if (this.lives <= 0 && this.status !== 'lost') {
       this.status = 'lost';
@@ -271,6 +285,16 @@ export class Game {
         this.status = 'won';
         this.msg = '守阵成功！山门无恙。';
         this.emit({ type: 'win' });
+        // 胜利演出：全塔波浪式 realmup（life = dur + delay，Board 在 life>maxLife 时跳过渲染 = 延迟启动）
+        this.towerOps.towers.forEach((t, i) => {
+          const delay = i * 0.12;
+          const dur = 0.9;
+          this.towerCombat.effects.push({
+            kind: 'realmup', x: t.x, y: t.y, color: '#ffd700',
+            life: dur + delay, maxLife: dur, vy: 0,
+            school: t.def.school, tier: visualTier(t.level),
+          });
+        });
       } else {
         this.status = 'prep';
         this.nextWaveIn = PREP_BETWEEN;
@@ -287,6 +311,14 @@ export class Game {
     this.status = 'wave';
     this.msg = `第 ${this.waveManager.waveIndex + 1} 波来袭！`;
     this.emit({ type: 'waveStart', wave: this.waveManager.waveIndex + 1 });
+    // 聚灵阵开阵脉冲：波次开始时各阵法推一圈绿金 shockwave（表现层）
+    for (const t of this.towerOps.towers) {
+      if (t.def.behavior !== 'aura') continue;
+      this.towerCombat.effects.push({
+        kind: 'shockwave', x: t.x, y: t.y, color: t.def.color,
+        life: 0.5, maxLife: 0.5, vy: 0,
+      });
+    }
   }
 
   // ---------- 玩家操作 ----------
@@ -342,10 +374,20 @@ export class Game {
       this.challengeTotalSpent -= delta;  // delta is negative, so this adds the cost
       const t = this.towerOps.towers.find((x) => x.uid === uid);
       if (t) {
+        const tier = visualTier(t.level);
         this.towerCombat.effects.push({
-          kind: 'burst', x: t.x, y: t.y, color: '#ffd700',
-          life: 0.5, maxLife: 0.5, vy: 0,
+          kind: 'realmup', x: t.x, y: t.y, color: '#ffd700',
+          life: 0.6 + tier * 0.2, maxLife: 0.6 + tier * 0.2, vy: 0,
+          school: t.def.school, tier,
         });
+        // 高境界（元婴+）突破额外冲击波 + 屏幕震动（tier2 更强）
+        if (tier >= 1) {
+          this.towerCombat.effects.push({
+            kind: 'shockwave', x: t.x, y: t.y, color: t.def.color,
+            life: 0.45, maxLife: 0.45, vy: 0,
+            shake: tier >= 2 ? 6 : 3,
+          });
+        }
       }
     }
     return ok;
@@ -491,10 +533,12 @@ export class Game {
       waveActive: this.waveManager.waveActive,
       nextWaveIn: (this.status === 'prep' && this.waveManager.waveIndex > 0) ? Math.max(0, this.nextWaveIn) : -1,
       elapsed: this.waveManager.elapsed,
+      waveStartTime: this.waveStartTime,
       enemies: this.waveManager.enemies.map((e) => ({ ...e })),
       towers: this.towerOps.towers.map((t) => ({ ...t })),
       projectiles: this.towerCombat.projectiles.map((p) => ({ ...p })),
       effects: this.towerCombat.effects.map((fx) => ({ ...fx })),
+      shake: { ...this.shake },
       waveSpawned: this.waveManager.waveTotalSpawned,
       waveKilled: this.waveManager.waveKilled,
       nextWaveSpawns: this.waveManager.peekNextWave(),

@@ -6,6 +6,7 @@
 
 import type { TowerBehavior, TowerConfig, FormationType } from '../../types';
 import { towerRange } from './effectiveRange';
+import { visualTier } from '../../data/config/towerVisuals';
 
 /** 策略需要读到/操作的敌人信息（Game 的 EnemyR 结构兼容） */
 export interface CombatEnemy {
@@ -35,6 +36,11 @@ export interface SpawnedProjectile {
   crit?: boolean;
   slowMul?: number;       // 命中减速倍率（0.5=半速），undefined=不减速
   slowDuration?: number;   // 减速持续秒数
+  school?: string;         // 表现层：流派弹道样式（引擎只透传）
+  tier?: 0 | 1 | 2;        // 表现层：境界视觉档位
+  fromX?: number;
+  fromY?: number;
+  faint?: boolean;         // 表现层：次要目标弹道（半透明细线，主次区分）
 }
 
 /** 塔结算后的有效属性（光环 + 玩家加成合并、封顶后的最终值） */
@@ -45,12 +51,20 @@ export interface TowerStats {
   critBonus: number;  // 暴击率加成（绝对值）
 }
 
+/** 攻击附带的表现层信息（引擎只透传给特效） */
+export interface DamageVis {
+  school?: string;
+  tier?: 0 | 1 | 2;
+  radius?: number;
+  shake?: number;
+}
+
 /** 策略执行所需的运行时能力（由 Game 提供，依赖倒置） */
 export interface CombatContext {
   rng: () => number;
   effectiveStats: (tower: CombatTower) => TowerStats;
   spawnProjectile: (p: SpawnedProjectile) => void;
-  damage: (enemy: CombatEnemy, rawDamage: number, isCrit?: boolean) => void;
+  damage: (enemy: CombatEnemy, rawDamage: number, isCrit?: boolean, vis?: DamageVis) => void;
   enemiesInRange: (tower: CombatTower, range: number) => CombatEnemy[];
   enemiesNearPoint: (x: number, y: number, radius: number) => CombatEnemy[];
 }
@@ -84,6 +98,33 @@ export function pickPierceTargets<T extends { uid: number; dist: number }>(
   return result.slice(0, n);
 }
 
+/** 多命中视觉弹道：每个被击中的敌人一条（主目标亮、其余 faint），上限 MAX_TRAILS 条（超出不画，伤害不受影响） */
+export const MAX_TRAILS = 8;
+
+export function spawnMultiTrails(
+  tower: CombatTower, primary: CombatEnemy, hits: ReadonlyArray<CombatEnemy>,
+  ctx: CombatContext,
+): void {
+  const school = tower.def.school;
+  const tier = visualTier(tower.level);
+  // 总弹道数（含主目标）封顶 MAX_TRAILS；primary 不在 hits 时补占一个名额
+  const others = hits.filter((e) => e.uid !== primary.uid);
+  const primaryInHits = hits.some((e) => e.uid === primary.uid);
+  const budget = MAX_TRAILS - 1 - (primaryInHits ? 0 : 0);
+  const list = others.slice(0, budget);
+  for (const e of list) {
+    ctx.spawnProjectile({
+      x: tower.x, y: tower.y, targetUid: e.uid, dmg: 0, color: tower.def.color, dead: false,
+      school, tier, fromX: tower.x, fromY: tower.y, faint: true,
+    });
+  }
+  // 主目标弹道（最后 spawn，渲染在上层）
+  ctx.spawnProjectile({
+    x: tower.x, y: tower.y, targetUid: primary.uid, dmg: 0, color: tower.def.color, dead: false,
+    school, tier, fromX: tower.x, fromY: tower.y,
+  });
+}
+
 /** 飞行物单体攻击 */
 export class ProjectileStrategy implements AttackStrategy {
   execute(tower: CombatTower, primary: CombatEnemy, ctx: CombatContext): void {
@@ -94,6 +135,7 @@ export class ProjectileStrategy implements AttackStrategy {
     ctx.spawnProjectile({
       x: tower.x, y: tower.y, targetUid: primary.uid, dmg, crit, color: tower.def.color, dead: false,
       slowMul: lv.slow?.mul, slowDuration: lv.slow?.duration,
+      school: tower.def.school, tier: visualTier(tower.level), fromX: tower.x, fromY: tower.y,
     });
   }
 }
@@ -107,11 +149,10 @@ export class PierceStrategy implements AttackStrategy {
     const { dmg, crit } = rollDamage(lv.dmg, stats.dmgMul, critChance, ctx.rng);
     const range = towerRange(lv.range, stats.rangeAdd, tower.onFormation);
     const hits = ctx.enemiesInRange(tower, range);   // 范围内全部敌人（扫荡）
-    for (const e of hits) ctx.damage(e, dmg, crit);
-    // 视觉弹道（伤害已即时结算，dmg=0）
-    ctx.spawnProjectile({
-      x: tower.x, y: tower.y, targetUid: primary.uid, dmg: 0, color: tower.def.color, dead: false,
-    });
+    const vis = { school: tower.def.school, tier: visualTier(tower.level) };
+    for (const e of hits) ctx.damage(e, dmg, crit, vis);
+    // 视觉弹道：每命中一个敌人一条（伤害已即时结算，dmg=0）
+    spawnMultiTrails(tower, primary, hits, ctx);
   }
 }
 
@@ -124,8 +165,10 @@ export class AoeStrategy implements AttackStrategy {
     const { dmg, crit } = rollDamage(lv.dmg, stats.dmgMul, critChance, ctx.rng);
     const radius = lv.aoeRadius ?? 0;
     const hits = radius > 0 ? ctx.enemiesNearPoint(primary.x, primary.y, radius) : [primary];
-    for (const e of hits) ctx.damage(e, dmg, crit);
-    ctx.spawnProjectile({ x: tower.x, y: tower.y, targetUid: primary.uid, dmg: 0, color: tower.def.color, dead: false });
+    const vis = { school: tower.def.school, tier: visualTier(tower.level), radius: radius > 0 ? radius : undefined };
+    for (const e of hits) ctx.damage(e, dmg, crit, vis);
+    // 视觉弹道：每命中一个敌人一条（扇形，主亮副淡）
+    spawnMultiTrails(tower, primary, hits, ctx);
   }
 }
 
@@ -139,6 +182,7 @@ export class ChainStrategy implements AttackStrategy {
     const range = lv.chainRange ?? 0;
     const count = lv.chainCount ?? 1;
     const hit = new Set<number>([primary.uid]);
+    const hitList: CombatEnemy[] = [primary];
     ctx.damage(primary, dmg, crit);
     let cur = primary;
     for (let i = 1; i < count; i++) {
@@ -147,9 +191,11 @@ export class ChainStrategy implements AttackStrategy {
       nearby.sort((a, b) => distSq(a, cur) - distSq(b, cur));
       cur = nearby[0];
       hit.add(cur.uid);
+      hitList.push(cur);
       ctx.damage(cur, dmg, crit);
     }
-    ctx.spawnProjectile({ x: tower.x, y: tower.y, targetUid: primary.uid, dmg: 0, color: tower.def.color, dead: false });
+    // 视觉弹道：链上每个被击中的敌人一条（表现链电跳跃命中）
+    spawnMultiTrails(tower, primary, hitList, ctx);
   }
 }
 
@@ -163,7 +209,10 @@ export class MineStrategy implements AttackStrategy {
     const range = towerRange(lv.range, stats.rangeAdd, tower.onFormation);
     const radius = lv.aoeRadius ?? 0.8;
     const hits = radius > 0 ? ctx.enemiesNearPoint(primary.x, primary.y, radius) : [primary];
-    for (const e of hits) ctx.damage(e, dmg, crit);
+    const tier = visualTier(tower.level);
+    // 地雷爆炸震屏：tier 越高越强（表现层透传）
+    const shake = 3 + tier * 2;
+    for (const e of hits) ctx.damage(e, dmg, crit, { school: tower.def.school, tier, radius: radius > 0 ? radius : undefined, shake });
   }
 }
 

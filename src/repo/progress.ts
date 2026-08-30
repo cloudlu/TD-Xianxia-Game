@@ -39,6 +39,10 @@ export interface Progression {
   generatedEquipData: Record<string, unknown>;
   reincarnationLevel: number;
   soulShopLevels: Record<string, number>;
+  // === 剧情（编年史）===
+  prologueShown: boolean;        // 是否看过开篇序章
+  chronicle: string[];           // 已读剧情 id（顺序即时间线，编年史回看）
+  finalEnding?: 'ascend' | 'wander' | 'reincarnate'; // 终章结局
   // === VIP 领取记录 ===
   vipDailyClaimed: string[];     // 已领取每日奖励的日期 'YYYY-MM-DD'
   vipWeeklyClaimed: string[];    // 已领取每周奖励的周 'YYYY-WW'
@@ -140,6 +144,10 @@ export function withDefaults(raw: Partial<Progression>): Progression {
     generatedEquipData: raw.generatedEquipData ?? {},
     reincarnationLevel: raw.reincarnationLevel ?? 0,
     soulShopLevels: raw.soulShopLevels ?? {},
+    // 剧情（编年史）默认值
+    prologueShown: raw.prologueShown ?? false,
+    chronicle: raw.chronicle ?? [],
+    finalEnding: raw.finalEnding,
     // VIP 领取记录默认值
     vipDailyClaimed: raw.vipDailyClaimed ?? [],
     vipWeeklyClaimed: raw.vipWeeklyClaimed ?? [],
@@ -198,6 +206,7 @@ export class LocalSaveRepo implements SaveRepo {
       challengesCompleted: p.challengesCompleted, challengeMedals: p.challengeMedals,
       ownedSkins: p.ownedSkins, equippedSkins: p.equippedSkins,
       generatedEquipData: {}, generatedEquipNames: {},
+      prologueShown: p.prologueShown, chronicle: p.chronicle, finalEnding: p.finalEnding,
       vipDailyClaimed: [], vipWeeklyClaimed: [], vipOneTimeClaimed: [],
     };
     if (tryLS(lvl3, 'lvl3')) return;

@@ -63,7 +63,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   // ════════════════════════════════════════════
   'ch4-l1': [
     { id: 'ch4-l1_speed', name: '秘境疾驰', desc: '75 秒内通关', kind: 'speed', params: { limit: 75 }, rewardContrib: 45 },
-    { id: 'ch4-l1_noaura', name: '不用外物', desc: '不建造聚灵阵通关', kind: 'no_aura', rewardContrib: 35 },
+    { id: 'ch4-l1_budget', name: '少即是多', desc: '总消费不超过 650 灵石', kind: 'budget', params: { limit: 650 }, rewardContrib: 35 },
   ],
   'ch4-l2': [
     { id: 'ch4-l2_bow', name: '千符镇妖', desc: '仅使用符修塔通关', kind: 'mono_school', params: { allowed: 'talisman' }, rewardContrib: 40 },
@@ -119,7 +119,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   ],
   'ch7-l3': [
     { id: 'ch7-l3_speed', name: '兵贵神速', desc: '70 秒内通关', kind: 'speed', params: { limit: 70 }, rewardContrib: 55 },
-    { id: 'ch7-l3_noaura', name: '阵围妖王', desc: '不建造聚灵阵通关', kind: 'no_aura', rewardContrib: 50 },
+    { id: 'ch7-l3_noup', name: '以凡胜妖', desc: '不升级任何塔通关', kind: 'no_upgrade', rewardContrib: 50 },
   ],
 
   // ════════════════════════════════════════════
@@ -151,7 +151,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   ],
   'ch9-l3': [
     { id: 'ch9-l3_speed', name: '域外荡魔', desc: '70 秒内通关', kind: 'speed', params: { limit: 70 }, rewardContrib: 60 },
-    { id: 'ch9-l3_noaura', name: '孤军奋战', desc: '不建造聚灵阵通关', kind: 'no_aura', rewardContrib: 50 },
+    { id: 'ch9-l3_budget', name: '孤军筹算', desc: '总消费不超过 1200 灵石', kind: 'budget', params: { limit: 1200 }, rewardContrib: 50 },
   ],
 
   // ════════════════════════════════════════════
@@ -194,7 +194,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
     { id: 'ch12-l1_magic', name: '雷火破影', desc: '仅使用法修塔通关', kind: 'mono_school', params: { allowed: 'fire,thunder,ice' }, rewardContrib: 50 },
   ],
   'ch12-l2': [
-    { id: 'ch12-l2_noaura', name: '独行侠', desc: '不建造聚灵阵通关', kind: 'no_aura', rewardContrib: 50 },
+    { id: 'ch12-l2_noup', name: '未试牛刀', desc: '不升级任何塔通关', kind: 'no_upgrade', rewardContrib: 50 },
     { id: 'ch12-l2_budget', name: '十二省钱', desc: '总消费不超过 1350 灵石', kind: 'budget', params: { limit: 1350 }, rewardContrib: 55 },
   ],
   'ch12-l3': [
@@ -239,7 +239,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   // ════════════════════════════════════════════
   'ch15-l1': [
     { id: 'ch15-l1_speed', name: '魔帅先锋', desc: '80 秒内通关', kind: 'speed', params: { limit: 80 }, rewardContrib: 60 },
-    { id: 'ch15-l1_noaura', name: '无阵之阵', desc: '不建造聚灵阵通关', kind: 'no_aura', rewardContrib: 55 },
+    { id: 'ch15-l1_budget', name: '兵马未动', desc: '总消费不超过 1400 灵石', kind: 'budget', params: { limit: 1400 }, rewardContrib: 55 },
   ],
   'ch15-l2': [
     { id: 'ch15-l2_budget', name: '军需官', desc: '总消费不超过 1500 灵石', kind: 'budget', params: { limit: 1500 }, rewardContrib: 60 },
@@ -279,7 +279,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   ],
   'ch17-l3': [
     { id: 'ch17-l3_speed', name: '鬼族剿灭', desc: '65 秒内通关', kind: 'speed', params: { limit: 65 }, rewardContrib: 65 },
-    { id: 'ch17-l3_noaura', name: '镇鬼大阵', desc: '不建造聚灵阵通关', kind: 'no_aura', rewardContrib: 60 },
+    { id: 'ch17-l3_noup', name: '凡躯守阵', desc: '不升级任何塔通关', kind: 'no_upgrade', rewardContrib: 60 },
   ],
 
   // ════════════════════════════════════════════
@@ -290,7 +290,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
     { id: 'ch18-l1_magic', name: '龙息克星', desc: '仅使用法修塔通关', kind: 'mono_school', params: { allowed: 'fire,thunder,ice' }, rewardContrib: 55 },
   ],
   'ch18-l2': [
-    { id: 'ch18-l2_noaura', name: '不假外物', desc: '不建造聚灵阵通关', kind: 'no_aura', rewardContrib: 55 },
+    { id: 'ch18-l2_noup', name: '不假兵刃', desc: '不升级任何塔通关', kind: 'no_upgrade', rewardContrib: 55 },
     { id: 'ch18-l2_budget', name: '十八积攒', desc: '总消费不超过 1650 灵石', kind: 'budget', params: { limit: 1650 }, rewardContrib: 60 },
   ],
   'ch18-l3': [
@@ -343,7 +343,7 @@ const CHALLENGES: Record<string, ChallengeDef[]> = {
   ],
   'ch21-l3': [
     { id: 'ch21-l3_speed', name: '天魔退散', desc: '65 秒内通关', kind: 'speed', params: { limit: 65 }, rewardContrib: 70 },
-    { id: 'ch21-l3_noaura', name: '天魔独抗', desc: '不建造聚灵阵通关', kind: 'no_aura', rewardContrib: 65 },
+    { id: 'ch21-l3_noup', name: '天魔凡心', desc: '不升级任何塔通关', kind: 'no_upgrade', rewardContrib: 65 },
   ],
 
   // ════════════════════════════════════════════

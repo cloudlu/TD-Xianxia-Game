@@ -84,21 +84,37 @@ describe('ProjectileStrategy', () => {
 });
 
 describe('PierceStrategy', () => {
-  it('sweeps all enemies in range and emits a zero-dmg visual', () => {
+  it('sweeps all enemies in range, one visual trail per hit (primary bright, rest faint)', () => {
     const damaged: number[] = [];
-    const visuals: number[] = [];
+    const visuals: { dmg: number; faint: boolean; targetUid: number }[] = [];
     const inRange = [enemy(2, 1), enemy(3, 9), enemy(4, 7), enemy(5, 3)];
     const ctx = ctxWith({
       stats: { dmgMul: 1, rateMul: 1, rangeAdd: 0, critBonus: 0 },
       rng: () => 0.5,
       damage: (e) => { damaged.push(e.uid); },
-      spawnProjectile: (p) => { visuals.push(p.dmg); },
+      spawnProjectile: (p) => { visuals.push({ dmg: p.dmg, faint: !!p.faint, targetUid: p.targetUid }); },
       enemiesInRange: () => inRange,
     });
     // 长枪 扫荡：范围内全部敌人都受伤
     new PierceStrategy().execute(towerOf('spear', 0), enemy(1, 5), ctx);
     expect(damaged).toHaveLength(4);            // 范围内 4 个全中
-    expect(visuals).toEqual([0]);               // 视觉弹道 dmg=0
+    expect(visuals).toHaveLength(5);            // 4 命中 + 主目标各一条
+    expect(visuals.every((v) => v.dmg === 0)).toBe(true);   // 视觉弹道 dmg=0
+    expect(visuals.filter((v) => !v.faint)).toHaveLength(1); // 主目标 1 条亮
+    expect(visuals.filter((v) => v.faint)).toHaveLength(4);  // 其余 4 条淡
+  });
+
+  it('caps visual trails at MAX_TRAILS even with many hits', () => {
+    const visuals: number[] = [];
+    const inRange = Array.from({ length: 12 }, (_, i) => enemy(i + 2, i));
+    const ctx = ctxWith({
+      stats: { dmgMul: 1, rateMul: 1, rangeAdd: 0, critBonus: 0 },
+      rng: () => 0.5,
+      spawnProjectile: (p) => { visuals.push(p.dmg); },
+      enemiesInRange: () => inRange,
+    });
+    new PierceStrategy().execute(towerOf('spear', 0), enemy(1, 5), ctx);
+    expect(visuals.length).toBeLessThanOrEqual(8);
   });
 
   it('applies equipment damage multiplier via effectiveStats', () => {
@@ -125,6 +141,21 @@ describe('AoeStrategy', () => {
     // 火法 炼气 aoeRadius 1.2
     new AoeStrategy().execute(towerOf('fire_mage', 0), enemy(1, 5), ctx);
     expect(damaged.sort((a, b) => a - b)).toEqual([1, 2, 3]);
+  });
+
+  it('spawns one visual trail per splash hit (fan pattern)', () => {
+    const visuals: { faint: boolean; targetUid: number }[] = [];
+    const ctx = ctxWith({
+      stats: { dmgMul: 1, rateMul: 1, rangeAdd: 0, critBonus: 0 },
+      rng: () => 0.5,
+      spawnProjectile: (p) => { visuals.push({ faint: !!p.faint, targetUid: p.targetUid }); },
+      enemiesNearPoint: () => [enemy(1, 5), enemy(2, 5), enemy(3, 5)],
+    });
+    new AoeStrategy().execute(towerOf('fire_mage', 0), enemy(1, 5), ctx);
+    expect(visuals).toHaveLength(3);
+    expect(visuals.find((v) => v.targetUid === 1)?.faint).toBe(false);  // 主目标亮
+    expect(visuals.find((v) => v.targetUid === 2)?.faint).toBe(true);
+    expect(visuals.find((v) => v.targetUid === 3)?.faint).toBe(true);
   });
 });
 

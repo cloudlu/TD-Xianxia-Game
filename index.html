@@ -231,6 +231,20 @@
     .bestiary-card { cursor: pointer; transition: transform 0.1s; }
     .bestiary-card:hover { transform: translateY(-2px); }
 
+    /* 宗门编年史 */
+    #chronicleOverlay {
+      position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.75); z-index: 65; backdrop-filter: blur(3px);
+    }
+    #chronicleOverlay.show { display: flex; }
+    #chronicleCard { max-width: 720px; width: 92%; max-height: 86vh; overflow-y: auto; }
+    .chronicle-chapter { margin-bottom: 16px; padding: 12px 14px; border-left: 3px solid #ffd93d66; background: rgba(255,255,255,0.03); border-radius: 6px; }
+    .chronicle-chapter h3 { margin: 0 0 6px; color: #ffe9b8; font-size: 15px; letter-spacing: 2px; }
+    .chronicle-beat { margin: 6px 0; padding: 6px 8px; background: rgba(0,0,0,0.2); border-radius: 4px; }
+    .chronicle-beat .cb-title { color: #5fd3ff; font-size: 13px; margin-bottom: 3px; }
+    .chronicle-beat .cb-lines { color: #cdd8e8; font-size: 12px; line-height: 1.7; white-space: pre-line; }
+    .chronicle-empty { color: #8b8ba0; text-align: center; padding: 30px 0; }
+
     /* 档案选择 */
     #profileSelect {
       position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
@@ -520,10 +534,12 @@
     <button id="metaBtn">宗 门</button>
     <button id="switchBtn" style="margin-top:10px;background:transparent;color:#8b8ba0;border:1px solid #3a4a6a;padding:6px 16px;border-radius:4px;cursor:pointer;font-size:13px;letter-spacing:2px;margin-left:10px;">切换修士</button>
     <button id="bestiaryBtn" style="margin-top:10px;background:transparent;color:#8b8ba0;border:1px solid #3a4a6a;padding:6px 16px;border-radius:4px;cursor:pointer;font-size:13px;letter-spacing:2px;margin-left:6px;">妖 兽 录</button>
+    <button id="chronicleBtn" style="margin-top:10px;background:transparent;color:#8b8ba0;border:1px solid #3a4a6a;padding:6px 16px;border-radius:4px;cursor:pointer;font-size:13px;letter-spacing:2px;margin-left:6px;">宗 门 编 年 史</button>
     <button id="endlessBtn" style="margin-top:10px;background:linear-gradient(180deg,#c0392b,#96281b);color:#fff;border:1px solid #c0392b;padding:8px 22px;border-radius:4px;cursor:pointer;font-size:14px;letter-spacing:3px;margin-left:6px;">无 尽 试 炼</button>
   </div></div>
   <div id="metaOverlay"><div class="meta-card" id="metaCard"></div></div>
   <div id="bestiaryOverlay"><div class="meta-card" id="bestiaryCard"></div></div>
+  <div id="chronicleOverlay"><div class="meta-card" id="chronicleCard"></div></div>
   <div id="gachaResultOverlay">
     <div class="gacha-card">
       <div class="gacha-title" id="gachaTitle">寻 仙 结 果</div>

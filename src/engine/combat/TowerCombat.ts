@@ -18,6 +18,7 @@ import {
   type BossCtx,
 } from './BossAbilities';
 import { ModifierSet, damageStatsFor } from '../../data/Modifier';
+import { visualTier } from '../../data/config/towerVisuals';
 
 const PROJ_SPEED = 14;
 
@@ -27,18 +28,31 @@ interface ProjectileR {
   dmg: number;
   color: string;
   dead: boolean;
+  crit?: boolean;
   slowMul?: number;
   slowDuration?: number;
+  school?: string;   // 表现层：流派弹道样式
+  tier?: 0 | 1 | 2;  // 表现层：境界档位（拖尾长度/粒子密度）
+  fromX?: number;    // 发射点（拖尾方向用）
+  fromY?: number;
+  faint?: boolean;   // 表现层：次要目标弹道（半透明）
+  destX?: number;    // 目标最后已知位置（视觉弹道在目标死亡后继续飞到此点）
+  destY?: number;
 }
 
 export interface VisEffect {
-  kind: 'dmg' | 'poof' | 'shockwave' | 'burst';
+  kind: 'dmg' | 'poof' | 'shockwave' | 'burst' | 'realmup' | 'hit';
   x: number; y: number;
   text?: string;
   color: string;
   life: number; maxLife: number;
   vy: number;
   crit?: boolean;
+  school?: string;   // 表现层流派特效骨架（引擎只透传，不解释）
+  tier?: 0 | 1 | 2;  // 境界视觉档位
+  style?: string;    // 命中/击杀样式（表现层透传：hit 样式 / poof 变体）
+  shake?: number;    // 该特效伴随的震动强度（像素，0=无）
+  radius?: number;   // AOE 爆炸半径（格，表现层渲染爆炸圈）
 }
 
 export type CombatGameEvent =
@@ -171,7 +185,7 @@ export class TowerCombat {
   private fire(t: TowerR, primary: EnemyR, towers: TowerR[], enemies: EnemyR[]): void {
     const strategy = this.ctx.strategies.get(t.def.behavior);
     if (!strategy) return;
-    strategy.execute(t, primary, this.combatContext(towers, enemies));
+    strategy.execute(t, primary, this.combatContext(towers, enemies, t));
     const doubleAtk = this.ctx.mods.doubleAtkChance();
     if (doubleAtk > 0 && this.ctx.rng() < doubleAtk) {
       const lv = t.def.levels[t.level];
@@ -179,17 +193,20 @@ export class TowerCombat {
       const range = towerRange(lv.range, stats.rangeAdd, t.onFormation);
       const secondary = this.acquireTarget(t, range, t.targetPolicy, enemies, towers);
       if (secondary && secondary.uid !== primary.uid) {
-        strategy.execute(t, secondary, this.combatContext(towers, enemies));
+        strategy.execute(t, secondary, this.combatContext(towers, enemies, t));
       }
     }
   }
 
-  private combatContext(towers: TowerR[], enemies: EnemyR[]): CombatContext {
+  private combatContext(towers: TowerR[], enemies: EnemyR[], source?: TowerR): CombatContext {
     return {
       rng: () => this.ctx.rng(),
       effectiveStats: (t) => this.effectiveStats(t, towers, enemies),
       spawnProjectile: (p: any) => { this.projectiles.push(p); },
-      damage: (e, raw, isCrit) => { this.damage(e, raw, towers, enemies, isCrit); },
+      damage: (e, raw, isCrit, visFromStrategy) => {
+        const vis = visFromStrategy ?? (source ? { school: source.def.school, tier: visualTier(source.level) as 0 | 1 | 2 } : undefined);
+        this.damage(e, raw, towers, enemies, isCrit, vis);
+      },
       enemiesInRange: (t, range) => this.enemiesInRange(t, range, enemies, towers),
       enemiesNearPoint: (x, y, radius) => this.enemiesNearPoint(x, y, radius, enemies),
     };
@@ -291,7 +308,7 @@ export class TowerCombat {
   }
 
   // ---------- 伤害 ----------
-  private damage(e: CombatEnemy, raw: number, towers: TowerR[], enemies: EnemyR[], isCrit?: boolean): void {
+  private damage(e: CombatEnemy, raw: number, towers: TowerR[], enemies: EnemyR[], isCrit?: boolean, vis?: { school?: string; tier?: 0 | 1 | 2; radius?: number; shake?: number }): void {
     if (e.dead) return;
     const enemy = e as EnemyR;
     if (enemy.def.dodge && this.ctx.rng() < enemy.def.dodge) return;
@@ -303,15 +320,31 @@ export class TowerCombat {
     enemy.shield = r.shield;
     const dealt = before - (enemy.hp + enemy.shield);
     if (dealt > 0) {
-      enemy.hitFlash = 0.12;
+      // 暴击缓滞：受击闪白拉长 1.5×（0.18s），渲染层闪白更强
+      enemy.hitFlash = isCrit ? 0.18 : 0.12;
       const color = isCrit ? '#ffd700' : '#ff4444';
       this.effects.push({ kind: 'dmg', x: enemy.x, y: enemy.y, text: String(Math.round(dealt)), color, life: 0.7, maxLife: 0.7, vy: -1.4, crit: isCrit });
+      // 命中特效（表现层流派差异化，样式由 Board 按 school 查表渲染）
+      if (vis?.school || vis?.radius) {
+        this.effects.push({
+          kind: 'hit', x: enemy.x, y: enemy.y, color,
+          life: 0.22, maxLife: 0.22, vy: 0,
+          school: vis?.school, tier: vis?.tier ?? 0, crit: isCrit,
+          radius: vis?.radius, shake: vis?.shake,
+        });
+      }
     }
     if (enemy.hp <= 0) {
       enemy.dead = true;
       this.killStack++;
       this.ctx.addStones(enemy.bounty * this.ctx.mods.bountyMul() * this.ctx.difficultyBountyMul);
-      this.effects.push({ kind: 'poof', x: enemy.x, y: enemy.y, color: enemy.def.color, life: 0.35, maxLife: 0.35, vy: 0 });
+      // 击杀反馈：飞行怪羽毛飘落 / BOSS 多层爆散（style 透传给 Board）
+      const killStyle = enemy.def.bossAbility ? 'boss' : enemy.def.fly ? 'feather' : enemy.def.elite ? 'elite' : 'normal';
+      this.effects.push({
+        kind: 'poof', x: enemy.x, y: enemy.y, color: enemy.def.color,
+        life: killStyle === 'boss' ? 0.7 : 0.35, maxLife: killStyle === 'boss' ? 0.7 : 0.35, vy: 0,
+        style: killStyle, shake: killStyle === 'boss' ? 7 : killStyle === 'elite' ? 3 : 0,
+      });
       if (enemy.def.split) {
         for (let i = 0; i < enemy.def.split.count; i++) {
           this.ctx.spawnEnemyAt(enemy.def.split.child, enemy.pathIndex, enemy.dist);
@@ -324,15 +357,38 @@ export class TowerCombat {
   // ---------- 弹道 ----------
   private updateProjectiles(dt: number, enemies: EnemyR[], towers: TowerR[]): void {
     for (const p of this.projectiles) {
-      const target = enemies.find((e) => e.uid === p.targetUid && !e.dead);
+      // 目标查找：活目标优先；视觉弹道（dmg=0）允许飞向已死目标的最后位置
+      // （扫射/溅射的视觉弹道 spawn 时伤害已结算，敌人可能同帧已 dead——否则弹道一出生就被清除，看不到轨迹）
+      let target = enemies.find((e) => e.uid === p.targetUid && !e.dead);
+      if (!target && p.dmg === 0) {
+        const corpse = enemies.find((e) => e.uid === p.targetUid);
+        if (corpse) {
+          target = corpse;
+        } else if (p.destX !== undefined && p.destY !== undefined) {
+          // 敌人已被 cleanup 移除：飞向记录的最后位置
+          const dx = p.destX - p.x, dy = p.destY - p.y;
+          const dist = Math.hypot(dx, dy);
+          const step = PROJ_SPEED * dt;
+          if (dist <= step) p.dead = true;
+          else { p.x += (dx / dist) * step; p.y += (dy / dist) * step; }
+          continue;
+        } else {
+          p.dead = true; continue;
+        }
+      }
       if (!target) { p.dead = true; continue; }
+      // 记录目标最后位置（供目标消失后续飞）
+      p.destX = target.x; p.destY = target.y;
       const dx = target.x - p.x, dy = target.y - p.y;
       const dist = Math.hypot(dx, dy);
       const step = PROJ_SPEED * dt;
       if (dist <= step) {
         p.x = target.x; p.y = target.y;
-        if (p.dmg > 0) this.damage(target, p.dmg, towers, enemies, p.crit);
-        if (p.slowMul !== undefined && p.slowDuration !== undefined) {
+        if (p.dmg > 0) {
+          const vis = p.school !== undefined ? { school: p.school, tier: (p.tier ?? 0) as 0 | 1 | 2 } : undefined;
+          this.damage(target, p.dmg, towers, enemies, p.crit, vis);
+        }
+        if (p.slowMul !== undefined && p.slowDuration !== undefined && p.dmg > 0) {
           target.slowFactor = p.slowMul;
           target.slowUntil = this.ctx.elapsed() + p.slowDuration;
         }

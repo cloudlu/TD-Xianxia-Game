@@ -4,7 +4,7 @@ import type { EnemyConfig } from '../types';
 
 export function renderBestiary(): string {
   const ids = Object.keys(ENEMIES);
-  let html = '<h2>妖 兽 录</h2><div class="eq-desc" style="text-align:center;margin-bottom:14px;">全部敌人属性与具体机制参数（数值来自代码实现），辅助配塔决策。</div><div class="eq-grid bestiary-grid">';
+  let html = '<h2>妖 兽 录</h2><div class="eq-desc" style="text-align:center;margin-bottom:14px;">全部敌人属性与具体机制参数（数值来自代码实现），辅助配塔决策；每篇「传说」讲述其出身典故。</div><div class="eq-grid bestiary-grid">';
   for (const id of ids) {
     const e = ENEMIES[id];
     html += enemyCard(e);
@@ -22,6 +22,7 @@ function enemyCard(e: EnemyConfig): string {
     <div class="eq-desc" style="line-height:1.7;">
       HP <b>${e.hp}</b>　甲 <b>${e.armor}</b>（减伤 ${Math.round(100 - 10000/(100+e.armor))}%）　速 <b>${e.speed}</b> 格/秒　赏金 <b>${e.bounty}</b><br>
       ${desc}
+      ${e.lore ? `<div class="eq-lore" style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,.15);color:#cdd8e8;font-size:13px;">传说 · ${e.lore}</div>` : ''}
     </div>
   </div>`;
 }

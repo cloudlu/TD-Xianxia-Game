@@ -4,6 +4,8 @@
 import type { GameState } from '../engine/Game';
 import type { FormationTile, FormationType, GridPoint, BlockedCell } from '../types';
 import { BACKGROUNDS, DEFAULT_BACKGROUND } from '../data/config/backgrounds';
+import { towerVisual, visualTier } from '../data/config/towerVisuals';
+import { shakeOffset, NO_SHAKE } from '../engine/pure/shake';
 import { towerRange } from '../engine/combat/effectiveRange';
 
 const CELL = 60;
@@ -70,6 +72,12 @@ export class Board {
     const ctx = this.ctx;
     this.lastBuildable = buildable;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // 屏幕震动：确定性相位偏移，整帧平移（含暗角之外的所有绘制）
+    const shake = shakeOffset((state as any).shake ?? NO_SHAKE, state.elapsed);
+    const shake2x = shake.x, shake2y = shake.y;
+    ctx.save();
+    ctx.translate(shake.x, shake.y);
 
     const bg = BACKGROUNDS[state.backgroundId ?? ''] ?? DEFAULT_BACKGROUND;
     this.currentAmbientColor = bg.ambient?.color ?? '#fffff0';
@@ -143,30 +151,364 @@ export class Board {
     // 塔
     for (const t of state.towers) this.drawTower(t, state.elapsed);
 
+    // —— 辅助塔特效层（塔身之上）——
+    // ① 聚灵阵：常驻呼吸法阵（双圈反转 + 境界圈层）+ 射程淡虚线常显
+    const auraTowersAll = state.towers.filter((t) => t.def.behavior === 'aura');
+    for (const t of auraTowersAll) {
+      const cx = (t.col + 0.5) * CELL, cy = (t.row + 0.5) * CELL;
+      const lv = t.def.levels[t.level];
+      const r = towerRange(lv.range, this.rangeAdd, t.onFormation) * CELL;
+      const phase = state.elapsed;
+      ctx.save();
+      // 射程淡虚线常显
+      ctx.strokeStyle = '#81c78433';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([5, 7]);
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      // 呼吸法阵：外圈顺时针 / 内圈逆时针，圈数 = 境界档（tier+1）
+      const tier = visualTier(t.level);
+      const rings = 1 + tier;
+      for (let ring = 0; ring < rings; ring++) {
+        const rr = CELL * (0.45 + ring * 0.22);
+        const dir = ring % 2 === 0 ? 1 : -1;
+        const rot = phase * 0.8 * dir + ring * 0.8;
+        const breathe = 0.5 + 0.5 * Math.sin(phase * 2 + ring);
+        ctx.strokeStyle = `rgba(165,214,150,${0.25 + breathe * 0.25})`;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([8, 6]);
+        ctx.beginPath(); ctx.arc(cx, cy, rr, rot, rot + Math.PI * 1.6); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      // 中心太极纹（小圆双色，慢转）
+      ctx.rotate(0);
+      const tr = CELL * 0.16;
+      ctx.translate(cx, cy); ctx.rotate(phase * 0.5);
+      ctx.fillStyle = '#a5d6a766';
+      ctx.beginPath(); ctx.arc(0, 0, tr, 0, Math.PI / 2); ctx.arc(-tr / 2, 0, tr / 2, Math.PI / 2, Math.PI * 1.5); ctx.fill();
+      ctx.fillStyle = '#1b5e2066';
+      ctx.beginPath(); ctx.arc(0, 0, tr, Math.PI / 2, Math.PI); ctx.arc(tr / 2, 0, tr / 2, Math.PI * 1.5, Math.PI / 2); ctx.fill();
+      ctx.setTransform(1, 0, 0, 1, shake2x, shake2y);
+      ctx.restore();
+    }
+
+    // ② buff 链接线：聚灵阵 → 范围内被增益塔，极淡流动光点
+    for (const a of auraTowersAll) {
+      const alv = a.def.levels[a.level];
+      const ar = towerRange(alv.range, this.rangeAdd, a.onFormation);
+      for (const t of state.towers) {
+        if (t.uid === a.uid || t.def.behavior === 'aura') continue;
+        const dx = t.x - a.x, dy = t.y - a.y;
+        if (dx * dx + dy * dy > ar * ar) continue;
+        const ax = a.x * CELL, ay = a.y * CELL;
+        const bx = t.x * CELL, by = t.y * CELL;
+        ctx.save();
+        ctx.globalAlpha = 0.15;
+        ctx.strokeStyle = '#a5d6a7';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 5]);
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+        ctx.setLineDash([]);
+        // 流动光点（相位沿线往返）
+        ctx.globalAlpha = 0.5;
+        const flow = (state.elapsed * 0.6 + (a.uid + t.uid) * 0.37) % 1;
+        const px = ax + (bx - ax) * flow, py = ay + (by - ay) * flow;
+        ctx.fillStyle = '#dcedc8';
+        ctx.beginPath(); ctx.arc(px, py, 1.8, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // ③ 受增益塔绿环标记
+    for (const t of state.towers) {
+      if (t.def.behavior === 'aura') continue;
+      const buffed = auraTowersAll.some((a) => {
+        const alv = a.def.levels[a.level];
+        const ar = towerRange(alv.range, this.rangeAdd, a.onFormation);
+        const dx = t.x - a.x, dy = t.y - a.y;
+        return a.uid !== t.uid && dx * dx + dy * dy <= ar * ar;
+      });
+      if (!buffed) continue;
+      const cx = (t.col + 0.5) * CELL, cy = (t.row + 0.5) * CELL;
+      ctx.save();
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = '#a5d6a7';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.42, state.elapsed * 0.8, state.elapsed * 0.8 + Math.PI * 1.8); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+
+    // ④ 震地雷待机标识：半埋雷体 + 引信闪烁 + 触发范围暗圈
+    for (const t of state.towers) {
+      if (t.def.behavior !== 'mine') continue;
+      const cx = (t.col + 0.5) * CELL, cy = (t.row + 0.5) * CELL;
+      const lv = t.def.levels[t.level];
+      const r = towerRange(lv.range, this.rangeAdd, t.onFormation) * CELL;
+      const tier = visualTier(t.level);
+      ctx.save();
+      // 触发范围暗圈（土色极淡）
+      ctx.fillStyle = '#8d6e6314';
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#8d6e6344';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([4, 6]);
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      // 半埋雷体（深色圆盘 + 埋土边缘）
+      ctx.fillStyle = '#3e2723';
+      ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.22, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#5d4037';
+      ctx.beginPath(); ctx.arc(cx, cy - 2, CELL * 0.18, 0, Math.PI * 2); ctx.fill();
+      // 引信红点（相位闪烁，tier 越高越快）
+      const blink = 0.5 + 0.5 * Math.sin(state.elapsed * (6 + tier * 3));
+      ctx.fillStyle = `rgba(255,82,82,${0.4 + blink * 0.6})`;
+      ctx.beginPath(); ctx.arc(cx, cy - CELL * 0.22, 2.5, 0, Math.PI * 2); ctx.fill();
+      // 开火瞬间引信白热（flashTimer 高时引信变白亮 + 微光晕）
+      if (t.flashTimer > 0) {
+        ctx.globalAlpha = Math.min(1, t.flashTimer / 0.12) * 0.8;
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(cx, cy - CELL * 0.22, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffab9144';
+        ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.3, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      ctx.restore();
+    }
+
     // 敌人（隐身敌人按是否在光环内决定可见度）
     const auraTowers = state.towers.filter((t) => t.def.behavior === 'aura');
     for (const e of state.enemies) this.drawEnemy(e, auraTowers);
 
-    // 弹道（拖尾线段 + 光晕）
+    // BOSS 顶部大血条 + 狂暴全屏红光
+    const boss = state.enemies.find((e) => !e.dead && e.def.bossAbility);
+    if (boss) {
+      const enraged = boss.def.bossAbility?.enrageBelow && boss.hp / boss.maxHp < boss.def.bossAbility.enrageBelow.hpPct;
+      // 狂暴全屏红光脉冲（相位驱动）
+      if (enraged) {
+        const pulse2 = 0.5 + 0.5 * Math.sin(state.elapsed * 5);
+        ctx.fillStyle = `rgba(255,40,40,${0.06 + pulse2 * 0.05})`;
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      }
+      const bw = this.canvas.width * 0.6, bh = 12;
+      const bx = (this.canvas.width - bw) / 2, by = 10;
+      ctx.fillStyle = '#000a';
+      ctx.fillRect(bx - 2, by - 2, bw + 4, bh + 4);
+      const ratio = Math.max(0, boss.hp / boss.maxHp);
+      const hpGrad = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+      hpGrad.addColorStop(0, enraged ? '#ff1744' : '#ff5252');
+      hpGrad.addColorStop(1, enraged ? '#ff8a80' : '#ffab91');
+      ctx.fillStyle = hpGrad;
+      ctx.fillRect(bx, by, bw * ratio, bh);
+      // 狂暴阈值刻度线
+      const threshold = boss.def.bossAbility?.enrageBelow?.hpPct;
+      if (threshold) {
+        ctx.strokeStyle = '#ffd700aa';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(bx + bw * threshold, by); ctx.lineTo(bx + bw * threshold, by + bh); ctx.stroke();
+      }
+      ctx.fillStyle = enraged ? '#ff6b6b' : '#ffd93d';
+      ctx.font = 'bold 13px "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillText(`${boss.def.name}${enraged ? ' · 狂暴' : ''}`, this.canvas.width / 2, by - 4);
+    }
+
+    // 弹道（流派形状化：剑形/符纸/枪形/冰晶/火球/电弧）+ faint 主次区分
     for (const p of state.projectiles) {
       const cx = p.x * CELL, cy = p.y * CELL;
-      // 拖尾：反向拉一条渐变线段
-      const grad = ctx.createLinearGradient(cx - 12, cy - 12, cx, cy);
-      grad.addColorStop(0, p.color + '00');
-      grad.addColorStop(1, p.color + '88');
-      ctx.strokeStyle = grad;
-      ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(cx - 10, cy - 10); ctx.lineTo(cx, cy); ctx.stroke();
-      // 核心亮点
-      ctx.fillStyle = p.color;
-      ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#ffffff88';
-      ctx.beginPath(); ctx.arc(cx, cy, 1.5, 0, Math.PI * 2); ctx.fill();
+      const spec = towerVisual(p.school ?? 'sword');
+      const tier = p.tier ?? 0;
+      const faint = !!p.faint;
+      // 飞行方向：发射点 → 当前位置（剑尖/枪头朝前）
+      const fdx = (p.fromX ?? p.x) - p.x, fdy = (p.fromY ?? p.y) - p.y;
+      const flen = Math.hypot(fdx, fdy) || 1;
+      const ux = fdx / flen, uy = fdy / flen;         // 指向后方（拖尾方向）
+      const ang = Math.atan2(-uy, -ux);                // 飞行朝向角
+      const trailLen = (10 + tier * 5) * spec.trailMul;
+      const tx = cx + ux * trailLen, ty = cy + uy * trailLen;
+      ctx.save();
+      if (faint) { ctx.globalAlpha = 0.45; }
+      // 高境界残影分身：tier2 在轨迹后段画两个渐隐副本
+      if (tier >= 2 && !faint) {
+        for (let g = 1; g <= 2; g++) {
+          const gd = g * trailLen * 0.22;
+          ctx.globalAlpha = 0.25 / g;
+          ctx.fillStyle = p.color;
+          ctx.beginPath(); ctx.arc(cx + ux * gd, cy + uy * gd, 2.5, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      if (spec.trail === 'blade') {
+        // 剑形弹道：剑身菱形长条 + 剑柄横档 + 剑尖朝飞行方向，tier2 带剑穗
+        const bladeLen = 16 + tier * 4;
+        ctx.translate(cx, cy); ctx.rotate(ang);
+        // 拖尾光
+        const grad = ctx.createLinearGradient(-bladeLen * 1.6, 0, 0, 0);
+        grad.addColorStop(0, p.color + '00');
+        grad.addColorStop(1, p.color + 'aa');
+        ctx.strokeStyle = grad; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(-bladeLen * 1.6, 0); ctx.lineTo(0, 0); ctx.stroke();
+        // 剑身（细长菱形）
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(bladeLen * 0.5, 0);                 // 剑尖
+        ctx.lineTo(0, -2.5);
+        ctx.lineTo(-bladeLen * 0.4, -1.5);
+        ctx.lineTo(-bladeLen * 0.4, 1.5);
+        ctx.lineTo(0, 2.5);
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#ffffff99'; ctx.lineWidth = 0.8; ctx.stroke();
+        // 剑柄横档 + 柄
+        ctx.strokeStyle = '#cfa76b'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(-bladeLen * 0.4, -4); ctx.lineTo(-bladeLen * 0.4, 4); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-bladeLen * 0.4, 0); ctx.lineTo(-bladeLen * 0.62, 0); ctx.stroke();
+        // 高境界剑穗（相位摆动）
+        if (tier >= 2) {
+          const sway = Math.sin(state.elapsed * 20) * 2;
+          ctx.strokeStyle = '#ffd700bb'; ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(-bladeLen * 0.62, 0);
+          ctx.quadraticCurveTo(-bladeLen * 0.75, sway, -bladeLen * 0.85, sway * 1.5);
+          ctx.stroke();
+        }
+        ctx.setTransform(1, 0, 0, 1, shake2x, shake2y); // 还原（含震动偏移）
+      } else if (spec.trail === 'bolt') {
+        // 雷电：锯齿折线（faint 时更细）
+        ctx.strokeStyle = tier >= 2 ? '#eaeaff' : p.color;
+        ctx.lineWidth = faint ? 1.2 : 2;
+        ctx.beginPath(); ctx.moveTo(tx, ty);
+        const segs = 4;
+        for (let i = 1; i < segs; i++) {
+          const f = i / segs;
+          const nx = tx + (cx - tx) * f - uy * ((i % 2 === 0 ? 1 : -1) * 3);
+          const ny = ty + (cy - ty) * f + ux * ((i % 2 === 0 ? 1 : -1) * 3);
+          ctx.lineTo(nx, ny);
+        }
+        ctx.lineTo(cx, cy); ctx.stroke();
+      } else if (spec.trail === 'ice') {
+        // 六棱冰晶：旋转雪花本体 + 淡蓝拖尾
+        const grad = ctx.createLinearGradient(tx, ty, cx, cy);
+        grad.addColorStop(0, '#81d4fa00');
+        grad.addColorStop(1, '#81d4fabb');
+        ctx.strokeStyle = grad; ctx.lineWidth = faint ? 1.5 : 3;
+        ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(cx, cy); ctx.stroke();
+        // 雪花（六向冰枝，相位旋转）
+        const rot = state.elapsed * 6;
+        const r = 5 + tier;
+        ctx.translate(cx, cy); ctx.rotate(rot);
+        ctx.strokeStyle = faint ? '#b3e5fc88' : '#e1f5fe';
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+          ctx.stroke();
+          // 冰枝小杈
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * r * 0.6, Math.sin(a) * r * 0.6);
+          ctx.lineTo(Math.cos(a + 0.5) * r * 0.85, Math.sin(a + 0.5) * r * 0.85);
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(0, 0, 1.5, 0, Math.PI * 2); ctx.fill();
+        ctx.setTransform(1, 0, 0, 1, shake2x, shake2y);
+      } else if (spec.trail === 'paper') {
+        // 符纸：竖长矩形 + 朱砂符文点 + 飘动（相位摆动，随飞行方向旋转）
+        const sway = Math.sin(state.elapsed * 12) * 0.25;
+        ctx.translate(cx, cy); ctx.rotate(ang + sway);
+        ctx.globalAlpha *= 0.9;
+        // 纸体
+        ctx.fillStyle = '#f5e9c8';
+        ctx.fillRect(-5, -3.5, 10, 7);
+        ctx.strokeStyle = p.color + 'cc'; ctx.lineWidth = 1;
+        ctx.strokeRect(-5, -3.5, 10, 7);
+        // 朱砂符文点（三点竖排）
+        ctx.fillStyle = '#c62828';
+        ctx.beginPath(); ctx.arc(-2, 0, 1.2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(1, 0, 1, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(3.5, 0, 0.8, 0, Math.PI * 2); ctx.fill();
+        // 残影（后方淡色副本）
+        ctx.globalAlpha *= 0.35;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-5 - ux * 0, -3.5 + uy * 8, 10, 7);
+        ctx.setTransform(1, 0, 0, 1, shake2x, shake2y);
+      } else if (spec.trail === 'beam') {
+        // 枪形：长杆细线 + 三角枪镞 + 拖尾光带
+        const spearLen = 22 + tier * 5;
+        ctx.translate(cx, cy); ctx.rotate(ang);
+        // 光带拖尾
+        const grad = ctx.createLinearGradient(-spearLen * 1.5, 0, 0, 0);
+        grad.addColorStop(0, p.color + '00');
+        grad.addColorStop(1, p.color + (faint ? '66' : 'aa'));
+        ctx.strokeStyle = grad; ctx.lineWidth = faint ? 2 : 4;
+        ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(-spearLen * 1.5, 0); ctx.lineTo(-spearLen * 0.2, 0); ctx.stroke();
+        // 枪杆
+        ctx.strokeStyle = faint ? '#8d6e6399' : '#a1887f';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(-spearLen * 0.55, 0); ctx.lineTo(spearLen * 0.2, 0); ctx.stroke();
+        // 枪镞（三角）
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(spearLen * 0.5, 0);
+        ctx.lineTo(spearLen * 0.15, -3);
+        ctx.lineTo(spearLen * 0.15, 3);
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#ffffff88'; ctx.lineWidth = 0.8; ctx.stroke();
+        // 红缨（相位摆动）
+        const sway2 = Math.sin(state.elapsed * 18) * 1.5;
+        ctx.strokeStyle = '#e53935cc'; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(spearLen * 0.15, 0);
+        ctx.quadraticCurveTo(spearLen * 0.05, sway2, -spearLen * 0.02, sway2 * 1.6);
+        ctx.stroke();
+        ctx.setTransform(1, 0, 0, 1, shake2x, shake2y);
+      } else {
+        // orb → 火球：核心圆 + 外焰摇摆（相位驱动），tier 越大外焰越大
+        const grad = ctx.createLinearGradient(tx, ty, cx, cy);
+        grad.addColorStop(0, p.color + '00');
+        grad.addColorStop(1, p.color + '88');
+        ctx.strokeStyle = grad; ctx.lineWidth = faint ? 1.5 : 3;
+        ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(cx, cy); ctx.stroke();
+        // 外焰（三层不规则爪形，相位摇摆）
+        const flameR = 5 + tier * 1.5;
+        for (let layer = 0; layer < 2; layer++) {
+          const lr = flameR * (layer === 0 ? 1 : 0.6);
+          ctx.fillStyle = layer === 0 ? p.color + '88' : '#ffcc80cc';
+          ctx.beginPath();
+          for (let i = 0; i <= 8; i++) {
+            const a = (i / 8) * Math.PI * 2;
+            const wob = 1 + 0.35 * Math.sin(a * 3 + state.elapsed * (14 + layer * 5));
+            const px = cx + Math.cos(a) * lr * wob;
+            const py = cy + Math.sin(a) * lr * wob;
+            i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+          }
+          ctx.closePath(); ctx.fill();
+        }
+        // 核心
+        ctx.fillStyle = '#fff3e0';
+        ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI * 2); ctx.fill();
+      }
+      // 核心亮点（非形状化弹道用；形状化的也无害）
+      if (spec.trail === 'bolt') {
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffffff88';
+        ctx.beginPath(); ctx.arc(cx, cy, 1.5, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1;
     }
 
     // 战斗特效：飘字伤害 + 死亡消散 + BOSS 冲击波 + 升级爆发
     for (const fx of state.effects) {
-      const t = fx.life / fx.maxLife;   // 1→0
+      if (fx.maxLife <= 0) continue;
+      const t = Math.min(1, fx.life / fx.maxLife);   // 1→0；life>maxLife（延迟启动）视为 1 前不渲染
+      if (fx.life > fx.maxLife) continue;
       if (fx.kind === 'dmg') {
         ctx.globalAlpha = Math.max(0, t);
         const isCrit = (fx as any).crit;
@@ -212,20 +554,343 @@ export class Board {
         ctx.fillStyle = '#ffffff44';
         ctx.beginPath(); ctx.arc(fx.x * CELL, fx.y * CELL, rad * 0.2, 0, Math.PI * 2); ctx.fill();
         ctx.globalAlpha = 1;
-      } else { // poof：扩散消散圈
-        const rad = CELL * (0.3 + (1 - t) * 0.5);
-        ctx.globalAlpha = Math.max(0, t * 0.8);
-        ctx.strokeStyle = fx.color;
-        ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(fx.x * CELL, fx.y * CELL, rad, 0, Math.PI * 2); ctx.stroke();
-        ctx.fillStyle = fx.color + '33';
-        ctx.beginPath(); ctx.arc(fx.x * CELL, fx.y * CELL, rad, 0, Math.PI * 2); ctx.fill();
+      } else if (fx.kind === 'realmup') {
+        // 境界突破：流派差异化华丽特效
+        const progress = 1 - t;
+        const spec = towerVisual(fx.school ?? 'sword');
+        const tier = fx.tier ?? 0;
+        const x = fx.x * CELL, y = fx.y * CELL;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1 - progress);
+        const accent = spec.accent;
+        if (spec.realmUp === 'sword') {
+          // 剑：环形剑气旋转后炸开
+          const rad = CELL * (0.3 + progress * 0.9);
+          for (let i = 0; i < 3 + tier; i++) {
+            const a0 = progress * 5 + (i / (3 + tier)) * Math.PI * 2;
+            ctx.strokeStyle = i % 2 === 0 ? accent : '#ffd700';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(x, y, rad, a0, a0 + 1.1);
+            ctx.stroke();
+          }
+        } else if (spec.realmUp === 'talisman') {
+          // 符：符文文字盘旋上升
+          const glyphs = ['敕', '令', '罡', '气'];
+          for (let i = 0; i < 4; i++) {
+            const a = progress * 4 + (i / 4) * Math.PI * 2;
+            const gx = x + Math.cos(a) * CELL * 0.6;
+            const gy = y + Math.sin(a) * CELL * 0.35 - progress * CELL * 0.8;
+            ctx.fillStyle = accent;
+            ctx.font = 'bold 12px "Microsoft YaHei", sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(glyphs[i], gx, gy);
+          }
+        } else if (spec.realmUp === 'spear') {
+          // 枪：十字贯穿光束
+          const len = CELL * (0.4 + progress * 1.4);
+          ctx.strokeStyle = accent; ctx.lineWidth = 3.5 - progress * 2; ctx.lineCap = 'round';
+          for (let i = 0; i < 2; i++) {
+            const a = i * Math.PI / 2 + progress * 0.6;
+            ctx.beginPath();
+            ctx.moveTo(x - Math.cos(a) * len, y - Math.sin(a) * len);
+            ctx.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len);
+            ctx.stroke();
+          }
+        } else if (spec.realmUp === 'aura') {
+          // 阵：六边形法阵描线展开
+          const rad = CELL * (0.2 + progress * 0.8);
+          ctx.strokeStyle = accent; ctx.lineWidth = 2;
+          for (let ring = 0; ring < 1 + tier; ring++) {
+            const rr = rad * (1 - ring * 0.25);
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+              const a = (i / 6) * Math.PI * 2 + progress * 2;
+              const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr;
+              i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+            }
+            ctx.closePath(); ctx.stroke();
+          }
+        } else if (spec.realmUp === 'fire') {
+          // 火：火柱冲天 + 火星
+          const h = CELL * (1.2 - progress * 0.6);
+          const grad = ctx.createLinearGradient(x, y + CELL * 0.3, x, y - h);
+          grad.addColorStop(0, '#ff8a65cc'); grad.addColorStop(0.6, accent + '88'); grad.addColorStop(1, accent + '00');
+          ctx.fillStyle = grad;
+          ctx.fillRect(x - CELL * 0.14, y - h, CELL * 0.28, h + CELL * 0.3);
+          for (let i = 0; i < 5 + tier * 3; i++) {
+            const a = (i / (5 + tier * 3)) * Math.PI * 2;
+            ctx.fillStyle = '#ffab91';
+            ctx.beginPath();
+            ctx.arc(x + Math.cos(a) * CELL * 0.5 * progress, y + Math.sin(a) * CELL * 0.5 * progress - progress * 14, 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } else if (spec.realmUp === 'thunder') {
+          // 雷：落雷劈身 + 闪白
+          ctx.strokeStyle = tier >= 2 ? '#ffffff' : accent; ctx.lineWidth = 3;
+          ctx.beginPath();
+          let lx = x + (progress - 0.5) * 20, ly = y - CELL * 1.6;
+          ctx.moveTo(lx, ly);
+          for (let i = 0; i < 4; i++) {
+            lx += (i % 2 === 0 ? 1 : -1) * 8;
+            ly += CELL * 0.4;
+            ctx.lineTo(lx, ly);
+          }
+          ctx.lineTo(x, y); ctx.stroke();
+          ctx.globalAlpha = Math.max(0, 0.35 - progress * 0.5);
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+          ctx.globalAlpha = Math.max(0, 1 - progress);
+        } else if (spec.realmUp === 'ice') {
+          // 冰：冰晶绽放（六向尖晶）
+          const len = CELL * (0.3 + progress * 0.9);
+          ctx.strokeStyle = accent; ctx.lineWidth = 2.5;
+          for (let i = 0; i < 6; i++) {
+            const a = (i / 6) * Math.PI * 2;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(x + Math.cos(a) * len, y + Math.sin(a) * len, 2, 0, Math.PI * 2);
+            ctx.fillStyle = '#e1f5fe'; ctx.fill();
+          }
+        } else {
+          // earth：地裂纹路蔓延
+          ctx.strokeStyle = accent; ctx.lineWidth = 2;
+          for (let i = 0; i < 5 + tier * 2; i++) {
+            const a = (i / (5 + tier * 2)) * Math.PI * 2 + 0.4;
+            const len = CELL * (0.3 + progress * 1.1);
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + Math.cos(a) * len * 0.5, y + Math.sin(a) * len * 0.5);
+            ctx.lineTo(x + Math.cos(a + 0.3) * len, y + Math.sin(a + 0.3) * len);
+            ctx.stroke();
+          }
+        }
+        // 共通：金色中心光晕（保留原突破金光感）
+        const rad = CELL * (0.15 + progress * 0.5);
+        ctx.fillStyle = '#ffd70055';
+        ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffffff66';
+        ctx.beginPath(); ctx.arc(x, y, rad * 0.35, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      } else if (fx.kind === 'hit') {
+        // 命中特效：流派差异化（查表渲染，样式在 towerVisuals.hit）
+        const progress = 1 - t;
+        const spec = towerVisual(fx.school ?? 'sword');
+        const tier = fx.tier ?? 0;
+        const x = fx.x * CELL, y = fx.y * CELL;
+        const scale = (fx.crit ? 1.6 : 1) * (1 + tier * 0.2);
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1 - progress);
+        if (spec.hit === 'slash') {
+          // 剑：斜切闪光（两道交叉短线）
+          const len = CELL * 0.35 * scale;
+          ctx.strokeStyle = fx.crit ? '#ffd700' : '#ffffff';
+          ctx.lineWidth = 2.5 - progress * 1.5;
+          ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(x - len, y - len); ctx.lineTo(x + len, y + len); ctx.stroke();
+          ctx.globalAlpha *= 0.6;
+          ctx.beginPath(); ctx.moveTo(x + len * 0.7, y - len * 0.7); ctx.lineTo(x - len * 0.7, y + len * 0.7); ctx.stroke();
+        } else if (spec.hit === 'ink') {
+          // 符：墨点晕开
+          const rad = CELL * 0.3 * scale * progress;
+          ctx.fillStyle = (fx.crit ? '#ffd700' : spec.accent) + 'aa';
+          ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = spec.accent;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.arc(x, y, rad * 1.3, 0, Math.PI * 2); ctx.stroke();
+        } else if (spec.hit === 'impact') {
+          // 枪/地：撞击星芒
+          const len = CELL * 0.3 * scale;
+          ctx.strokeStyle = fx.crit ? '#ffd700' : spec.accent;
+          ctx.lineWidth = 2;
+          for (let i = 0; i < 4; i++) {
+            const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+            ctx.beginPath();
+            ctx.moveTo(x + Math.cos(a) * len * 0.3, y + Math.sin(a) * len * 0.3);
+            ctx.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len);
+            ctx.stroke();
+          }
+        } else if (spec.hit === 'ring') {
+          // 火/阵：爆炸圈（有 radius 时按实际 AOE 半径渲染，无则小圈）
+          const baseR = fx.radius ? fx.radius * CELL : CELL * 0.2;
+          const rad = baseR * (0.4 + progress * 0.8);
+          ctx.strokeStyle = fx.crit ? '#ffd700' : spec.accent;
+          ctx.lineWidth = 3.5 - progress * 2.5;
+          ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.stroke();
+          // 内焰填充
+          const grad2 = ctx.createRadialGradient(x, y, 0, x, y, rad);
+          grad2.addColorStop(0, (fx.crit ? '#ffd700' : spec.accent) + '66');
+          grad2.addColorStop(1, spec.accent + '00');
+          ctx.fillStyle = grad2;
+          ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
+        } else if (spec.hit === 'crater') {
+          // 地雷爆炸：按实际 aoeRadius 画弹坑裂纹圈 + 土块飞溅（相位推算轨迹，无随机）
+          const baseR = fx.radius ? fx.radius * CELL : CELL * 0.8;
+          const rad = baseR * (0.5 + progress * 0.7);
+          // 弹坑主体（暗色填充 + 土色描边）
+          ctx.fillStyle = '#3e272388';
+          ctx.beginPath(); ctx.arc(x, y, rad * 0.8, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = spec.accent;
+          ctx.lineWidth = 3.5 - progress * 2;
+          ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.stroke();
+          // 放射裂纹（6 条锯齿线，相位展开）
+          ctx.strokeStyle = '#5d4037cc';
+          ctx.lineWidth = 1.8;
+          for (let i = 0; i < 6; i++) {
+            const a = (i / 6) * Math.PI * 2 + 0.3;
+            const clen = rad * (0.9 + 0.25 * Math.sin(i * 2.7));
+            ctx.beginPath();
+            ctx.moveTo(x + Math.cos(a) * rad * 0.3, y + Math.sin(a) * rad * 0.3);
+            ctx.lineTo(x + Math.cos(a + 0.2) * clen * 0.65, y + Math.sin(a + 0.2) * clen * 0.65);
+            ctx.lineTo(x + Math.cos(a) * clen, y + Math.sin(a) * clen);
+            ctx.stroke();
+          }
+          // 尘土外环（扩散淡圈）
+          ctx.globalAlpha *= 0.5;
+          ctx.strokeStyle = '#8d6e63';
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(x, y, rad * (1.1 + progress * 0.3), 0, Math.PI * 2); ctx.stroke();
+          ctx.globalAlpha = Math.max(0, 1 - progress);
+          // 土块飞溅（8 块抛物线，相位推算）
+          ctx.fillStyle = '#6d4c41';
+          for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2 + 0.4;
+            const d = rad * (0.5 + progress * 1.1);
+            const h = Math.sin(progress * Math.PI) * 10;   // 抛物线高度
+            ctx.beginPath();
+            ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d - h, 2.5 - progress * 1.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } else if (spec.hit === 'spark') {
+          // 雷：电火花分支
+          ctx.strokeStyle = fx.crit ? '#ffd700' : '#eaeaff';
+          ctx.lineWidth = 1.5;
+          for (let i = 0; i < 3; i++) {
+            const a = (i / 3) * Math.PI * 2 + progress * 3;
+            let px = x, py = y;
+            ctx.beginPath(); ctx.moveTo(px, py);
+            for (let s = 0; s < 3; s++) {
+              px += Math.cos(a + s * 0.5) * CELL * 0.12 * scale;
+              py += Math.sin(a + s * 0.5) * CELL * 0.12 * scale;
+              ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+          }
+        } else {
+          // frost：冰霜碎晶
+          ctx.fillStyle = fx.crit ? '#ffd700' : '#b3e5fc';
+          for (let i = 0; i < 5; i++) {
+            const a = (i / 5) * Math.PI * 2;
+            const d = CELL * 0.15 * scale * (0.5 + progress);
+            ctx.beginPath();
+            ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d - progress * 5, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      } else { // poof：击杀消散（按敌人类型分化）
+        const style = fx.style ?? 'normal';
+        const x = fx.x * CELL, y = fx.y * CELL;
+        if (style === 'boss') {
+          // BOSS：多层爆散（三层扩散环 + 径向碎片）
+          const progress = 1 - t;
+          for (let ring = 0; ring < 3; ring++) {
+            const rad = CELL * (0.25 + progress * (1.2 + ring * 0.5));
+            ctx.globalAlpha = Math.max(0, (1 - progress) * (0.8 - ring * 0.2));
+            ctx.strokeStyle = ring === 1 ? '#ffd700' : fx.color;
+            ctx.lineWidth = 4 - ring - progress * 2;
+            ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.stroke();
+          }
+          ctx.globalAlpha = Math.max(0, 1 - progress);
+          ctx.fillStyle = fx.color;
+          for (let i = 0; i < 10; i++) {
+            const a = (i / 10) * Math.PI * 2;
+            const d = CELL * 0.4 + progress * CELL * 1.3;
+            ctx.beginPath();
+            ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d - progress * 10, 3 - progress * 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } else if (style === 'feather') {
+          // 飞行怪：羽毛飘落（轻羽下沉 + 摇摆）
+          const progress = 1 - t;
+          ctx.globalAlpha = Math.max(0, t * 0.9);
+          for (let i = 0; i < 5; i++) {
+            const sway = Math.sin(progress * 5 + i * 1.7) * 8;
+            const px = x + (i - 2) * 7 + sway;
+            const py = y + progress * (18 + i * 5);
+            ctx.fillStyle = i % 2 === 0 ? fx.color : '#ffffffbb';
+            ctx.beginPath();
+            ctx.ellipse(px, py, 2, 4, sway * 0.05, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } else if (style === 'elite') {
+          // 精英：金色星散
+          const rad = CELL * (0.3 + (1 - t) * 0.7);
+          ctx.globalAlpha = Math.max(0, t * 0.9);
+          ctx.strokeStyle = '#ffd93d';
+          ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillStyle = '#ffd93daa';
+          for (let i = 0; i < 6; i++) {
+            const a = (i / 6) * Math.PI * 2;
+            const d = rad * 0.8;
+            ctx.beginPath(); ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, 2, 0, Math.PI * 2); ctx.fill();
+          }
+        } else {
+          // 普通：原扩散消散圈
+          const rad = CELL * (0.3 + (1 - t) * 0.5);
+          ctx.globalAlpha = Math.max(0, t * 0.8);
+          ctx.strokeStyle = fx.color;
+          ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillStyle = fx.color + '33';
+          ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
+        }
         ctx.globalAlpha = 1;
       }
     }
 
-    // 终点/起点标记
-    this.drawEndpoints();
+    // 终点/起点标记（波次开场 1.5s 内入口聚气光柱演出）
+    this.drawEndpoints(state);
+
+    // 波次开场演出：入口聚气光柱 + 环形收束（1.5s）
+    const waveAge = state.elapsed - (state.waveStartTime ?? -999);
+    if (state.waveActive && waveAge >= 0 && waveAge < 1.5) {
+      const t2 = waveAge / 1.5;
+      for (let pi = 0; pi < this.paths.length; pi++) {
+        const isActive = !this.currentActivePaths || this.currentActivePaths.includes(pi);
+        if (!isActive) continue;
+        const p0 = this.paths[pi][0];
+        const cx = (p0.x + 0.5) * CELL, cy = (p0.y + 0.5) * CELL;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1 - t2) * 0.8;
+        // 聚气光柱（上升渐隐）
+        const grad3 = ctx.createLinearGradient(cx, cy, cx, cy - CELL * 1.6 * t2);
+        grad3.addColorStop(0, '#ff646466');
+        grad3.addColorStop(1, '#ff646400');
+        ctx.strokeStyle = grad3;
+        ctx.lineWidth = 4 - t2 * 2;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - CELL * 1.6 * t2); ctx.stroke();
+        // 环形收束（半径从大到小收向入口）
+        ctx.strokeStyle = '#ff8a80';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(cx, cy, CELL * (1.2 - t2 * 1.0), 0, Math.PI * 2); ctx.stroke();
+        // 妖气粒子（相位推算，无随机）
+        for (let i = 0; i < 4; i++) {
+          const a = t2 * 6 + i * Math.PI / 2;
+          const d = CELL * (0.8 - t2 * 0.6);
+          ctx.fillStyle = '#ffab91aa';
+          ctx.beginPath(); ctx.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d, 2.5, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      }
+    }
 
     // 环境粒子（灵气）
     this.updateAmbient(state.status);
@@ -242,6 +907,8 @@ export class Board {
     vg.addColorStop(1, 'rgba(0,0,0,0.45)');
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    ctx.restore(); // 震动平移结束
   }
 
   /** 环境灵气粒子更新 */
@@ -398,7 +1065,11 @@ export class Board {
 
   private drawTower(t: GameState['towers'][number], now: number): void {
     const ctx = this.ctx;
-    const cx = (t.col + 0.5) * CELL, cy = (t.row + 0.5) * CELL;
+    // 开火后坐：发射瞬间（flashTimer 高）塔身向发射反方向回弹 2px，随衰减恢复
+    const fireKick = t.flashTimer > 0 ? Math.min(1, t.flashTimer / 0.12) : 0;
+    const kickX = fireKick > 0 ? Math.sin(now * 31.7) * 2 * fireKick : 0;
+    const kickY = fireKick > 0 ? Math.cos(now * 27.9) * 2 * fireKick : 0;
+    const cx = (t.col + 0.5) * CELL + kickX, cy = (t.row + 0.5) * CELL + kickY;
     const x = t.col * CELL, y = t.row * CELL;
     const disabled = t.disabledUntil > now;
     const skin = this.skinResolver?.(t.def.id) ?? null;
@@ -530,9 +1201,10 @@ export class Board {
     ctx.globalAlpha = stealth && !revealed ? 0.3 : (burrowed ? 0.5 : 1);
     // 遁地波纹（地下敌人脚底涟漪）
     if (burrowed) {
+      const rippleT = (e.hitFlash > 0 ? e.hitFlash : 0.3);
       ctx.strokeStyle = '#88aa88';
       ctx.lineWidth = 2;
-      const ripple = (this.waveTimer * 3) % (CELL * 0.6);
+      const ripple = (rippleT * 3) % (CELL * 0.6);
       for (let i = 0; i < 2; i++) {
         const r = ripple + i * CELL * 0.3;
         ctx.globalAlpha = 0.4 - i * 0.15;
@@ -772,17 +1444,17 @@ export class Board {
     ctx.restore();
   }
 
-  private drawEndpoints(): void {
+  private drawEndpoints(state?: GameState): void {
     if (this.paths.length === 0) return;
     for (let pi = 0; pi < this.paths.length; pi++) {
       const isActive = !this.currentActivePaths || this.currentActivePaths.includes(pi);
       const path = this.paths[pi];
       if (path.length === 0) continue;
-      this.drawEntrance(path[0], pi, isActive);
+      this.drawEntrance(path[0], pi, isActive, state);
     }
   }
 
-  private drawEntrance(p: GridPoint, index: number, active: boolean): void {
+  private drawEntrance(p: GridPoint, index: number, active: boolean, _state?: GameState): void {
     const ctx = this.ctx;
     const cx = (p.x + 0.5) * CELL, cy = (p.y + 0.5) * CELL;
     const pulse = Math.sin(index * 2.7 + Date.now() * 0.003) * 0.2 + 0.8;
