@@ -1,4 +1,4 @@
-import type { LevelConfig } from '../../../types';
+﻿import type { LevelConfig } from '../../../types';
 import { buildableFromPaths } from './buildable';
 
 // 第 30 章 第 2 关 · 最终之敌（三路径，万物混杂）
@@ -23,7 +23,7 @@ export const CH30_L2: LevelConfig = {
   story: {
     intro: {
       chapter: '第 三 十 章', title: '最 终 之 敌',
-      lines: ['万物杂糅，万敌齐至——这是道祖魔影的「万象之阵」。', '破此阵者，方有资格直面道祖。'],
+      lines: ['万物杂糅，万敌齐至——这是道祖魔影的『万象之阵』。', '破此阵者，方有资格直面道祖。'],
       btn: '破 万 象',
     },
     outro: {

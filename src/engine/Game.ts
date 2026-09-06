@@ -49,6 +49,8 @@ export interface GameState {
   effects: VisEffect[];
   /** 屏幕震动状态（表现层读 snapshot 渲染，确定性相位驱动） */
   shake: { intensity: number; until: number };
+  lastLeakAt: number;
+  finalWaveAt: number;
   waveSpawned: number;
   waveKilled: number;
   nextWaveSpawns?: ReadonlyArray<{ enemy: string; count: number; path?: number }>;
@@ -80,7 +82,7 @@ export interface GameState {
 }
 
 export class Game {
-  readonly level: LevelConfig;
+  level: LevelConfig;   // 构造时可能因境界豁免被替换（复刷/无尽），非 readonly
   readonly waveManager: WaveManager;
   readonly towerOps: TowerOperations;
   readonly towerCombat: TowerCombat;
@@ -97,11 +99,17 @@ export class Game {
   status: GameStatus = 'prep';
   /** 屏幕震动状态（表现层读 snapshot 渲染，确定性相位驱动） */
   shake: { intensity: number; until: number } = { intensity: 0, until: 0 };
+  /** 最近漏怪时间（表现层：漏怪红晕反馈） */
+  lastLeakAt = -1;
+  /** 最终波开始时间（表现层：最后一波仪式演出） */
+  finalWaveAt = -1;
   private acc = 0;
   nextWaveIn = PREP_FIRST;
   msg = '';
   onEvent?: (e: GameEvent) => void;
   telemetry?: TelemetryRepo;
+  /** 遥测分层维度（v0.86 验收）：由应用层注入玩家 VIP 等级 */
+  telemetryVipLevel = 0;
   private prevStones = 0;
 
   // —— 挑战玩法状态（复刷已通关关卡时，该关全部挑战同时开启）——
@@ -180,6 +188,8 @@ export class Game {
     strategies?: AttackStrategyRegistry, mods: ModifierSet = ModifierSet.empty,
     difficultyHpMul = 1, difficultyBountyMul = 1,
     destinyBoost = 1,
+    /** 境界封顶豁免判定（v0.86 方案 A）：返回 true 则该关不封境界（复刷已通关关/无尽模式由应用层传入） */
+    realmCapExempt?: (levelId: string) => boolean,
   ) {
     this.level = level;
     this.reg = reg;
@@ -191,8 +201,12 @@ export class Game {
     this.towerMul = Math.sqrt(level.hpMul ?? 1);
     this.difficultyBountyMul = difficultyBountyMul;
     this.destinyBoost = destinyBoost;
-    this.waveManager = new WaveManager(level, mods);
-    this.towerOps = new TowerOperations(level, reg, level.startStones);
+    // 境界封顶豁免：无尽模式 / 已通关关卡复刷 → 移除境界上限（保护挑战玩法与大R复刷体验）
+    if (level.maxTowerLevel !== undefined && (level.id === 'endless' || realmCapExempt?.(level.id))) {
+      this.level = { ...level, maxTowerLevel: undefined };
+    }
+    this.waveManager = new WaveManager(this.level, mods);
+    this.towerOps = new TowerOperations(this.level, reg, this.level.startStones);
     const combatCtx: CombatUpdateCtx = {
       rng: () => this.rng(),
       strategies: strategies ?? defaultAttackRegistry(),
@@ -271,6 +285,7 @@ export class Game {
       this.lives -= events.leacked;
     }
     for (let i = 0; i < events.leacked; i++) {
+      this.lastLeakAt = this.waveManager.elapsed;   // 表现层：漏怪红晕
       this.emit({ type: 'leak' });
     }
     if (events.waveCleared) {
@@ -285,6 +300,18 @@ export class Game {
         this.status = 'won';
         this.msg = '守阵成功！山门无恙。';
         this.emit({ type: 'win' });
+        // 遥测验收（v0.86）：通关快照——分层单塔依赖度核心指标
+        if (this.telemetry) {
+          const maxLv = this.towerOps.towers.reduce((m, t) => Math.max(m, t.level), 0);
+          this.telemetry.recordLevelClear({
+            levelId: this.level.id, difficulty: 'normal',
+            vipLevel: this.telemetryVipLevel,
+            towerCount: this.towerOps.towers.length,
+            maxTowerLevel: maxLv,
+            elapsed: this.waveManager.elapsed,
+            livesLeft: this.lives,
+          });
+        }
         // 胜利演出：全塔波浪式 realmup（life = dur + delay，Board 在 life>maxLife 时跳过渲染 = 延迟启动）
         this.towerOps.towers.forEach((t, i) => {
           const delay = i * 0.12;
@@ -310,6 +337,10 @@ export class Game {
     this.waveManager.startWave(this.waves[this.waveManager.waveIndex]);
     this.status = 'wave';
     this.msg = `第 ${this.waveManager.waveIndex + 1} 波来袭！`;
+    // 最后一波仪式（表现层）：非无尽模式标记最终波开始时间
+    if (this.level.id !== 'endless' && this.waveManager.waveIndex === this.waves.length - 1) {
+      this.finalWaveAt = this.waveManager.elapsed;
+    }
     this.emit({ type: 'waveStart', wave: this.waveManager.waveIndex + 1 });
     // 聚灵阵开阵脉冲：波次开始时各阵法推一圈绿金 shockwave（表现层）
     for (const t of this.towerOps.towers) {
@@ -539,6 +570,8 @@ export class Game {
       projectiles: this.towerCombat.projectiles.map((p) => ({ ...p })),
       effects: this.towerCombat.effects.map((fx) => ({ ...fx })),
       shake: { ...this.shake },
+      lastLeakAt: this.lastLeakAt,
+      finalWaveAt: this.finalWaveAt,
       waveSpawned: this.waveManager.waveTotalSpawned,
       waveKilled: this.waveManager.waveKilled,
       nextWaveSpawns: this.waveManager.peekNextWave(),

@@ -1,4 +1,4 @@
-import type { LevelConfig } from '../../../types';
+﻿import type { LevelConfig } from '../../../types';
 import { buildableFromPaths } from './buildable';
 
 // 第 30 章 第 1 关 · 魔影降临（双路径，重混沌古兽 + 虚空吞噬者）
@@ -24,7 +24,7 @@ export const CH30_L1: LevelConfig = {
       chapter: '第 三 十 章', title: '道 祖 魔 影',
       lines: [
         '道祖之门已开，无尽魔影自门后倾泻而出。',
-        '太上长老（你）凝神而立，魔影之首——正是「道祖魔影」。',
+        '太上长老（你）凝神而立，魔影之首——正是『道祖魔影』。',
         '它有你的脸，有你的剑，却没有你的心。',
       ],
       btn: '迎 魔 影',

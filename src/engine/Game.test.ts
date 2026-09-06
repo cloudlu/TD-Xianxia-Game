@@ -173,3 +173,40 @@ describe('Game multi-challenge settlement', () => {
     expect(s.challenges).toEqual([]);
   });
 });
+
+describe('realm cap (v0.86 方案 A)', () => {
+  const cappedTower: TowerConfig = {
+    ...testTower,
+    levels: [
+      { realm: '炼气', dmg: 10, rate: 1, range: 5 },
+      { realm: '筑基', dmg: 20, rate: 1, range: 5, upgradeCost: 50 },
+      { realm: '金丹', dmg: 40, rate: 1, range: 5, upgradeCost: 100 },
+    ],
+  };
+  const cappedLevel: LevelConfig = { ...level, id: 'ch2-l1', maxTowerLevel: 1 };
+  const cappedReg: ConfigLookup = { enemy: () => testEnemy, tower: () => cappedTower };
+
+  it('respects maxTowerLevel from level config', () => {
+    const g = new Game(cappedLevel, cappedReg, 42, undefined, ModifierSet.empty, 1, 1, 1);
+    g.placeTower(0, 0, 'test_tower');
+    expect(g.upgradeCost(g.towerOps.towers[0].uid)).toBe(50);   // →筑基可
+    g.upgradeTower(g.towerOps.towers[0].uid);
+    expect(g.upgradeCost(g.towerOps.towers[0].uid)).toBeNull();  // →金丹被封
+  });
+
+  it('exempts cleared levels (复刷豁免) via realmCapExempt callback', () => {
+    const g = new Game(cappedLevel, cappedReg, 42, undefined, ModifierSet.empty, 1, 1, 1,
+      (levelId) => levelId === 'ch2-l1');   // 模拟已通关
+    g.placeTower(0, 0, 'test_tower');
+    g.upgradeTower(g.towerOps.towers[0].uid);
+    expect(g.upgradeCost(g.towerOps.towers[0].uid)).toBe(100);  // 金丹可升
+  });
+
+  it('exempts endless mode regardless of callback', () => {
+    const endlessLevel: LevelConfig = { ...cappedLevel, id: 'endless' };
+    const g = new Game(endlessLevel, cappedReg, 42, undefined, ModifierSet.empty, 1, 1, 1);
+    g.placeTower(0, 0, 'test_tower');
+    g.upgradeTower(g.towerOps.towers[0].uid);
+    expect(g.upgradeCost(g.towerOps.towers[0].uid)).toBe(100);  // 无尽不封
+  });
+});

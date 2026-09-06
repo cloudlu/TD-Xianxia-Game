@@ -1,4 +1,4 @@
-import type { LevelConfig } from '../../../types';
+﻿import type { LevelConfig } from '../../../types';
 import { buildableFromPaths } from './buildable';
 
 // 第 24 章 第 1 关 · 天劫前兆（直线路径）
@@ -22,7 +22,7 @@ export const CH24_L1: LevelConfig = {
     intro: {
       chapter: '第 二 十 四 章', title: '天 劫 前 兆',
       lines: [
-        '九霄之上，紫色雷云翻涌——那是传说中的「天劫」将至之兆。',
+        '九霄之上，紫色雷云翻涌——那是传说中的『天劫』将至之兆。',
         '修真界万年来，只闻天劫之名，未见其形。',
         '如今，它真的要降临了。',
       ],

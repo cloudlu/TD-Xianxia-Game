@@ -1,4 +1,4 @@
-import type { LevelConfig } from '../../../types';
+﻿import type { LevelConfig } from '../../../types';
 import { buildableFromPaths } from './buildable';
 
 // 第 28 章 第 2 关 · 吞噬者（双路径）
@@ -22,7 +22,7 @@ export const CH28_L2: LevelConfig = {
   story: {
     intro: {
       chapter: '第 二 十 八 章', title: '吞 噬 者',
-      lines: ['吞噬者成群浮现，连「规则」本身都在被它们咀嚼。', '你必须步步为营，否则连同记忆都会被吞没。'],
+      lines: ['吞噬者成群浮现，连『规则』本身都在被它们咀嚼。', '你必须步步为营，否则连同记忆都会被吞没。'],
       btn: '战 吞 噬',
     },
     outro: {

@@ -28,6 +28,18 @@ describe('ModifierSet', () => {
     expect(ms.damageMul(damageStatsFor('sword'))).toBeCloseTo(1.8, 5);
   });
 
+  it('soul shard mul merges into damage family cap (v0.86 方案 C)', () => {
+    // 仙魂 +0.54（大R）+ 装备 +1.2 → 合并 1.74，封顶 1.5（不再独立相乘绕过族封顶）
+    const ms = new ModifierSet([mod('_soulMul', 'mul_pct', 0.54), mod('dmg', 'mul_pct', 1.2)]);
+    expect(ms.damageMul(damageStatsFor('sword'))).toBeCloseTo(1 + CAPS.damage, 5);
+  });
+
+  it('soul shard mul alone is unaffected below cap', () => {
+    // 0氪 +0.15 仙魂：无其它伤害来源时不触顶，收益完整
+    const ms = new ModifierSet([mod('_soulMul', 'mul_pct', 0.15)]);
+    expect(ms.damageMul(damageStatsFor('sword'))).toBeCloseTo(1.15, 5);
+  });
+
   it('rateMul / bountyMul apply their own caps', () => {
     const ms = new ModifierSet([mod('rate', 'mul_pct', 1.0), mod('bountyMul', 'mul_pct', 1.0)]);
     expect(ms.rateMul()).toBeCloseTo(1 + CAPS.rate, 5);

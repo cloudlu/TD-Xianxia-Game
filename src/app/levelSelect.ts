@@ -1,7 +1,7 @@
 // 选关 / 关卡流程 / 通关结算（复刷已通关关卡时该关全部挑战自动开启，通关达成几个算几个）
 import { Game } from '../engine/Game';
 import { registry } from '../data/Registry';
-import { resolveTitle, completedChapters } from '../data/config';
+import { resolveTitle, completedChapters, ENEMIES } from '../data/config';
 import type { StoryBeat, LevelConfig } from '../types';
 import { audio } from '../audio/AudioManager';
 import { app, buildMods, lookup, telemetry } from './state';
@@ -180,11 +180,14 @@ export function startLevel(id: string): void {
     app.progression = pAfterDestiny;
     app.destinyBoost = useScroll ? 1.08 : 1;
 
-    app.game = new Game(lvl, lookup, 12345, undefined, buildMods(), 1, 1, app.destinyBoost);
+    // 境界封顶豁免：已通关关卡复刷不封境界（v0.86 方案 A，保住挑战玩法/大R复刷体验）
+    app.game = new Game(lvl, lookup, 12345, undefined, buildMods(), 1, 1, app.destinyBoost,
+      (levelId) => !!app.progression.cleared[levelId]);
     // 开启该关全部挑战（复刷时）
     if (challenges && challenges.length > 0) app.game.setChallenge(challenges);
     app.game.onEvent = onGameEvent;
     app.game.telemetry = telemetry;
+    app.game.telemetryVipLevel = app.progression.vipLevel ?? 0;
 
     app.selectedUid = null;
     app.speedMul = 1;
@@ -232,23 +235,61 @@ export function startLevel(id: string): void {
   }
 }
 
+/** 连杀窗口（表现层）：2s 内击杀计数，≥5 触发 zoom 演出与飘字 */
+let streakCount = 0;
+let streakLastAt = -999;
+let streakShownAt = 0;
+/** 最近一次连杀演出触发时间（main.ts 渲染循环读取后驱动 Board zoom 脉冲） */
+export let streakPulseAt = 0;
+export function markStreakPulseConsumed(): void { streakPulseAt = 0; }
+
 function onGameEvent(e: GameEventLike): void {
   switch (e.type) {
-    case 'kill': audio.sfx('kill'); break;
+    case 'kill': {
+      // 击杀音分档：按敌人档次 normal/elite/boss（v0.87 批次3）
+      const edef = e.enemyId ? ENEMIES[e.enemyId] : undefined;
+      const style = edef?.bossAbility ? 'kill_boss' : edef?.elite ? 'kill_elite' : 'kill';
+      audio.sfx(style);
+      // 连杀演出：2s 窗口计数，≥5 触发 zoom + 飘字
+      const now = performance.now() / 1000;
+      streakCount = now - streakLastAt < 2 ? streakCount + 1 : 1;
+      streakLastAt = now;
+      if (streakCount >= 5 && now - streakShownAt > 1.5) {
+        streakShownAt = now;
+        streakPulseAt = now;
+        showStreakBanner(streakCount);
+      }
+      break;
+    }
     case 'leak':
       audio.sfx('leak');
       app.leakFlashAmt = 1;
       pulseLives();
       break;
-    case 'waveStart': audio.sfx('wave'); break;
+    case 'waveStart':
+      audio.sfx('wave');
+      // 连斩跨波保留（v0.87）：波间 prep 无怪可杀不算断连——把窗口起点平移到开波时刻，
+      // 上一波攒的连杀数保留，开波首杀即可续上
+      if (streakCount > 0) streakLastAt = performance.now() / 1000;
+      break;
     case 'win': audio.sfx('win'); break;
     case 'lose': audio.sfx('lose'); break;
     case 'boss': audio.sfx('boss'); break;
   }
 }
 
+/** 连杀飘字（DOM，短暂显示） */
+function showStreakBanner(n: number): void {
+  const el = document.getElementById('streakBanner');
+  if (!el) return;
+  el.textContent = `${n} 连斩！`;
+  el.classList.remove('show');
+  void el.offsetWidth;   // 重启动画
+  el.classList.add('show');
+}
+
 type GameEventLike =
-  | { type: 'kill' } | { type: 'leak' }
+  | { type: 'kill'; enemyId?: string } | { type: 'leak' }
   | { type: 'waveStart'; wave: number }
   | { type: 'win' } | { type: 'lose' }
   | { type: 'boss' };
@@ -482,6 +523,7 @@ export function startEndless(): void {
     app.game = new Game(level, lookup, 12345, undefined, buildMods(), 1, 1, app.destinyBoost);
     app.game.onEvent = onGameEvent;
     app.game.telemetry = telemetry;
+    app.game.telemetryVipLevel = app.progression.vipLevel ?? 0;
 
     endlessWaveSeed = Date.now();
     const w0 = generateWave(0, endlessWaveSeed);

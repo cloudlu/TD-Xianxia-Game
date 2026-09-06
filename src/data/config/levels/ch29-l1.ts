@@ -1,4 +1,4 @@
-import type { LevelConfig } from '../../../types';
+﻿import type { LevelConfig } from '../../../types';
 import { buildableFromPaths } from './buildable';
 
 // 第 29 章 第 1 关 · 魔影前军（直路径）
@@ -21,7 +21,7 @@ export const CH29_L1: LevelConfig = {
   story: {
     intro: {
       chapter: '第 二 十 九 章', title: '终 极 考 验',
-      lines: ['道祖之门已在前方，但门外的「魔影前军」如山如海。', '这是飞升前的最后一程，也是天道最后的阻挡。'],
+      lines: ['道祖之门已在前方，但门外的『魔影前军』如山如海。', '这是飞升前的最后一程，也是天道最后的阻挡。'],
       btn: '破 前 军',
     },
     outro: {

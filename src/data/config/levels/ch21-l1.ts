@@ -1,4 +1,4 @@
-import type { LevelConfig } from '../../../types';
+﻿import type { LevelConfig } from '../../../types';
 import { buildableFromPaths } from './buildable';
 
 // 第 21 章 第 1 关 · 天道裂痕（L 形单路径，引入虚空行者 + 天魔）
@@ -24,7 +24,7 @@ export const CH21_L1: LevelConfig = {
       lines: [
         '天道裂痕初现于九霄之上，虚空之力从裂隙中倾泻而下。',
         '太上长老（你）仰望苍穹，感知到熟悉的规则正在崩坏。',
-        '虚空行者与天魔自裂缝中走出——这是「界域之战」的开始。',
+        '虚空行者与天魔自裂缝中走出——这是『界域之战』的开始。',
       ],
       btn: '仰 望 天 裂',
     },

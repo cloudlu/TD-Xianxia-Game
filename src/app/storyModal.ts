@@ -1,6 +1,7 @@
 // 剧情弹窗（打字机 + 跳过），开场/通关/失败共用
 import type { StoryBeat } from '../types';
 import { app } from './state';
+import { audio } from '../audio/AudioManager';
 
 export interface ConfirmBeat extends StoryBeat {
   btnCancel?: string;         // 取消按钮文字（有则显示双按钮）
@@ -53,6 +54,9 @@ export function showStory(beat: StoryBeat, onClose: () => void): void {
   overlay.classList.add('show');
   app.paused = true;
 
+  // 语音旁白（v0.88）：按行 TTS，角色声线分派（跳过/关闭时 cancel）
+  audio.speakLines(cb.lines, cb.chapter);
+
   let finishTyping: () => void;
 
   if (cb.html) {
@@ -78,13 +82,16 @@ export function showStory(beat: StoryBeat, onClose: () => void): void {
   }
 
   sSkip.onclick = () => {
+    audio.stopNarration();
     finishTyping(); overlay.classList.remove('show'); onClose();
   };
   sCancel.onclick = () => {
+    audio.stopNarration();
     finishTyping(); overlay.classList.remove('show'); cb.onCancel?.();
   };
   sBtn.onclick = () => {
     if (sBtn.disabled) { finishTyping(); return; }
+    audio.stopNarration();
     overlay.classList.remove('show');
     onClose();
   };

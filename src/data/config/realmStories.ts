@@ -1,4 +1,4 @@
-import type { StoryBeat } from '../../types';
+﻿import type { StoryBeat } from '../../types';
 
 /** 境界突破剧情（索引对应 globalTowerLevel，从 1 开始 = 首次突破到筑基） */
 export const REALM_STORIES: StoryBeat[] = [
@@ -29,13 +29,13 @@ export const TOWER_UNLOCK_STORIES: Record<string, StoryBeat> = {
   ice_mage: {
     chapter: '冰 封 洞 窟',
     title: '寒 冰 诀',
-    lines: ['洞窟深处，一块万年玄冰上刻着心法。', '「玄冰诀」——以寒气冻结妖兽血脉。', '寒冰修士解锁：单体减速。'],
+    lines: ['洞窟深处，一块万年玄冰上刻着心法。', '『玄冰诀』——以寒气冻结妖兽血脉。', '寒冰修士解锁：单体减速。'],
     btn: '参 悟',
   },
   fire_mage: {
     chapter: '地 火 深 渊',
     title: '烈 焰 真 经',
-    lines: ['深渊地火之中，一卷赤红卷轴漂浮不灭。', '「烈火真经」——焚尽八荒，势不可挡。', '火法修士解锁：范围溅射。'],
+    lines: ['深渊地火之中，一卷赤红卷轴漂浮不灭。', '『烈火真经』——焚尽八荒，势不可挡。', '火法修士解锁：范围溅射。'],
     btn: '融 合',
   },
   thunder_mage: {

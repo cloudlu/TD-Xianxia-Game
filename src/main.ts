@@ -2,14 +2,14 @@
 // 覆盖层界面（选关/剧情/修炼）在 ./app/screens，共享状态在 ./app/state。
 
 import { Board } from './ui/Board';
-import { TOWERS, FAILED_STORY, SKINS, ENEMIES } from './data/config';
+import { TOWERS, FAILED_STORY, SKINS, ENEMIES, PROLOGUE_STORY, ENDING_STORIES, chronicleGroups, storyById } from './data/config';
 import { audio } from './audio/AudioManager';
 import { app, buildMods, useRemote } from './app/state';
 import { damageStatsFor } from './data/Modifier';
 import { towerRange } from './engine/combat/effectiveRange';
 import { schoolLabel } from './domain/challenge/SchoolLabels';
 import { showStory } from './app/storyModal';
-import { returnToSelect, settleWin, startEndless, tickEndless, settleEndless } from './app/levelSelect';
+import { returnToSelect, settleWin, startEndless, tickEndless, settleEndless, streakPulseAt, markStreakPulseConsumed } from './app/levelSelect';
 import { unlockedTowerIds } from './repo/progressLevel';
 import { SKIP_MESSAGES } from './engine/EndlessMode';
 import { towerConfig } from './engine/TowerOperations';
@@ -69,14 +69,32 @@ muteBtn.onclick = () => {
 };
 hud.appendChild(muteBtn);
 
+// 切后台暂停音频（v0.87 批次2：visibilitychange 驱动）
+document.addEventListener('visibilitychange', () => {
+  audio.setSuspended(document.hidden);
+});
+
 const volGroup = document.createElement('div');
 volGroup.className = 'vol-group';
 volGroup.innerHTML = `
   <label class="vol-label">乐<input type="range" min="0" max="1" step="0.05" value="0.5" class="vol-slider" id="vol-music"></label>
-  <label class="vol-label">效<input type="range" min="0" max="1" step="0.05" value="0.9" class="vol-slider" id="vol-sfx"></label>`;
+  <label class="vol-label">效<input type="range" min="0" max="1" step="0.05" value="0.9" class="vol-slider" id="vol-sfx"></label>
+  <button id="voToggle" title="剧情语音旁白（开/关）" style="background:#1f2a4a;color:#e0e0e0;border:1px solid #2a3450;padding:4px 8px;border-radius:6px;font-size:12px;cursor:pointer">🗣 开</button>`;
 hud.appendChild(volGroup);
 volGroup.querySelector<HTMLInputElement>('#vol-music')!.oninput = function () { audio.setMusicVolume(+(this as HTMLInputElement).value); };
 volGroup.querySelector<HTMLInputElement>('#vol-sfx')!.oninput = function () { audio.setSfxVolume(+(this as HTMLInputElement).value); };
+
+// 语音旁白开关（v0.88）：localStorage 持久化，默认开
+const voToggle = volGroup.querySelector<HTMLButtonElement>('#voToggle')!;
+audio.narratorEnabled = localStorage.getItem('narrator_enabled') !== '0';
+const syncVoToggle = (): void => { voToggle.textContent = audio.narratorEnabled ? '🗣 开' : '🗣 关'; };
+syncVoToggle();
+voToggle.onclick = () => {
+  audio.narratorEnabled = !audio.narratorEnabled;
+  localStorage.setItem('narrator_enabled', audio.narratorEnabled ? '1' : '0');
+  if (!audio.narratorEnabled) audio.stopNarration();
+  syncVoToggle();
+};
 
 const speedGroup = document.createElement('div');
 speedGroup.className = 'speed-group';
@@ -320,7 +338,18 @@ function updateTowerPanel(s: ReturnType<Game['snapshot']>): void {
 
   const cost = app.game.upgradeCost(t.uid);
   if (cost === null) {
-    tpUpgrade.textContent = t.level < t.def.levels.length - 1 ? '已达本关境界上限' : '已达化神';
+    if (t.level >= t.def.levels.length - 1) {
+      tpUpgrade.textContent = '已达化神';
+    } else {
+      // 境界封顶（v0.86 方案 A）：提示下一档解锁章节
+      const capped = app.game.level.maxTowerLevel;
+      if (capped !== undefined && capped < t.def.levels.length - 1) {
+        const nextRealm = t.def.levels[capped + 1]?.realm ?? '更高境界';
+        tpUpgrade.textContent = `本关境界上限·${t.def.levels[capped].realm}（推进章节解锁${nextRealm}）`;
+      } else {
+        tpUpgrade.textContent = '已达本关境界上限';
+      }
+    }
     tpUpgrade.disabled = true;
   } else {
     tpUpgrade.textContent = `突破至 ${t.def.levels[t.level + 1].realm}（${cost} 灵石）`;
@@ -402,13 +431,21 @@ function frameStep(now: number): void {
   if (!app.paused && app.speedMul > 0) app.game.tick(dt * app.speedMul);
 
   const s = app.game.snapshot();
+  // 连杀 zoom 脉冲：levelSelect 击杀事件标记 → Board（用引擎 elapsed 对齐确定性相位）
+  if (streakPulseAt > 0) {
+    board.streakAt = s.elapsed;
+    markStreakPulseConsumed();
+  }
   board.render(s, app.currentLevel.buildable);
 
-  // 自适应音乐分层
+  // 自适应音乐分层 + 动态混音/危机心跳（v0.87）
   if (app.game) {
     const hasBoss = s.enemies.some((e) => !!e.def.bossAbility);
     const tension: 'prep' | 'wave' | 'boss' = hasBoss ? 'boss' : s.waveActive ? 'wave' : 'prep';
     audio.setMusicTension(tension);
+    audio.setBattleIntensity(s.enemies.length);
+    if (s.lives <= 1 && s.status !== 'won' && s.status !== 'lost') audio.startHeartbeat();
+    else audio.stopHeartbeat();
   }
 
   elStones.textContent = String(s.stones);
@@ -609,12 +646,38 @@ function refreshDebugPanel(): void {
     adminCount.textContent = `当前 ${app.game?.towerOps?.towers?.length ?? 0} / ${towerConfig.maxTowers}`;
   }
 }
+
+// 管理面板：重播对白（v0.88 测试入口——无视 chronicle 已读标记强制弹窗重播）
+function initVoReplay(): void {
+  const sel = document.getElementById('voBeatSelect') as HTMLSelectElement | null;
+  const btn = document.getElementById('voReplayBtn');
+  if (!sel || !btn) return;
+  // 组装候选列表：序章 + 各章对白 + 结局（用 chronicleGroups 的分组顺序）
+  const options: Array<{ id: string; label: string }> = [];
+  if (PROLOGUE_STORY.id) options.push({ id: PROLOGUE_STORY.id, label: `序章 · ${PROLOGUE_STORY.title}` });
+  for (const g of chronicleGroups()) {
+    for (const beat of g.beats) {
+      if (beat.id) options.push({ id: beat.id, label: `${g.title} · ${beat.title}` });
+    }
+  }
+  for (const [key, beat] of Object.entries(ENDING_STORIES)) {
+    if (beat.id) options.push({ id: beat.id, label: `结局(${key}) · ${beat.title}` });
+  }
+  sel.innerHTML = options.map((o) => `<option value="${o.id}">${o.label}</option>`).join('');
+  btn.onclick = () => {
+    const beat = storyById(sel.value);
+    if (!beat) return;
+    audio.init(); audio.resume();
+    showStory(beat, () => { app.paused = false; });
+  };
+}
 function fmtTime(ts: number): string {
   const d = new Date(ts);
   return `${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`;
 }
 // 面板打开时每 2s 刷新
 setInterval(() => { if (debugPanel.classList.contains('show')) refreshDebugPanel(); }, 2000);
+initVoReplay();
 
 // ---------- 启动 ----------
 // 配置校验（不阻塞启动，仅在控制台输出）

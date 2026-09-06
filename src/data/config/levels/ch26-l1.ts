@@ -1,4 +1,4 @@
-import type { LevelConfig } from '../../../types';
+﻿import type { LevelConfig } from '../../../types';
 import { buildableFromPaths } from './buildable';
 
 // 第 26 章 第 1 关 · 天外天（L 形单路径，引入混沌古兽 + 执法者）
@@ -24,7 +24,7 @@ export const CH26_L1: LevelConfig = {
     intro: {
       chapter: '第 二 十 六 章', title: '飞 升 篇',
       lines: [
-        '突破天道之后，你踏入了「天外天」——混沌的原初之地。',
+        '突破天道之后，你踏入了『天外天』——混沌的原初之地。',
         '此地没有规则，唯有混沌古兽与执法者在虚无中游荡。',
         '熟悉的小小宗门已远在脚下，而你已无退路。',
       ],

@@ -31,8 +31,18 @@ export interface TelemetryVipStatus {
   isRateCapped: boolean;
 }
 
+/** 通关快照（v0.86 平衡验收）：按 VIP 分层观察通关塔数——"塔数<3 通关占比"为单塔依赖度核心指标 */
+export interface TelemetryLevelClear {
+  levelId: string; difficulty: string;
+  vipLevel: number;        // 分层维度
+  towerCount: number;      // 单塔依赖度核心指标
+  maxTowerLevel: number;   // 本关最高境界塔（0-7）
+  elapsed: number;
+  livesLeft: number;
+}
+
 export interface TelemetryEntry {
-  type: 'kill' | 'leak' | 'economy' | 'tower_dps' | 'vip_status';
+  type: 'kill' | 'leak' | 'economy' | 'tower_dps' | 'vip_status' | 'level_clear';
   levelId: string;
   difficulty: string;
   timestamp: number;
@@ -45,6 +55,7 @@ export interface TelemetryRepo {
   recordEconomy(entry: TelemetryEconomy): void;
   recordTowerDps(entry: TelemetryTowerDps): void;
   recordVipStatus(entry: TelemetryVipStatus): void;
+  recordLevelClear(entry: TelemetryLevelClear): void;
   getSessionLogs(): TelemetryEntry[];
   clear(): void;
 }
@@ -85,6 +96,10 @@ export function createLocalTelemetryRepo(namespace = ''): TelemetryRepo {
     },
     recordVipStatus(e) {
       entries.push({ type: 'vip_status', levelId: '', difficulty: '', timestamp: Date.now(), data: { ...e } });
+      save();
+    },
+    recordLevelClear(e) {
+      entries.push({ type: 'level_clear', levelId: e.levelId, difficulty: e.difficulty, timestamp: Date.now(), data: { ...e } });
       save();
     },
     getSessionLogs() { return [...entries]; },

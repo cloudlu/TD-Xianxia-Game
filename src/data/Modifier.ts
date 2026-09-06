@@ -13,9 +13,13 @@ export interface Modifier {
   value: number;
 }
 
-/** 某流派塔适用的伤害 stat 家族（通用 dmg + 流派专精） */
+/**
+ * 某流派塔适用的伤害 stat 家族（通用 dmg + 流派专精）。
+ * v0.86 方案 C：仙魂乘数（_soulMul）并入伤害族——与 VIP/装备/天赋同池加法合并、
+ * 共享 +150% 封顶（管道一致性，防独立乘数绕过族封顶膨胀）。
+ */
 export function damageStatsFor(school: string): string[] {
-  return ['dmg', `${school}Dmg`];
+  return ['dmg', `${school}Dmg`, '_soulMul'];
 }
 
 /** 封顶配置（设计文档 §9.5 按 stat 分级） */

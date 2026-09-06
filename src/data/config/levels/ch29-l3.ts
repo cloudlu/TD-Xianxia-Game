@@ -1,4 +1,4 @@
-import type { LevelConfig } from '../../../types';
+﻿import type { LevelConfig } from '../../../types';
 import { buildableFromPaths } from './buildable';
 
 // 第 29 章 第 3 关 · 道祖之门（三路径，blood_lord 小BOSS）
@@ -28,7 +28,7 @@ export const CH29_L3: LevelConfig = {
     },
     outro: {
       chapter: '道 门', title: '门 已 洞 开',
-      lines: ['血君化为飞烟，道祖之门缓缓洞开。', '门后，那个名为「道祖魔影」的存在，正以你的面容回望你……'],
+      lines: ['血君化为飞烟，道祖之门缓缓洞开。', '门后，那个名为『道祖魔影』的存在，正以你的面容回望你……'],
       btn: '续 第 三 十 章',
     },
   },

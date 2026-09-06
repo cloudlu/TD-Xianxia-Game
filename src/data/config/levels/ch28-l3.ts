@@ -1,4 +1,4 @@
-import type { LevelConfig } from '../../../types';
+﻿import type { LevelConfig } from '../../../types';
 import { buildableFromPaths } from './buildable';
 
 // 第 28 章 第 3 关 · 混沌深渊（三路径，rift_sovereign 小BOSS）
@@ -28,7 +28,7 @@ export const CH28_L3: LevelConfig = {
     },
     outro: {
       chapter: '裂 隙', title: '君 王 陨 落',
-      lines: ['裂隙君王崩塌为无数细小的虚空碎片。', '穿过深渊，你已能看见那扇「道祖之门」……'],
+      lines: ['裂隙君王崩塌为无数细小的虚空碎片。', '穿过深渊，你已能看见那扇『道祖之门』……'],
       btn: '续 第 二 十 九 章',
     },
   },

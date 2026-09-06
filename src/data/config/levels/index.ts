@@ -203,6 +203,9 @@ for (const [chapterId, map] of Object.entries(CHAPTER_MAPS)) {
       base: map.base, blocked: map.blocked, backgroundId: map.backgroundId,
       activePaths: active,
       hpMul,
+      // 境界按章解锁（v0.86 平衡修复 A）：未通关关卡封顶境界，逼"铺塔 vs 养塔"张力
+      // 复刷豁免（已通关不封顶）与无尽模式豁免由 Game 构造时处理（依赖玩家进度，非配置）
+      maxTowerLevel: realmCapForChapter(chapterId),
       // 过滤波次：只保留活跃路径上的怪物，非活跃路径的怪物不生成（避免走不该出现的路径）
       waves: level.waves.map(w => ({
         ...w,
@@ -210,6 +213,21 @@ for (const [chapterId, map] of Object.entries(CHAPTER_MAPS)) {
       })),
     };
   }
+}
+
+/**
+ * 境界按章解锁表（v0.86 方案 A）：塔境界上限随章节推进逐步放开。
+ * 设计意图：单塔深度成长（炼气→飞升 83×）远超敌人成长（~10×），封顶防止"一塔通关"单解；
+ * 铺塔（广度）与养塔（深度）在章内重新形成张力（设计文档 §4.1 S3）。
+ */
+export function realmCapForChapter(chapterId: string): number {
+  const n = parseInt(chapterId.replace(/\D/g, ''), 10) || 1;
+  if (n <= 4) return 2;    // ch1-4：金丹
+  if (n <= 9) return 3;    // ch5-9：元婴
+  if (n <= 14) return 4;   // ch10-14：化神
+  if (n <= 19) return 5;   // ch15-19：渡劫
+  if (n <= 24) return 6;   // ch20-24：大乘
+  return 7;                // ch25+：飞升（满）
 }
 
 // 章节清单（顺序即解锁顺序；第 N 关解锁 = 第 N-1 关通关）—— 设计文档 §8.2

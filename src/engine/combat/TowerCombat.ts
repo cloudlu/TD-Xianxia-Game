@@ -245,7 +245,8 @@ export class TowerCombat {
     }
     const spiritMul = 1 + spiritAdjacent * 0.15;
 
-    const dmgMul = (1 + aura.dmgMul + killStackBonus) * this.ctx.mods.damageMul(damageStatsFor(school)) * this.ctx.towerMul * this.ctx.destinyBoost * this.ctx.mods.soulShardMul() * fmtDmgMul * spiritMul;
+    // v0.86 方案 C：仙魂乘数已并入 damageMul 伤害族（damageStatsFor 含 '_soulMul'），此处不再独立相乘
+    const dmgMul = (1 + aura.dmgMul + killStackBonus) * this.ctx.mods.damageMul(damageStatsFor(school)) * this.ctx.towerMul * this.ctx.destinyBoost * fmtDmgMul * spiritMul;
     const rateMul = (1 + aura.rateMul) * this.ctx.mods.rateMul() * this.ctx.towerMul * fmtRateMul;
     const rangeAdd = this.ctx.mods.rangeAdd();
     return { dmgMul, rateMul, rangeAdd, critBonus: this.ctx.mods.critBonus() };

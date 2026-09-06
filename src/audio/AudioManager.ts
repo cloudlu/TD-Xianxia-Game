@@ -5,8 +5,13 @@
 //
 // 注意：音频属反馈层，不参与引擎确定性模拟（引擎不调用音频），故可自由用 Math.random。
 
-type SfxType = 'place' | 'upgrade' | 'sell' | 'kill' | 'leak' | 'wave' | 'win' | 'lose' | 'promote' | 'click' | 'boss'
+import { voiceFor, parseNarrationLine, NARRATOR_PROFILE } from './narrator';
+
+type SfxType = 'place' | 'upgrade' | 'sell' | 'kill' | 'kill_elite' | 'kill_boss' | 'leak' | 'wave' | 'win' | 'lose' | 'promote' | 'click' | 'boss'
   | 'realmup0' | 'realmup1' | 'realmup2';
+
+/** 击杀音风格分档（v0.87 批次3）：normal/elite/boss 三档音色 */
+export type KillStyle = 'normal' | 'elite' | 'boss';
 
 class AudioManager {
   private ctx: AudioContext | null = null;
@@ -39,11 +44,118 @@ class AudioManager {
 
   resume(): void { void this.ctx?.resume(); }
 
+  // ---------- 动态混音（v0.87 批次1） ----------
+
+  private baseMusicVol = 0.5;
+  private battlePressure = false;
+  private heartbeatTimer: number | null = null;
+
+  /** sting 让位：音乐瞬时压低再恢复（混音礼让） */
+  duckMusic(duration: number, toVol: number): void {
+    if (!this.ctx || !this.musicGain) return;
+    const t = this.ctx.currentTime;
+    const target = this.baseMusicVol * (this.battlePressure ? 0.8 : 1);
+    this.musicGain.gain.cancelScheduledValues(t);
+    this.musicGain.gain.setTargetAtTime(Math.min(target, toVol), t, 0.05);
+    this.musicGain.gain.setTargetAtTime(target, t + duration, 0.2);
+  }
+
+  /** 战斗压力：敌数 >15 自动压音乐 20%（探测到压力回落即恢复） */
+  setBattleIntensity(enemyCount: number): void {
+    const pressure = enemyCount > 15;
+    if (pressure === this.battlePressure) return;
+    this.battlePressure = pressure;
+    if (this.ctx && this.musicGain) {
+      this.musicGain.gain.setTargetAtTime(this.baseMusicVol * (pressure ? 0.8 : 1), this.ctx.currentTime, 0.4);
+    }
+  }
+
+  /** 危机心跳：lives ≤1 时低频心跳 drone（55Hz 双脉冲循环） */
+  startHeartbeat(): void {
+    if (this.heartbeatTimer !== null) return;
+    const beat = () => {
+      this.blip(55, 0.12, 'sine', 0.14);
+      window.setTimeout(() => this.blip(55, 0.10, 'sine', 0.10), 180);
+    };
+    beat();
+    this.heartbeatTimer = window.setInterval(beat, 900);
+  }
+
+  stopHeartbeat(): void {
+    if (this.heartbeatTimer !== null) { clearInterval(this.heartbeatTimer); this.heartbeatTimer = null; }
+  }
+
+  /** 切后台暂停/恢复（由 visibilitychange 驱动） */
+  setSuspended(suspended: boolean): void {
+    if (suspended) this.stopNarration();
+    if (!this.ctx) return;
+    if (suspended) { this.stopHeartbeat(); void this.ctx.suspend(); }
+    else void this.ctx.resume();
+  }
+
   setMuted(muted: boolean): void {
     this.muted = muted;
+    if (muted) this.stopNarration();
     if (this.master && this.ctx) {
       this.master.gain.setTargetAtTime(muted ? 0 : 0.5, this.ctx.currentTime, 0.05);
     }
+  }
+
+  // ---------- 剧情旁白 TTS（v0.88） ----------
+
+  /** 语音旁白开关（设置面板持久化，默认开） */
+  narratorEnabled = true;
+  /** 描述行是否朗读（默认开：有声书式混排——台词用角色声线、描述用旁白声线，整段完整朗读） */
+  readNarration = true;
+  private voicesReady = false;
+
+  /** 朗读一段剧情：按行排队，台词用角色声线、描述按配置（无 zh 音色静默降级） */
+  speakLines(lines: readonly string[], chapter?: string): void {
+    if (!this.narratorEnabled || this.muted) return;
+    if (typeof speechSynthesis === 'undefined') return;
+    // 有声书式混排：台词行用角色声线、描述行用旁白声线，整段完整朗读（readNarration 默认 true）
+    const readNarration = this.readNarration;
+    const profile = voiceFor(chapter);
+    const synth = speechSynthesis;
+    synth.cancel();
+    const doSpeak = (): void => {
+      for (const raw of lines) {
+        const parsed = parseNarrationLine(raw, readNarration);
+        if (!parsed.text) continue;
+        const u = new SpeechSynthesisUtterance(parsed.text);
+        u.lang = 'zh-CN';
+        const p = parsed.isDialogue ? profile : NARRATOR_PROFILE;
+        u.pitch = p.pitch;
+        u.rate = p.rate;
+        const v = this.pickVoice(p.gender);
+        if (v) u.voice = v;
+        synth.speak(u);
+      }
+    };
+    if (this.voicesReady) { doSpeak(); return; }
+    // Chrome 音色异步加载：voices 为空时等一次 voiceschanged
+    if (synth.getVoices().length > 0) { this.voicesReady = true; doSpeak(); return; }
+    const onReady = (): void => { this.voicesReady = true; doSpeak(); synth.removeEventListener('voiceschanged', onReady); };
+    synth.addEventListener('voiceschanged', onReady);
+    // 兜底：500ms 仍未就绪则直接尝试（部分浏览器不触发事件）
+    window.setTimeout(() => { if (!this.voicesReady) { this.voicesReady = true; synth.removeEventListener('voiceschanged', onReady); doSpeak(); } }, 500);
+  }
+
+  stopNarration(): void {
+    if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
+  }
+
+  private pickVoice(gender: 'male' | 'female'): SpeechSynthesisVoice | null {
+    const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('zh'));
+    if (voices.length === 0) return null;
+    // 尝试按常见女声关键字匹配；失败则按位置轮换（多数平台 zh 音色不足两个，女声回退高 pitch 男声）
+    const femaleKeys = ['xiaoxiao', 'huihui', 'yaoyao', 'female', 'mei', 'ting'];
+    if (gender === 'female') {
+      const f = voices.find((v) => femaleKeys.some((k) => v.name.toLowerCase().includes(k)));
+      if (f) return f;
+      if (voices.length > 1) return voices[1];   // 第二个通常是异性声
+    }
+    return voices[0];
   }
 
   setMusicVolume(v: number): void {
@@ -150,12 +262,14 @@ class AudioManager {
         window.setTimeout(() => this.blip(880, 0.15, 'triangle', 0.2), 80);
         break;
       case 'realmup1':
-        // 元婴~渡劫：三音和弦 + 低音垫
+        // 元婴~渡劫：三音和弦 + 低音垫（音乐 duck 让位）
+        this.duckMusic(0.5, 0.45);
         [523, 659, 784].forEach((f, i) => this.blip(f, 0.3, 'triangle', 0.18 + i * 0.02));
         this.blip(131, 0.5, 'sine', 0.15);
         break;
       case 'realmup2':
-        // 大乘/飞升：五音上行 arpeggio + 长尾
+        // 大乘/飞升：五音上行 arpeggio + 长尾（音乐 duck 让位）
+        this.duckMusic(0.8, 0.4);
         [523, 659, 784, 1046, 1318].forEach((f, i) =>
           window.setTimeout(() => this.blip(f, 0.4, 'triangle', 0.22), i * 90));
         window.setTimeout(() => this.sweep(1318, 523, 0.9, 'sine', 0.1), 480);
@@ -173,6 +287,23 @@ class AudioManager {
         this.lastKill = t;
         const semitone = Math.pow(2, (combo + (Math.random() - 0.5)) / 12);
         this.sweep(440 * semitone, 180 * semitone, 0.13, 'triangle', 0.16);
+        break;
+      }
+      case 'kill_elite': {
+        // 精英：金属 clang（高频方波短击 + 泛音）
+        this.blip(1244, 0.08, 'square', 0.12);
+        this.blip(1865, 0.12, 'sine', 0.08);
+        const t = this.ctx.currentTime;
+        this.lastKill = t;
+        break;
+      }
+      case 'kill_boss': {
+        // BOSS：低音 sting + 下坠轰鸣
+        this.blip(82, 0.5, 'sawtooth', 0.22);
+        this.sweep(330, 55, 0.6, 'triangle', 0.18);
+        this.blip(55, 1.0, 'sine', 0.12);
+        const t = this.ctx.currentTime;
+        this.lastKill = t;
         break;
       }
       case 'leak':

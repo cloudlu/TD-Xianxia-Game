@@ -120,6 +120,26 @@ describe('TowerOperations', () => {
     it('returns null for invalid uid', () => {
       expect(ops().upgradeCost(999)).toBeNull();
     });
+
+    it('returns null when level cap (maxTowerLevel) reached', () => {
+      // v0.86 方案 A：境界按章封顶——cap=1 时金丹(2级)不可达
+      const capped = { ...level, maxTowerLevel: 1 };
+      const o = ops(capped);
+      o.placeTower(0, 0, 'test_tower');
+      expect(o.upgradeCost(o.towers[0].uid)).toBe(60);   // 炼气→筑基可以
+      o.upgradeTower(o.towers[0].uid);
+      expect(o.upgradeCost(o.towers[0].uid)).toBeNull(); // 筑基→金丹被封
+      expect(o.upgradeTower(o.towers[0].uid)).toBe(false);
+    });
+
+    it('cap message distinguishes level-cap from tower-max', () => {
+      const capped = { ...level, maxTowerLevel: 1 };
+      const o = ops(capped);
+      o.placeTower(0, 0, 'test_tower');
+      o.upgradeTower(o.towers[0].uid);
+      o.upgradeTower(o.towers[0].uid);   // 被拒
+      expect(o.msg).toContain('境界上限');
+    });
   });
 
   describe('sellRefund', () => {

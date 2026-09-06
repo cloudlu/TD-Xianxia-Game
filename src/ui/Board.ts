@@ -6,6 +6,7 @@ import type { FormationTile, FormationType, GridPoint, BlockedCell } from '../ty
 import { BACKGROUNDS, DEFAULT_BACKGROUND } from '../data/config/backgrounds';
 import { towerVisual, visualTier } from '../data/config/towerVisuals';
 import { shakeOffset, NO_SHAKE } from '../engine/pure/shake';
+import { drawMoodLight, drawDayTint, drawLeakVignette, drawFinalWaveRite, zoomPulseScale, type FxCtx } from './boardFx';
 import { towerRange } from '../engine/combat/effectiveRange';
 
 const CELL = 60;
@@ -40,6 +41,8 @@ export class Board {
   private currentPathGlow = '#4a6fa5';
   private currentActivePaths: ReadonlyArray<number> | null = null;
   formations: FormationTile[] | null = null;
+  /** 连杀 zoom 脉冲触发时间（-1=无，main.ts 击杀事件驱动） */
+  streakAt = -1;
 
   constructor(private canvas: HTMLCanvasElement, cols: number, rows: number) {
     this.ctx = canvas.getContext('2d')!;
@@ -73,11 +76,19 @@ export class Board {
     this.lastBuildable = buildable;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // 屏幕震动：确定性相位偏移，整帧平移（含暗角之外的所有绘制）
-    const shake = shakeOffset((state as any).shake ?? NO_SHAKE, state.elapsed);
-    const shake2x = shake.x, shake2y = shake.y;
+    // 连杀 zoom 脉冲（与震动互斥：zoom 激活时跳过 shake）
+    const zoom = zoomPulseScale(this.streakAt, state.elapsed);
+    let shake2x = 0, shake2y = 0;
     ctx.save();
-    ctx.translate(shake.x, shake.y);
+    if (zoom > 1) {
+      const cxp = this.canvas.width / 2, cyp = this.canvas.height / 2;
+      ctx.translate(cxp, cyp); ctx.scale(zoom, zoom); ctx.translate(-cxp, -cyp);
+    } else {
+      // 屏幕震动：确定性相位偏移，整帧平移
+      const shake = shakeOffset((state as any).shake ?? NO_SHAKE, state.elapsed);
+      shake2x = shake.x; shake2y = shake.y;
+      ctx.translate(shake.x, shake.y);
+    }
 
     const bg = BACKGROUNDS[state.backgroundId ?? ''] ?? DEFAULT_BACKGROUND;
     this.currentAmbientColor = bg.ambient?.color ?? '#fffff0';
@@ -181,15 +192,15 @@ export class Board {
         ctx.setLineDash([]);
       }
       // 中心太极纹（小圆双色，慢转）
-      ctx.rotate(0);
       const tr = CELL * 0.16;
+      ctx.save();
       ctx.translate(cx, cy); ctx.rotate(phase * 0.5);
       ctx.fillStyle = '#a5d6a766';
       ctx.beginPath(); ctx.arc(0, 0, tr, 0, Math.PI / 2); ctx.arc(-tr / 2, 0, tr / 2, Math.PI / 2, Math.PI * 1.5); ctx.fill();
       ctx.fillStyle = '#1b5e2066';
       ctx.beginPath(); ctx.arc(0, 0, tr, Math.PI / 2, Math.PI); ctx.arc(tr / 2, 0, tr / 2, Math.PI * 1.5, Math.PI / 2); ctx.fill();
-      ctx.setTransform(1, 0, 0, 1, shake2x, shake2y);
       ctx.restore();
+      ctx.restore();   // 法阵外层 save（v0.87 修复：此前漏掉导致 save 栈泄漏、画面滑动）
     }
 
     // ② buff 链接线：聚灵阵 → 范围内被增益塔，极淡流动光点
@@ -344,6 +355,7 @@ export class Board {
       if (spec.trail === 'blade') {
         // 剑形弹道：剑身菱形长条 + 剑柄横档 + 剑尖朝飞行方向，tier2 带剑穗
         const bladeLen = 16 + tier * 4;
+        ctx.save();
         ctx.translate(cx, cy); ctx.rotate(ang);
         // 拖尾光
         const grad = ctx.createLinearGradient(-bladeLen * 1.6, 0, 0, 0);
@@ -374,7 +386,7 @@ export class Board {
           ctx.quadraticCurveTo(-bladeLen * 0.75, sway, -bladeLen * 0.85, sway * 1.5);
           ctx.stroke();
         }
-        ctx.setTransform(1, 0, 0, 1, shake2x, shake2y); // 还原（含震动偏移）
+        ctx.restore();
       } else if (spec.trail === 'bolt') {
         // 雷电：锯齿折线（faint 时更细）
         ctx.strokeStyle = tier >= 2 ? '#eaeaff' : p.color;
@@ -398,6 +410,7 @@ export class Board {
         // 雪花（六向冰枝，相位旋转）
         const rot = state.elapsed * 6;
         const r = 5 + tier;
+        ctx.save();
         ctx.translate(cx, cy); ctx.rotate(rot);
         ctx.strokeStyle = faint ? '#b3e5fc88' : '#e1f5fe';
         ctx.lineWidth = 1.5;
@@ -415,10 +428,11 @@ export class Board {
         }
         ctx.fillStyle = '#fff';
         ctx.beginPath(); ctx.arc(0, 0, 1.5, 0, Math.PI * 2); ctx.fill();
-        ctx.setTransform(1, 0, 0, 1, shake2x, shake2y);
+        ctx.restore();
       } else if (spec.trail === 'paper') {
         // 符纸：竖长矩形 + 朱砂符文点 + 飘动（相位摆动，随飞行方向旋转）
         const sway = Math.sin(state.elapsed * 12) * 0.25;
+        ctx.save();
         ctx.translate(cx, cy); ctx.rotate(ang + sway);
         ctx.globalAlpha *= 0.9;
         // 纸体
@@ -434,11 +448,12 @@ export class Board {
         // 残影（后方淡色副本）
         ctx.globalAlpha *= 0.35;
         ctx.fillStyle = p.color;
-        ctx.fillRect(-5 - ux * 0, -3.5 + uy * 8, 10, 7);
-        ctx.setTransform(1, 0, 0, 1, shake2x, shake2y);
+        ctx.fillRect(-5, -3.5 + uy * 8, 10, 7);
+        ctx.restore();
       } else if (spec.trail === 'beam') {
         // 枪形：长杆细线 + 三角枪镞 + 拖尾光带
         const spearLen = 22 + tier * 5;
+        ctx.save();
         ctx.translate(cx, cy); ctx.rotate(ang);
         // 光带拖尾
         const grad = ctx.createLinearGradient(-spearLen * 1.5, 0, 0, 0);
@@ -466,7 +481,7 @@ export class Board {
         ctx.moveTo(spearLen * 0.15, 0);
         ctx.quadraticCurveTo(spearLen * 0.05, sway2, -spearLen * 0.02, sway2 * 1.6);
         ctx.stroke();
-        ctx.setTransform(1, 0, 0, 1, shake2x, shake2y);
+        ctx.restore();
       } else {
         // orb → 火球：核心圆 + 外焰摇摆（相位驱动），tier 越大外焰越大
         const grad = ctx.createLinearGradient(tx, ty, cx, cy);
@@ -901,6 +916,15 @@ export class Board {
       ctx.fill();
     }
 
+    // ---- 全屏特效层（v0.87 boardFx）：时段色温 → 灵气光照 → 漏怪红晕 → 最后一波仪式 ----
+    const fxCtx: FxCtx = { ctx, w: this.canvas.width, h: this.canvas.height, elapsed: state.elapsed };
+    drawDayTint(fxCtx, state.waveIndex, state.totalWaves);
+    const bossAliveNow = state.enemies.some((e) => !e.dead && !!e.def.bossAbility);
+    drawMoodLight(fxCtx, state.status === 'won' ? 'won' : state.status === 'lost' ? 'lost' : state.status === 'prep' ? 'prep' : 'wave', bossAliveNow);
+    drawLeakVignette(fxCtx, state.lastLeakAt ?? -1);
+    drawFinalWaveRite(fxCtx, state.finalWaveAt ?? -1,
+      state.waveActive && state.totalWaves > 0 && state.waveIndex === state.totalWaves - 1);
+
     // 暗角（vignette）
     const vg = ctx.createRadialGradient(this.canvas.width / 2, this.canvas.height / 2, this.canvas.height * 0.3, this.canvas.width / 2, this.canvas.height / 2, this.canvas.width * 0.7);
     vg.addColorStop(0, 'rgba(0,0,0,0)');
@@ -908,7 +932,7 @@ export class Board {
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    ctx.restore(); // 震动平移结束
+    ctx.restore(); // 震动/zoom 变换结束
   }
 
   /** 环境灵气粒子更新 */
@@ -1136,6 +1160,50 @@ export class Board {
       ctx.globalAlpha = intensity * 0.6;
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.35, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = color; ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.2, 0, Math.PI * 2); ctx.fill();
+    }
+    // 塔闲置 idle 动画（v0.87 批次3）：按流派微动效，相位驱动无随机
+    if (!disabled) {
+      const school = t.def.school;
+      const ph = now;
+      if (school === 'talisman') {
+        // 符塔：顶上飘小符字（循环上浮渐隐）
+        const glyphs = ['敕', '令'];
+        for (let i = 0; i < 2; i++) {
+          const cyc = ((ph * 0.5 + i * 0.5) % 1);
+          ctx.globalAlpha = (1 - cyc) * 0.6;
+          ctx.fillStyle = '#c9a0ff';
+          ctx.font = '10px "Microsoft YaHei", sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(glyphs[i], cx + (i === 0 ? -6 : 6), y + 10 - cyc * 16);
+        }
+        ctx.globalAlpha = 1;
+      } else if (school === 'thunder') {
+        // 雷塔：塔顶电弧游走（短折线，相位跳动）
+        if (Math.sin(ph * 7) > 0.2) {
+          ctx.strokeStyle = '#eaeaffcc'; ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          let ax2 = cx - 5, ay2 = y + 8;
+          ctx.moveTo(ax2, ay2);
+          for (let s = 0; s < 3; s++) {
+            ax2 += 3.5 + Math.sin(ph * 13 + s) * 2;
+            ay2 -= 3;
+            ctx.lineTo(ax2, ay2);
+          }
+          ctx.stroke();
+        }
+      } else if (school === 'ice') {
+        // 冰塔：塔底霜雾（淡蓝呼吸圈）
+        const br = 0.5 + 0.5 * Math.sin(ph * 1.8);
+        ctx.globalAlpha = 0.12 + br * 0.12;
+        ctx.fillStyle = '#81d4fa';
+        ctx.beginPath(); ctx.ellipse(cx, y + CELL - 6, CELL * 0.3, 4, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      } else if (school === 'sword') {
+        // 剑塔：环身微光（旋转小弧）
+        ctx.strokeStyle = '#9fd0ff88'; ctx.lineWidth = 1.2;
+        const a0 = ph * 1.5;
+        ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.34, a0, a0 + 1.2); ctx.stroke();
+      }
     }
     ctx.restore();
   }
