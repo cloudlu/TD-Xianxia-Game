@@ -11,13 +11,14 @@ export interface FxCtx {
   elapsed: number;
 }
 
-/** 灵气光照：按战斗状态全屏色温渐变（alpha 极低，只调氛围不抢内容） */
-export function drawMoodLight(fx: FxCtx, mood: MoodLightKey, bossAlive: boolean): void {
+/** 灵气光照：按战斗状态全屏色温渐变（alpha 极低，只调氛围不抢内容）；cartoon 主题减半（写实光照与卡通冲突） */
+export function drawMoodLight(fx: FxCtx, mood: MoodLightKey, bossAlive: boolean, cartoon = false): void {
   const m = bossAlive && mood === 'wave' ? MOOD_LIGHT.boss : MOOD_LIGHT[mood] ?? MOOD_LIGHT.prep;
+  const alpha = cartoon ? m.alpha * 0.5 : m.alpha;
   const { ctx, w, h } = fx;
   const g = ctx.createRadialGradient(w / 2, h / 2, h * 0.2, w / 2, h / 2, w * 0.75);
   g.addColorStop(0, m.color + '00');
-  g.addColorStop(1, hexA(m.color, m.alpha));
+  g.addColorStop(1, hexA(m.color, alpha));
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 }

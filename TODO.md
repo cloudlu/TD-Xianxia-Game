@@ -49,6 +49,14 @@
 
 ## 近期新增
 
+### 卡通化主题 v0.89 ✅（2026-09）
+- [x] 主题开关（🎨 卡通 / 🖌 写实，localStorage 持久化，默认卡通）
+- [x] toon() 色阶映射（亮度 0.45-0.70 / 饱和 ×1.35 / 色相保持，30 章氛围保留）
+- [x] Q 版萌系：大眼睛（瞳孔张望）+ 腮红 + 精英怒眉 + BOSS 獠牙 + 走路颠簸
+- [x] 塔圆角化 + 地形卡通化（圆石/棒棒糖树/圆池）+ 路径描边缎带
+- [x] CSS 糖果按钮/超圆角卡片/星级摇摆；vignette/moodLight 减弱
+- [ ] （观察反馈后调）Q 版眼睛尺寸/密度、色阶亮度微调
+
 ### 剧情旁白 TTS v0.88 ✅（2026-09）
 - [x] narrator.ts 声线表（7 角色 + 旁白，chapter 字段驱动）+ 台词解析纯函数
 - [x] AudioManager speakLines/stopNarration（Web Speech 排队 + zh 音色降级 + voiceschanged 兜底）

@@ -61,6 +61,8 @@ export interface TelemetryRepo {
 }
 
 const STORAGE_KEY = 'telemetry_log';
+/** 本地遥测环形上限：超出丢弃最旧记录（防 localStorage 配额被日志撑爆，v0.88 Quota 修复） */
+const MAX_ENTRIES = 500;
 
 export function createLocalTelemetryRepo(namespace = ''): TelemetryRepo {
   const key = namespace + STORAGE_KEY;
@@ -69,11 +71,13 @@ export function createLocalTelemetryRepo(namespace = ''): TelemetryRepo {
   function load(): TelemetryEntry[] {
     try {
       const raw = localStorage.getItem(key);
-      return raw ? (JSON.parse(raw) as TelemetryEntry[]) : [];
+      const parsed = raw ? (JSON.parse(raw) as TelemetryEntry[]) : [];
+      return parsed.length > MAX_ENTRIES ? parsed.slice(-MAX_ENTRIES) : parsed;
     } catch { return []; }
   }
 
   function save(): void {
+    if (entries.length > MAX_ENTRIES) entries = entries.slice(-MAX_ENTRIES);
     try { localStorage.setItem(key, JSON.stringify(entries)); } catch { /* quota exceeded — ignore */ }
   }
 

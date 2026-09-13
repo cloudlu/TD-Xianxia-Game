@@ -7,6 +7,7 @@ export interface ConfirmBeat extends StoryBeat {
   btnCancel?: string;         // 取消按钮文字（有则显示双按钮）
   onCancel?: () => void;      // 取消回调
   html?: boolean;             // lines[0] 等是否为 HTML（直接 innerHTML，不走打字机）
+  silent?: boolean;           // 功能性弹窗（确认询问/选项按钮）：跳过 TTS 旁白朗读
 }
 
 let typeTimer: number | null = null;
@@ -54,8 +55,8 @@ export function showStory(beat: StoryBeat, onClose: () => void): void {
   overlay.classList.add('show');
   app.paused = true;
 
-  // 语音旁白（v0.88）：按行 TTS，角色声线分派（跳过/关闭时 cancel）
-  audio.speakLines(cb.lines, cb.chapter);
+  // 语音旁白（v0.88）：按行 TTS，角色声线分派；silent（功能性弹窗）跳过朗读
+  if (!cb.silent) audio.speakLines(cb.lines, cb.chapter);
 
   let finishTyping: () => void;
 

@@ -7,6 +7,7 @@ import { BACKGROUNDS, DEFAULT_BACKGROUND } from '../data/config/backgrounds';
 import { towerVisual, visualTier } from '../data/config/towerVisuals';
 import { shakeOffset, NO_SHAKE } from '../engine/pure/shake';
 import { drawMoodLight, drawDayTint, drawLeakVignette, drawFinalWaveRite, zoomPulseScale, type FxCtx } from './boardFx';
+import { toon, TOON_FACE, TOON_OUTLINE, TOON_VIGNETTE, type Theme } from '../data/config/theme';
 import { towerRange } from '../engine/combat/effectiveRange';
 
 const CELL = 60;
@@ -39,10 +40,14 @@ export class Board {
   private ambientParticles: { x: number; y: number; vy: number; size: number; alpha: number; speed: number; color: string }[] = [];
   private currentAmbientColor = '#fffff0';
   private currentPathGlow = '#4a6fa5';
+  private currentPathColor = '#1a1510';
+  private currentCellA = '#0d0d1e';
   private currentActivePaths: ReadonlyArray<number> | null = null;
   formations: FormationTile[] | null = null;
   /** 连杀 zoom 脉冲触发时间（-1=无，main.ts 击杀事件驱动） */
   streakAt = -1;
+  /** 视觉主题（v0.89 卡通化）：cartoon 时色板提亮 + Q 版表情/描边 */
+  theme: Theme = 'cartoon';
 
   constructor(private canvas: HTMLCanvasElement, cols: number, rows: number) {
     this.ctx = canvas.getContext('2d')!;
@@ -51,6 +56,13 @@ export class Board {
     canvas.width = cols * CELL;
     canvas.height = rows * CELL;
   }
+
+  /** 主题色：cartoon 时过 toon() 提亮映射，classic 原样 */
+  private tc(hex: string): string {
+    return this.theme === 'cartoon' ? toon(hex) : hex;
+  }
+
+  private get toonTheme(): boolean { return this.theme === 'cartoon'; }
 
   /** 切换关卡时更新棋盘尺寸 + 路径（不同关卡可能不同网格/路径） */
   configure(cols: number, rows: number, paths: ReadonlyArray<ReadonlyArray<GridPoint>>, formations?: FormationTile[] | null): void {
@@ -93,6 +105,8 @@ export class Board {
     const bg = BACKGROUNDS[state.backgroundId ?? ''] ?? DEFAULT_BACKGROUND;
     this.currentAmbientColor = bg.ambient?.color ?? '#fffff0';
     this.currentPathGlow = bg.pathGlow;
+    this.currentPathColor = this.tc(bg.pathColor);
+    this.currentCellA = this.tc(bg.cellA);
     this.currentActivePaths = state.activePaths ?? null;
 
     // 格子底色
@@ -100,9 +114,9 @@ export class Board {
       for (let c = 0; c < this.cols; c++) {
         const x = c * CELL, y = r * CELL;
         if (!buildable[r][c]) {
-          ctx.fillStyle = bg.pathColor;
+          ctx.fillStyle = this.tc(bg.pathColor);
         } else {
-          ctx.fillStyle = (c + r) % 2 === 0 ? bg.cellA : bg.cellB;
+          ctx.fillStyle = this.tc((c + r) % 2 === 0 ? bg.cellA : bg.cellB);
         }
         ctx.fillRect(x, y, CELL, CELL);
       }
@@ -292,7 +306,7 @@ export class Board {
 
     // 敌人（隐身敌人按是否在光环内决定可见度）
     const auraTowers = state.towers.filter((t) => t.def.behavior === 'aura');
-    for (const e of state.enemies) this.drawEnemy(e, auraTowers);
+    for (const e of state.enemies) this.drawEnemy(e, auraTowers, state);
 
     // BOSS 顶部大血条 + 狂暴全屏红光
     const boss = state.enemies.find((e) => !e.dead && e.def.bossAbility);
@@ -920,7 +934,7 @@ export class Board {
     const fxCtx: FxCtx = { ctx, w: this.canvas.width, h: this.canvas.height, elapsed: state.elapsed };
     drawDayTint(fxCtx, state.waveIndex, state.totalWaves);
     const bossAliveNow = state.enemies.some((e) => !e.dead && !!e.def.bossAbility);
-    drawMoodLight(fxCtx, state.status === 'won' ? 'won' : state.status === 'lost' ? 'lost' : state.status === 'prep' ? 'prep' : 'wave', bossAliveNow);
+    drawMoodLight(fxCtx, state.status === 'won' ? 'won' : state.status === 'lost' ? 'lost' : state.status === 'prep' ? 'prep' : 'wave', bossAliveNow, this.toonTheme);
     drawLeakVignette(fxCtx, state.lastLeakAt ?? -1);
     drawFinalWaveRite(fxCtx, state.finalWaveAt ?? -1,
       state.waveActive && state.totalWaves > 0 && state.waveIndex === state.totalWaves - 1);
@@ -928,7 +942,7 @@ export class Board {
     // 暗角（vignette）
     const vg = ctx.createRadialGradient(this.canvas.width / 2, this.canvas.height / 2, this.canvas.height * 0.3, this.canvas.width / 2, this.canvas.height / 2, this.canvas.width * 0.7);
     vg.addColorStop(0, 'rgba(0,0,0,0)');
-    vg.addColorStop(1, 'rgba(0,0,0,0.45)');
+    vg.addColorStop(1, `rgba(0,0,0,${this.toonTheme ? TOON_VIGNETTE : 0.45})`);
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -994,6 +1008,15 @@ export class Board {
         trace(path);
         ctx.strokeStyle = this.currentPathGlow + '66'; ctx.lineWidth = 2; ctx.setLineDash([8, 10]); ctx.stroke();
         ctx.setLineDash([]);
+        // 卡通主题：路径亮色圆角缎带 + 深色描边（PvZ 式可读性）
+        if (this.toonTheme) {
+          trace(path);
+          ctx.strokeStyle = this.currentPathColor;
+          ctx.lineWidth = CELL * 0.66; ctx.stroke();
+          trace(path);
+          ctx.strokeStyle = this.currentCellA;
+          ctx.lineWidth = CELL * 0.56; ctx.stroke();
+        }
       }
     }
   }
@@ -1120,13 +1143,26 @@ export class Board {
       const tw = CELL * 0.26 * s;
       const th = CELL * 0.16;
       const ty = baseY - 6 - i * (th + 10) - th;
-      ctx.fillStyle = color;
-      ctx.fillRect(cx - tw, ty, tw * 2, th);
-      ctx.strokeStyle = '#0003'; ctx.lineWidth = 1; ctx.strokeRect(cx - tw, ty, tw * 2, th);
-      ctx.fillStyle = '#ffd70022';
-      ctx.fillRect(cx - tw * 0.25, ty + 2, tw * 0.5, th - 4);
+      const bodyColor = this.tc(color);
+      ctx.fillStyle = bodyColor;
+      if (this.toonTheme) {
+        // 卡通：圆角塔身 + 深描边（糖果积木感）
+        ctx.beginPath();
+        ctx.roundRect(cx - tw, ty, tw * 2, th, 5);
+        ctx.fill();
+        ctx.strokeStyle = TOON_FACE.outline; ctx.lineWidth = TOON_OUTLINE; ctx.stroke();
+        ctx.fillStyle = '#ffffff44';
+        ctx.beginPath();
+        ctx.roundRect(cx - tw + 3, ty + 2, tw * 0.55, th - 5, 3);
+        ctx.fill();
+      } else {
+        ctx.fillRect(cx - tw, ty, tw * 2, th);
+        ctx.strokeStyle = '#0003'; ctx.lineWidth = 1; ctx.strokeRect(cx - tw, ty, tw * 2, th);
+        ctx.fillStyle = '#ffd70022';
+        ctx.fillRect(cx - tw * 0.25, ty + 2, tw * 0.5, th - 4);
+      }
       const rw = tw + 6 + i * 1;
-      ctx.fillStyle = i === tiers - 1 ? '#6d4c41' : '#8d6e63';
+      ctx.fillStyle = i === tiers - 1 ? (this.toonTheme ? this.tc('#6d4c41') : '#6d4c41') : (this.toonTheme ? this.tc('#8d6e63') : '#8d6e63');
       ctx.beginPath();
       ctx.moveTo(cx - rw, ty);
       ctx.quadraticCurveTo(cx - rw + 4, ty - 3, cx - rw + 7, ty);
@@ -1135,7 +1171,12 @@ export class Board {
       ctx.lineTo(cx + rw - 7, ty);
       ctx.quadraticCurveTo(cx + rw - 4, ty - 3, cx + rw, ty);
       ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#a1887f55'; ctx.lineWidth = 0.5; ctx.stroke();
+      if (this.toonTheme) {
+        // 屋檐描边（卡通轮廓）
+        ctx.strokeStyle = TOON_FACE.outline; ctx.lineWidth = 1.5; ctx.stroke();
+      } else {
+        ctx.strokeStyle = '#a1887f55'; ctx.lineWidth = 0.5; ctx.stroke();
+      }
     }
     const topY = baseY - 6 - tiers * (CELL * 0.16 + 10) - 7;
     ctx.fillStyle = '#ffd700';
@@ -1208,7 +1249,7 @@ export class Board {
     ctx.restore();
   }
 
-  private drawEnemy(e: GameState['enemies'][number], auraTowers: GameState['towers'][number][]): void {
+  private drawEnemy(e: GameState['enemies'][number], auraTowers: GameState['towers'][number][], state: GameState): void {
     const ctx = this.ctx;
     // 隐身敌人：仅在光环内"现形"，否则半透明 + 虚线提示
     const stealth = !!e.def.stealth;
@@ -1262,7 +1303,39 @@ export class Board {
       if (fill) { ctx.fillStyle = fill; ctx.fill(); }
       if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw ?? 2; ctx.stroke(); }
     };
-    drawShape(rad, e.def.color);
+    // 卡通主题：走路颠簸（squash & stretch，相位驱动无随机）+ 胖椭圆体 + 深色描边
+    let bodySquash = 1;
+    if (this.toonTheme && !fly && !burrowed) {
+      bodySquash = 0.93 + 0.07 * Math.sin(e.dist * 6);
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(1 / bodySquash, bodySquash);   // 压扁时横向补偿（体积感）
+      ctx.translate(-cx, -cy);
+    }
+    if (this.toonTheme) {
+      // 胖椭圆体 + 卡通深描边
+      const fatR = rad * 1.12;
+      ctx.beginPath();
+      if (fly) {
+        ctx.ellipse(cx, cy, fatR * 0.85, fatR, 0, 0, Math.PI * 2);
+      } else if (isBoss) {
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+          const px = cx + fatR * Math.cos(a), py = cy + fatR * Math.sin(a);
+          i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+      } else {
+        ctx.ellipse(cx, cy, fatR, fatR * 0.94, 0, 0, Math.PI * 2);
+      }
+      ctx.fillStyle = this.tc(e.def.color);
+      ctx.fill();
+      ctx.strokeStyle = TOON_FACE.outline;
+      ctx.lineWidth = TOON_OUTLINE;
+      ctx.stroke();
+    } else {
+      drawShape(rad, e.def.color);
+    }
     if (e.hitFlash > 0) {
       ctx.globalAlpha = (stealth && !revealed ? 0.3 : 1) * Math.min(1, e.hitFlash / 0.12);
       drawShape(rad, '#ffffff');
@@ -1295,12 +1368,65 @@ export class Board {
       ctx.arc(cx, cy, rad + 6, 0, Math.PI * 2);
       ctx.fill();
     }
-    // 图标字
+    // 卡通 Q 版大眼（在图标上方两侧）：眼白+瞳孔（朝移动方向偏移，相位驱动）+ 高光 + 腮红
+    if (this.toonTheme) {
+      const eyeR = rad * 0.22;
+      const eyeDX = rad * 0.34, eyeDY = -rad * 0.30;
+      // 瞳孔朝移动方向偏移（速度方向由 dist 推算不可得，用正弦相位模拟左右张望）
+      const lookX = Math.sin(state.elapsed * 2 + e.uid) * eyeR * 0.3;
+      const lookY = eyeR * 0.1;
+      for (const s of [-1, 1]) {
+        const ex = cx + s * eyeDX, ey = cy + eyeDY;
+        ctx.fillStyle = TOON_FACE.eyeWhite;
+        ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = TOON_FACE.outline; ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = TOON_FACE.pupil;
+        ctx.beginPath(); ctx.arc(ex + lookX, ey + lookY, eyeR * 0.52, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = TOON_FACE.glint;
+        ctx.beginPath(); ctx.arc(ex + lookX - eyeR * 0.18, ey + lookY - eyeR * 0.2, eyeR * 0.18, 0, Math.PI * 2); ctx.fill();
+      }
+      // 精英怒眉 / BOSS 獠牙
+      if (isBoss) {
+        ctx.strokeStyle = TOON_FACE.outline; ctx.lineWidth = 2;
+        for (const s of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(cx + s * eyeDX - s * eyeR, cy + eyeDY - eyeR * 1.4);
+          ctx.lineTo(cx + s * eyeDX + s * eyeR * 0.6, cy + eyeDY - eyeR * 0.7);
+          ctx.stroke();
+        }
+        // 獠牙（下颚两颗白三角）
+        ctx.fillStyle = '#fff';
+        for (const s of [-1, 1]) {
+          const fx2 = cx + s * rad * 0.28, fy2 = cy + rad * 0.42;
+          ctx.beginPath();
+          ctx.moveTo(fx2 - 3, fy2); ctx.lineTo(fx2 + 3, fy2); ctx.lineTo(fx2, fy2 + 6);
+          ctx.closePath(); ctx.fill();
+        }
+      } else if (elite) {
+        ctx.strokeStyle = TOON_FACE.outline; ctx.lineWidth = 1.8;
+        for (const s of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(cx + s * eyeDX - s * eyeR, cy + eyeDY - eyeR * 1.3);
+          ctx.lineTo(cx + s * eyeDX + s * eyeR * 0.5, cy + eyeDY - eyeR * 0.8);
+          ctx.stroke();
+        }
+      } else {
+        // 腮红（普通怪萌系）
+        ctx.fillStyle = TOON_FACE.blush;
+        for (const s of [-1, 1]) {
+          ctx.beginPath();
+          ctx.ellipse(cx + s * rad * 0.52, cy - rad * 0.02, rad * 0.16, rad * 0.1, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+    // 图标字（卡通时上移给眼睛让位）
     ctx.fillStyle = '#fff';
     ctx.font = `bold ${elite || isBoss ? 20 : 16}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(e.def.icon, cx, cy);
+    ctx.fillText(e.def.icon, cx, cy + (this.toonTheme ? rad * 0.42 : 0));
     // 精英/首领名称标牌
     if (elite || isBoss) {
       ctx.fillStyle = isBoss ? '#ff6b6b' : '#ffd93d';
@@ -1314,6 +1440,7 @@ export class Board {
     ctx.fillRect(bx, by, w, h);
     ctx.fillStyle = e.hp / e.maxHp > 0.4 ? '#5fd35f' : '#ff6b6b';
     ctx.fillRect(bx, by, w * Math.max(0, e.hp / e.maxHp), h);
+    if (bodySquash !== 1) ctx.restore();   // 颠簸 squash 结束
     ctx.globalAlpha = 1;
   }
 
@@ -1323,6 +1450,14 @@ export class Board {
     const cx = (col + 0.5) * CELL, cy = (row + 0.5) * CELL;
     ctx.save();
     if (terrain === 'rock') {
+      if (this.toonTheme) {
+        // 卡通：圆石 + 高光 + 描边
+        ctx.fillStyle = this.tc('#9e9e9e');
+        ctx.beginPath(); ctx.ellipse(cx, cy, CELL * 0.36, CELL * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = TOON_FACE.outline; ctx.lineWidth = TOON_OUTLINE; ctx.stroke();
+        ctx.fillStyle = '#ffffff55';
+        ctx.beginPath(); ctx.ellipse(cx - CELL * 0.1, cy - CELL * 0.1, CELL * 0.1, CELL * 0.06, -0.5, 0, Math.PI * 2); ctx.fill();
+      } else {
       ctx.fillStyle = 'rgba(0,0,0,0.25)';
       ctx.beginPath(); ctx.ellipse(cx + 5, cy + 5, CELL * 0.32, CELL * 0.1, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#4a3728';
@@ -1342,7 +1477,22 @@ export class Board {
       ctx.beginPath(); ctx.arc(cx - CELL * 0.12, cy - CELL * 0.28, CELL * 0.07, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#3a2718';
       ctx.beginPath(); ctx.arc(cx + CELL * 0.2, cy - CELL * 0.05, CELL * 0.15, 0, Math.PI * 2); ctx.fill();
+      }
     } else if (terrain === 'tree') {
+      if (this.toonTheme) {
+        // 卡通：棒棒糖树（树干 + 圆冠 + 描边 + 小果）
+        ctx.fillStyle = this.tc('#8d6e63');
+        ctx.fillRect(cx - CELL * 0.06, cy, CELL * 0.12, CELL * 0.36);
+        ctx.strokeStyle = TOON_FACE.outline; ctx.lineWidth = 1.5;
+        ctx.strokeRect(cx - CELL * 0.06, cy, CELL * 0.12, CELL * 0.36);
+        ctx.fillStyle = this.tc('#66bb6a');
+        ctx.beginPath(); ctx.arc(cx, cy - CELL * 0.12, CELL * 0.34, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = TOON_FACE.outline; ctx.lineWidth = TOON_OUTLINE; ctx.stroke();
+        ctx.fillStyle = this.tc('#81c784');
+        ctx.beginPath(); ctx.arc(cx - CELL * 0.08, cy - CELL * 0.2, CELL * 0.16, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ff8a80';
+        ctx.beginPath(); ctx.arc(cx + CELL * 0.14, cy - CELL * 0.06, CELL * 0.045, 0, Math.PI * 2); ctx.fill();
+      } else {
       ctx.fillStyle = 'rgba(0,0,0,0.2)';
       ctx.beginPath(); ctx.ellipse(cx + 4, cy + 5, CELL * 0.3, CELL * 0.08, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#3e2a1a';
@@ -1363,7 +1513,23 @@ export class Board {
       ctx.beginPath(); ctx.arc(cx + CELL * 0.08, cy - CELL * 0.32, CELL * 0.08, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#a5d6a744';
       ctx.beginPath(); ctx.arc(cx + CELL * 0.2, cy - CELL * 0.08, CELL * 0.06, 0, Math.PI * 2); ctx.fill();
+      }
     } else if (terrain === 'water') {
+      if (this.toonTheme) {
+        // 卡通：浅蓝圆池 + 白色波浪线 + 描边
+        ctx.fillStyle = this.tc('#4fc3f7');
+        ctx.beginPath(); ctx.ellipse(cx, cy, CELL * 0.4, CELL * 0.32, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = TOON_FACE.outline; ctx.lineWidth = TOON_OUTLINE; ctx.stroke();
+        ctx.strokeStyle = '#ffffffaa'; ctx.lineWidth = 2;
+        for (let i = 0; i < 2; i++) {
+          const wy = cy - CELL * 0.08 + i * CELL * 0.14;
+          ctx.beginPath();
+          ctx.moveTo(cx - CELL * 0.22, wy);
+          ctx.quadraticCurveTo(cx - CELL * 0.11, wy - 4, cx, wy);
+          ctx.quadraticCurveTo(cx + CELL * 0.11, wy + 4, cx + CELL * 0.22, wy);
+          ctx.stroke();
+        }
+      } else {
       ctx.fillStyle = 'rgba(0,0,0,0.15)';
       ctx.beginPath(); ctx.arc(cx + 3, cy + 4, CELL * 0.42, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#0d1b2a';
@@ -1387,6 +1553,7 @@ export class Board {
       ctx.fillStyle = '#90caf9';
       ctx.beginPath(); ctx.arc(cx - CELL * 0.08, cy - CELL * 0.1, 3, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = 1;
+      }
     }
     ctx.restore();
   }

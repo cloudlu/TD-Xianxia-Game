@@ -66,6 +66,16 @@ describe('TelemetryRepo', () => {
     repo2.clear();
   });
 
+  it('ring buffer caps stored entries（防 localStorage 配额撑爆）', () => {
+    for (let i = 0; i < 600; i++) {
+      repo.recordKill({ levelId: 'l1', difficulty: 'normal', waveIndex: i, towerId: 'a', enemyId: 'wolf', bounty: 1 });
+    }
+    const logs = repo.getSessionLogs();
+    expect(logs.length).toBeLessThanOrEqual(500);
+    // 保留最新（丢弃最旧：第一条的 waveIndex 应远大于 0）
+    expect(logs[0].data.waveIndex as number).toBeGreaterThanOrEqual(100);
+  });
+
   it('entry has monotonic timestamp', () => {
     repo.recordKill({ levelId: 'l1', difficulty: 'normal', waveIndex: 0, towerId: 'a', enemyId: 'wolf', bounty: 5 });
     repo.recordKill({ levelId: 'l1', difficulty: 'normal', waveIndex: 0, towerId: 'a', enemyId: 'bear', bounty: 8 });

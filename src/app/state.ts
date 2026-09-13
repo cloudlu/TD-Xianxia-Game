@@ -36,6 +36,7 @@ export const app = {
   speedMul: 1,
   paused: true,
   leakFlashAmt: 0,
+  theme: 'cartoon' as import('../data/config/theme').Theme,
   prevStatus: 'prep' as string,
   last: 0,
   destinyBoost: 1 as number,

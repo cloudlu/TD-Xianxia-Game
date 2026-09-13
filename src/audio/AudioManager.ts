@@ -108,8 +108,16 @@ class AudioManager {
   /** 描述行是否朗读（默认开：有声书式混排——台词用角色声线、描述用旁白声线，整段完整朗读） */
   readNarration = true;
   private voicesReady = false;
+  private voicesLogged = false;
+  /** 男声锁定音色名（调试面板可设；空=自动）。女声不锁定（自动匹配 Huihui/Xiaoxiao） */
+  maleVoiceOverride = '';
+  /** 诊断开关：朗读时不设置 pitch/rate（用引擎默认值）——排查非默认参数触发 SAPI 音色回落的怪癖 */
+  ttsPlainParams = false;
+  private get voiceOverride(): string | undefined { return this.maleVoiceOverride || undefined; }
 
-  /** 朗读一段剧情：按行排队，台词用角色声线、描述按配置（无 zh 音色静默降级） */
+  /** 朗读一段剧情：链式逐条播放（台词用角色声线、描述用旁白声线）。
+   * 不一次性 speak 排队——Chromium 已知 bug：队列中从第二条起 voice 属性被丢弃回落默认音色
+   * （症状即"日志选中 Kangkang 但听感女声"）。改为 onend 链：前一条读完再 speak 下一条。 */
   speakLines(lines: readonly string[], chapter?: string): void {
     if (!this.narratorEnabled || this.muted) return;
     if (typeof speechSynthesis === 'undefined') return;
@@ -119,18 +127,48 @@ class AudioManager {
     const synth = speechSynthesis;
     synth.cancel();
     const doSpeak = (): void => {
+      // 调试：首次朗读时在控制台列出可用 zh 音色与男女声命中结果（便于用户报告环境）
+      if (!this.voicesLogged && typeof console !== 'undefined') {
+        this.voicesLogged = true;
+        const zh = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('zh'));
+        console.info(`[narrator] zh 音色 ${zh.length} 个：${zh.map((v) => v.name).join(' / ') || '无'}；男声→${this.pickVoice('male')?.name ?? '默认'}，女声→${this.pickVoice('female')?.name ?? '默认'}`);
+      }
+      // 构造待播队列（解析 + 声线分配），链式逐条播放
+      const queue: SpeechSynthesisUtterance[] = [];
       for (const raw of lines) {
         const parsed = parseNarrationLine(raw, readNarration);
         if (!parsed.text) continue;
         const u = new SpeechSynthesisUtterance(parsed.text);
-        u.lang = 'zh-CN';
         const p = parsed.isDialogue ? profile : NARRATOR_PROFILE;
-        u.pitch = p.pitch;
-        u.rate = p.rate;
-        const v = this.pickVoice(p.gender);
-        if (v) u.voice = v;
-        synth.speak(u);
+        if (!this.ttsPlainParams) {
+          u.pitch = p.pitch;
+          u.rate = p.rate;
+        }
+        const v = this.pickVoice(p.gender, this.voiceOverride);
+        // 诊断模式（ttsPlainParams）：只设 voice 不设 pitch/rate，且优先选中单独的音色名
+        const diagVoice = this.ttsPlainParams
+          ? speechSynthesis.getVoices().find((x) => x.name.includes('Kangkang')) ?? v
+          : v;
+        if (diagVoice) {
+          u.voice = diagVoice;
+          u.lang = diagVoice.lang;
+        } else {
+          u.lang = 'zh-CN';
+        }
+        // 调试：每行打印实际声线（info 级别，确保 DevTools 默认过滤器可见）
+        if (typeof console !== 'undefined') {
+          console.info(`[narrator] ${parsed.isDialogue ? `角色(${chapter ?? '?'})` : '旁白'} → ${diagVoice?.name ?? '默认'}(${diagVoice?.lang ?? 'zh-CN'}${diagVoice?.localService ? ',本地' : ',网络'}) pitch=${u.pitch} rate=${u.rate}${this.ttsPlainParams ? ' [诊断:默认参数]' : ''}`);
+          u.onerror = (ev) => console.warn(`[narrator] 朗读失败: ${(ev as SpeechSynthesisErrorEvent).error}`);
+        }
+        queue.push(u);
       }
+      const speakNext = (): void => {
+        const u = queue.shift();
+        if (!u) return;
+        u.onend = () => speakNext();   // 前一条完成后才 speak 下一条（防 Chromium 队列丢 voice）
+        synth.speak(u);
+      };
+      speakNext();
     };
     if (this.voicesReady) { doSpeak(); return; }
     // Chrome 音色异步加载：voices 为空时等一次 voiceschanged
@@ -141,19 +179,58 @@ class AudioManager {
     window.setTimeout(() => { if (!this.voicesReady) { this.voicesReady = true; synth.removeEventListener('voiceschanged', onReady); doSpeak(); } }, 500);
   }
 
+  /** 诊断：直接用指定音色朗读一句测试文本（控制台可手动调用 audio.voiceSelfTest()） */
+  voiceSelfTest(voiceName?: string): void {
+    const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('zh'));
+    console.info(`[narrator] 自检：${voices.length} 个 zh 音色，逐个测试 1 秒发声`);
+    voices.forEach((v, i) => {
+      window.setTimeout(() => {
+        const u = new SpeechSynthesisUtterance(voiceName && v.name !== voiceName ? '。' : '这是音色测试');
+        u.voice = v;
+        u.lang = v.lang;
+        u.rate = 1;
+        console.info(`[narrator] 试听 ${v.name}（${v.localService ? '本地' : '网络'}）—— 听到的声音就是它`);
+        speechSynthesis.speak(u);
+      }, i * 1500);
+    });
+  }
+
   stopNarration(): void {
     if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
   }
 
-  private pickVoice(gender: 'male' | 'female'): SpeechSynthesisVoice | null {
+  private pickVoice(gender: 'male' | 'female', override?: string): SpeechSynthesisVoice | null {
     const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('zh'));
     if (voices.length === 0) return null;
-    // 尝试按常见女声关键字匹配；失败则按位置轮换（多数平台 zh 音色不足两个，女声回退高 pitch 男声）
-    const femaleKeys = ['xiaoxiao', 'huihui', 'yaoyao', 'female', 'mei', 'ting'];
+    // 手动锁定音色（调试面板下拉）：直接按名匹配，忽略 gender
+    if (override) {
+      const hit = voices.find((v) => v.name === override);
+      if (hit) return hit;
+    }
+    // 关键字匹配（Edge/Chrome 常见 zh 音色名）：
+    // 女声 Xiaoxiao/Huihui/Yaoyao…；男声 Kangkang/Yunyang/Yunjian/Yunxi…
+    // 优先本地音色（localService）：Google 网络音色在远程会话/离线环境会静默不出声
+    const femaleKeys = ['xiaoxiao', 'huihui', 'yaoyao', 'female', 'xiaoyi', 'yunxia', 'mei', 'ting'];
+    const maleKeys = ['kangkang', 'yunyang', 'yunjian', 'yunxi', 'yunya', 'male', 'liang'];
+    const byKeys = (keys: string[]): SpeechSynthesisVoice | undefined => {
+      const hits = voices.filter((v) => keys.some((k) => v.name.toLowerCase().includes(k)));
+      return hits.find((v) => v.localService) ?? hits[0];
+    };
+    const femaleV = byKeys(femaleKeys);
+    const maleV = byKeys(maleKeys);
+    const femaleHit = femaleV ? voices.indexOf(femaleV) : -1;
+    const maleHit = maleV ? voices.indexOf(maleV) : -1;
     if (gender === 'female') {
-      const f = voices.find((v) => femaleKeys.some((k) => v.name.toLowerCase().includes(k)));
-      if (f) return f;
-      if (voices.length > 1) return voices[1];   // 第二个通常是异性声
+      if (femaleHit >= 0) return voices[femaleHit];
+      // 无独立女声：若存在明确的男声则用第一个非男声（避免全员一个声）；否则高 pitch 单声色（由调用方 pitch 区分）
+      if (maleHit >= 0 && voices.length > 1) return voices[voices.indexOf(voices.find((_, i) => i !== maleHit)!)];
+      return voices[0];
+    }
+    if (maleHit >= 0) return voices[maleHit];
+    // 无独立男声：避开明确的女声；否则单音色（pitch 区分）
+    if (femaleHit >= 0 && voices.length > 1) {
+      const other = voices.find((_, i) => i !== femaleHit);
+      if (other) return other;
     }
     return voices[0];
   }

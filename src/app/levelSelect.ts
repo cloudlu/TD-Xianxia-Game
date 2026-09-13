@@ -223,6 +223,7 @@ export function startLevel(id: string): void {
       btn: '使 用 天 命 符',
       btnCancel: '不 用',
       onCancel: () => { useScroll = false; pAfterDestiny = app.progression; doStart(); },
+      silent: true,   // 功能性确认弹窗：不朗读
     };
     showStory(confirmBeat, () => {
       useScroll = true;
@@ -553,6 +554,7 @@ export function startEndless(): void {
       btn: '使 用 天 命 符',
       btnCancel: '不 用',
       onCancel: () => { useScroll = false; pAfterDestiny = app.progression; doStart(); },
+      silent: true,   // 功能性确认弹窗：不朗读
     };
     showStory(confirmBeat, () => {
       useScroll = true;
@@ -657,6 +659,7 @@ function showBlessingChoice(wave: number): void {
     lines,
     btn: '',
     html: true,
+    silent: true,   // 功能性选项弹窗（HTML 按钮）：不朗读
   };
   showStory(beat, () => { app.paused = false; });
   // 隐藏跳过按钮

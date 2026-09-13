@@ -38,8 +38,28 @@
       background-attachment: fixed;
       min-height: 100vh;
     }
-    /* 顶部一条金线装饰 */
-    body::before {
+    /* ── 卡通主题（v0.89，body.cartoon 驱动）── */
+    body.cartoon button {
+      border-radius: 12px !important;
+      border-bottom-width: 3px !important;
+      font-weight: bold;
+    }
+    body.cartoon button:hover:not(:disabled) { transform: translateY(-1px); }
+    body.cartoon .ls-card, body.cartoon .meta-card, body.cartoon .story-card,
+    body.cartoon .chapter-card, body.cartoon .eq-card {
+      border-radius: 16px !important;
+      border-width: 2px !important;
+    }
+    body.cartoon .chapter-card { border-radius: 14px !important; }
+    body.cartoon #startBtn { border-radius: 14px !important; letter-spacing: 6px; }
+    @keyframes starWiggle {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-12deg) scale(1.15); }
+      75% { transform: rotate(12deg) scale(1.15); }
+    }
+    body.cartoon .star, body.cartoon .cc-stars { animation: starWiggle 2.4s ease-in-out infinite; display: inline-block; }
+    /* ── 卡通主题结束 ── */
+    /* 顶部一条金线装饰 */    body::before {
       content: ""; position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 100;
       background: linear-gradient(90deg, transparent, #ffd93d 30%, #ff9b6b 50%, #ffd93d 70%, transparent);
       box-shadow: 0 0 12px #ffd93d88;
@@ -525,6 +545,15 @@
         <select id="voBeatSelect" style="max-width:260px;background:#1a1a2a;border:1px solid #3a4a6a;color:#ffd93d;border-radius:4px;padding:2px 6px"></select>
         <button id="voReplayBtn" style="background:#1f2a4a;color:#e0e0e0;border:1px solid #2a3450;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px">▶ 播放</button>
         <div style="font-size:11px;color:#5a6a8a;margin-top:2px">跳过已读标记强制弹窗重播（测 TTS 声线用）</div>
+        <div style="margin-top:4px;font-size:12px;color:#8b8ba0">
+          男声音色：
+          <select id="voMaleVoice" style="max-width:260px;background:#1a1a2a;border:1px solid #3a4a6a;color:#ffd93d;border-radius:4px;padding:2px 6px"></select>
+          <span style="color:#5a6a8a">（旁白/男性角色；自动匹配失效时手动锁定）</span>
+        </div>
+        <div style="margin-top:4px;font-size:12px;color:#8b8ba0">
+          <label style="cursor:pointer"><input type="checkbox" id="ttsPlainParams"> 诊断：TTS 用默认参数+强制 Kangkang（排查音色回落）</label>
+          <button id="voiceSelfTestBtn" style="background:#1f2a4a;color:#e0e0e0;border:1px solid #2a3450;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:12px;margin-left:8px">🔊 逐个试听音色</button>
+        </div>
       </div>
     </div>
   </div>

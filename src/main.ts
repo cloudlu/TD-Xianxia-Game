@@ -3,6 +3,7 @@
 
 import { Board } from './ui/Board';
 import { TOWERS, FAILED_STORY, SKINS, ENEMIES, PROLOGUE_STORY, ENDING_STORIES, chronicleGroups, storyById } from './data/config';
+import { loadTheme, saveTheme, applyThemeDom } from './data/config/theme';
 import { audio } from './audio/AudioManager';
 import { app, buildMods, useRemote } from './app/state';
 import { damageStatsFor } from './data/Modifier';
@@ -68,6 +69,24 @@ muteBtn.onclick = () => {
   muteBtn.textContent = audio.muted ? '🔇' : '🔊';
 };
 hud.appendChild(muteBtn);
+
+// 视觉主题切换（v0.89 卡通化）：classic/cartoon，localStorage 持久化
+const themeBtn = document.createElement('button');
+themeBtn.id = 'themeBtn';
+const syncThemeBtn = (): void => { themeBtn.textContent = app.theme === 'cartoon' ? '🎨 卡通' : '🖌 写实'; };
+app.theme = loadTheme();
+board.theme = app.theme;
+applyThemeDom(app.theme);
+syncThemeBtn();
+themeBtn.onclick = () => {
+  app.theme = app.theme === 'cartoon' ? 'classic' : 'cartoon';
+  saveTheme(app.theme);
+  board.theme = app.theme;
+  applyThemeDom(app.theme);
+  syncThemeBtn();
+  audio.init(); audio.sfx('click');
+};
+hud.appendChild(themeBtn);
 
 // 切后台暂停音频（v0.87 批次2：visibilitychange 驱动）
 document.addEventListener('visibilitychange', () => {
@@ -670,6 +689,38 @@ function initVoReplay(): void {
     audio.init(); audio.resume();
     showStory(beat, () => { app.paused = false; });
   };
+
+  // 男声音色锁定（环境自动匹配失效时的手动兜底，localStorage 持久化）
+  const voiceSel = document.getElementById('voMaleVoice') as HTMLSelectElement | null;
+  if (voiceSel) {
+    const saved = localStorage.getItem('narrator_male_voice') ?? '';
+    const fill = (): void => {
+      const zh = (typeof speechSynthesis !== 'undefined' ? speechSynthesis.getVoices() : []).filter((v) => v.lang.startsWith('zh'));
+      voiceSel.innerHTML = '<option value="">自动匹配</option>' + zh.map((v) =>
+        `<option value="${v.name}">${v.name}${v.localService ? '' : '（网络）'}</option>`).join('');
+      voiceSel.value = saved && zh.some((v) => v.name === saved) ? saved : '';
+    };
+    fill();
+    if (typeof speechSynthesis !== 'undefined') {
+      speechSynthesis.addEventListener('voiceschanged', fill, { once: true });
+    }
+    voiceSel.onchange = () => {
+      audio.maleVoiceOverride = voiceSel.value;
+      try { localStorage.setItem('narrator_male_voice', voiceSel.value); } catch { /* quota 满：仅本会话生效 */ }
+    };
+    // 启动时恢复
+    audio.maleVoiceOverride = saved;
+    // 诊断开关：TTS 默认参数 + 强制 Kangkang（排查非默认 pitch/rate 触发音色回落）
+    const plainChk = document.getElementById('ttsPlainParams') as HTMLInputElement | null;
+    if (plainChk) {
+      plainChk.onchange = () => { audio.ttsPlainParams = plainChk.checked; };
+    }
+    // 一键逐个试听全部 zh 音色（控制台同步打印音色名）
+    const selfTestBtn = document.getElementById('voiceSelfTestBtn');
+    if (selfTestBtn) {
+      selfTestBtn.onclick = () => { audio.init(); audio.resume(); audio.voiceSelfTest(); };
+    }
+  }
 }
 function fmtTime(ts: number): string {
   const d = new Date(ts);
