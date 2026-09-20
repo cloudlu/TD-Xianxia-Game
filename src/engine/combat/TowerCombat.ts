@@ -61,7 +61,10 @@ export type CombatGameEvent =
   | { type: 'waveStart'; wave: number }
   | { type: 'win' }
   | { type: 'lose' }
-  | { type: 'boss' };
+  | { type: 'boss' }
+  | { type: 'sweep'; pathIndex: number }
+  | { type: 'wind'; movedCount: number }
+  | { type: 'hammerStrike'; uid: number; crit: boolean; killed: boolean; combo: number; comboBonus: boolean };
 
 export interface CombatUpdateCtx {
   rng: () => number;
@@ -72,6 +75,8 @@ export interface CombatUpdateCtx {
   hpMul: number;
   difficultyBountyMul: number;
   elapsed: () => number;
+  /** 锻炉伤害符加成（三路经营战，v0.91 P3）：0=无；加法并入伤害乘子（受族封顶思路约束） */
+  forgeDmgBonus?: () => number;
   spawnEnemyAt: (id: string, pathIndex: number, dist: number) => void;
   addStones: (amount: number) => void;
   emit(event: CombatGameEvent): void;
@@ -246,7 +251,9 @@ export class TowerCombat {
     const spiritMul = 1 + spiritAdjacent * 0.15;
 
     // v0.86 方案 C：仙魂乘数已并入 damageMul 伤害族（damageStatsFor 含 '_soulMul'），此处不再独立相乘
-    const dmgMul = (1 + aura.dmgMul + killStackBonus) * this.ctx.mods.damageMul(damageStatsFor(school)) * this.ctx.towerMul * this.ctx.destinyBoost * fmtDmgMul * spiritMul;
+    // v0.91 P3：锻炉伤害符加成加法并入（与 aura 同池），不在既有族封顶外另开门
+    const forgeMul = this.ctx.forgeDmgBonus?.() ?? 0;
+    const dmgMul = (1 + aura.dmgMul + killStackBonus + forgeMul) * this.ctx.mods.damageMul(damageStatsFor(school)) * this.ctx.towerMul * this.ctx.destinyBoost * fmtDmgMul * spiritMul;
     const rateMul = (1 + aura.rateMul) * this.ctx.mods.rateMul() * this.ctx.towerMul * fmtRateMul;
     const rangeAdd = this.ctx.mods.rangeAdd();
     return { dmgMul, rateMul, rangeAdd, critBonus: this.ctx.mods.critBonus() };

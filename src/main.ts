@@ -14,6 +14,7 @@ import { returnToSelect, settleWin, startEndless, tickEndless, settleEndless, st
 import { unlockedTowerIds } from './repo/progressLevel';
 import { SKIP_MESSAGES } from './engine/EndlessMode';
 import { towerConfig } from './engine/TowerOperations';
+import { HERO_SCHOOL_META, HERO_ABILITY_SPECS } from './engine/pure/hero';
 import { renderProfileSelect, switchProfile } from './app/profileScreen';
 import './app/metaScreen';   // 模块加载时绑定 metaBtn 等
 import { renderBestiary } from './app/bestiary';
@@ -324,7 +325,7 @@ function updateTowerPanel(s: ReturnType<Game['snapshot']>): void {
   const t = s.towers.find((x) => x.uid === app.selectedUid);
   if (!t) { app.selectedUid = null; towerPanel.classList.remove('show'); return; }
   const rect = canvas.getBoundingClientRect();
-  const cell = canvas.width / board.cols;
+  const cell = board.logicalW / board.cols;   // 逻辑格宽（DPR 安全）
   towerPanel.style.left = Math.min(rect.left + (t.col + 0.5) * cell + 24, window.innerWidth - 210) + 'px';
   towerPanel.style.top = Math.max(8, Math.min(rect.top + t.row * cell, window.innerHeight - 180)) + 'px';
   towerPanel.classList.add('show');
@@ -393,11 +394,55 @@ towerPanel.addEventListener('mouseleave', startHidePanel);
 canvas.addEventListener('mousemove', (ev) => {
   const { col, row } = board.cellAt(ev.clientX, ev.clientY);
   board.hoverCol = col; board.hoverRow = row;
+  // 御剑守城：鼠标 x 直接驱动真人在城头横移
+  if (app.game && app.game.snapshot().pureHero) app.game.setHeroTargetX(board.gridXFromClient(ev.clientX));
 });
 canvas.addEventListener('mouseleave', () => { board.hoverCol = -1; board.hoverRow = -1; startHidePanel(); });
 canvas.addEventListener('click', (ev) => {
   if (!app.game) return;
   const { col, row } = board.cellAt(ev.clientX, ev.clientY);
+  const s0 = app.game.snapshot();
+  // 御剑守城（v0.97）：点击敌人集火 / 点空处取消集火；不建塔
+  if (s0.pureHero) {
+    const cx = col + 0.5, cy = row + 0.5;
+    let best: typeof s0.enemies[number] | undefined;
+    let bestD = 0.6;
+    for (const e of s0.enemies) {
+      if (e.dead || e.leaked) continue;
+      const d = Math.hypot(e.x - cx, e.y - cy);
+      if (d < bestD) { bestD = d; best = e; }
+    }
+    if (best) { app.game.setFocus(best.uid); audio.sfx('click'); }
+    else app.game.clearFocus();
+    return;
+  }
+  // 夜袭模式：神雷锤击——点击命中最接近的敌人（0.6 格半径），直接打怪
+  if (s0.streamMode && (s0.hammerAmmoMax ?? 0) > 0) {
+    const cx = col + 0.5, cy = row + 0.5;
+    let best: typeof s0.enemies[number] | undefined;
+    let bestD = Infinity;
+    for (const e of s0.enemies) {
+      if (e.dead || e.leaked) continue;
+      const d = Math.hypot(e.x - cx, e.y - cy);
+      if (d < bestD) { bestD = d; best = e; }
+    }
+    if (best && bestD <= 0.9) {
+      const r = app.game.strikeEnemy(best.uid);
+      if (r === 'hit' || r === 'crit' || r === 'killed') { app.leakFlashAmt = Math.max(app.leakFlashAmt, 0.25); return; }
+      if (r === 'noammo') { app.game.msg = '神雷耗尽，下一波补给！'; return; }
+      if (r === 'cooldown') return;   // 冷却中静默
+    }
+  }
+  // 经营模式：点击锻炉 → 收取/选中/合并（优先于建塔）
+  if (s0.forges) {
+    const f = s0.forges.find((x) => x.col === col && x.row === row);
+    if (f && app.game.clickForge(f.uid) !== 'none') { audio.sfx('click'); return; }
+  }
+  // 车道模式：优先判定灵石拾取（点中即收，不落建塔逻辑）
+  if (s0.laneMode && s0.pickups) {
+    const hit = s0.pickups.find((p) => !p.collected && p.col === col && p.row === row);
+    if (hit && app.game.collectPickup(hit.uid) > 0) { audio.sfx('click'); return; }
+  }
   const t = app.game.towerAt(col, row);
   if (t) {
     app.selectedUid = t.uid;       // 左键塔 → 弹出操作面板
@@ -487,7 +532,25 @@ function frameStep(now: number): void {
   }
   elStatus.textContent = s.msg;
   elDestiny.style.display = app.destinyBoost > 1 && app.currentLevel?.id !== 'endless' ? '' : 'none';
-  if (s.challenges && s.challenges.length > 0) {
+  // 御剑守城：隐藏塔栏（彻底无塔）
+  panel.style.display = s.pureHero ? 'none' : '';
+  // 御剑守城 HUD：已拥有塔能力 + 操作提示
+  if (s.pureHero) {
+    const chips = (s.hero?.abilities ?? []).map((a) => {
+      const meta = HERO_SCHOOL_META[a.school];
+      return `<span style="display:inline-block;min-width:30px;text-align:center;margin-left:4px;border:1px solid ${meta.color};border-radius:6px;padding:2px 6px;font-size:13px;color:${meta.color};background:rgba(255,255,255,0.06)" title="${meta.name}能力（Lv${a.level + 1}）· 自动开火，冷却 ${HERO_ABILITY_SPECS[a.school].rate}s">${meta.icon} ${meta.name}${a.level > 0 ? `<sup style="color:#fff">${a.level + 1}</sup>` : ''}</span>`;
+    }).join('');
+    elChallenge.style.display = '';
+    elChallenge.innerHTML = `<span style="background:#12222a;border:1px solid #2a4a5a;border-radius:6px;padding:2px 10px;white-space:nowrap" title="移动鼠标 · 真人沿城头横移；塔符自动飞入叠加塔能力；点击敌人集火">🖱 移动·点击集火</span>${chips}`;
+  } else if (s.streamMode && (s.hammerAmmoMax ?? 0) > 0) {
+    const cur = s.hammerAmmo ?? 0;
+    const max = s.hammerAmmoMax ?? 0;
+    let bolts = '';
+    for (let i = 0; i < max; i++) bolts += `<span style="color:${i < cur ? '#ffd93d' : '#3a3a4a'}">⚡</span>`;
+    const comboTxt = (s.hammerCombo ?? 0) >= 5 ? `<span style="color:#ff8a5c;font-weight:bold;margin-left:6px">连击 ×${s.hammerCombo}</span>` : '';
+    elChallenge.style.display = '';
+    elChallenge.innerHTML = `<span style="background:#1a2a1a;border:1px solid #8a7a3a;border-radius:4px;padding:2px 8px;white-space:nowrap" title="神雷：点击敌人挥剑（需真人靠近，每波 ${max} 发，波间补给）">${bolts}${comboTxt}</span>`;
+  } else if (s.challenges && s.challenges.length > 0) {
     elChallenge.style.display = '';
     const chips = s.challenges.map((c) => {
       const icon = c.failed ? '❌' : '⚔';

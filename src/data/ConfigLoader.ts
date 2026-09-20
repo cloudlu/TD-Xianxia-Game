@@ -8,6 +8,11 @@ import type {
   TowerBehavior, TargetPolicy, ManifestEntry,
 } from '../types';
 import type { SkinConfig } from './config/skins';
+import { buildSegments } from '../engine/pure/path';
+import { totalLength } from '../engine/pure/path';
+
+/** 多路关卡路径长度铁律（v0.89 Phase 0）：长度差超过 10% 视为平衡事故 */
+const MAX_PATH_LEN_SPREAD = 0.10;
 
 export interface ValidationResult {
   ok: boolean;
@@ -168,6 +173,22 @@ function validateLevelConfig(
     for (let i = 0; i < def.paths.length; i++) {
       if (def.paths[i].length < 2) {
         errors.push(err(`关卡[${def.id}] paths[${i}] 路点不足 2 个`));
+      }
+    }
+    // 多路等长校验（v0.89 Phase 0）：路径长度差 ≤10%，保证"塔 DPS × 覆盖时间"在各路一致
+    // 车道模式（mode:'lane'）跳过——车道本身就是全图等长直线
+    if (def.paths.length >= 2 && def.mode !== 'lane') {
+      const lens = def.paths.map((wp) => totalLength(buildSegments(wp)));
+      const min = Math.min(...lens);
+      const max = Math.max(...lens);
+      if (min > 0) {
+        const spread = (max - min) / min;
+        if (spread > MAX_PATH_LEN_SPREAD) {
+          errors.push(err(
+            `关卡[${def.id}] 多路长度差 ${(spread * 100).toFixed(1)}% 超过 ${MAX_PATH_LEN_SPREAD * 100}% 上限` +
+            `（len=${lens.map((l) => l.toFixed(1)).join('/')}）——短路加折弯补齐或用刷怪量补偿`,
+          ));
+        }
       }
     }
   }

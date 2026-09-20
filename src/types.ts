@@ -85,6 +85,109 @@ export interface WaveConfig {
   clearBonus: number;
 }
 
+/** 锻炉运行时状态（三路经营战） */
+export interface ForgeState {
+  uid: number;
+  col: number;
+  row: number;
+  level: number;        // 炉等级（0 起）
+  progress: number;     // 0..1 锻造进度
+  ready: boolean;       // 是否可收取伤害符
+  selected: boolean;    // 合并操作第一步选中态
+}
+
+/** 御剑守城（v0.97）：真人可拾取的塔能力（塔系），攻击行为/冷却与对应塔同语义 */
+export type HeroTowerSchool = 'sword' | 'talisman' | 'spear' | 'fire' | 'thunder' | 'ice';
+
+/** 真人已拥有的一项塔能力 */
+export interface HeroTowerAbility {
+  school: HeroTowerSchool;
+  level: number;   // 0 起；重复拾取 +1，伤害 ×1.4^level
+  cd: number;      // 攻击冷却剩余秒（≤0 = 可攻击）
+}
+
+/** 御剑真人运行时状态（v0.97；只沿城墙战线横向移动，y 恒定） */
+export interface HeroState {
+  x: number;            // 格坐标（中心 +0.5 语义与敌人一致）
+  y: number;
+  facing: 1 | -1;       // 朝向（渲染翻转）
+  targetX: number;      // 鼠标瞄准的 x 目标（无输入时 = x）
+  abilities: HeroTowerAbility[];   // 已拥有塔能力（含本命飞剑）
+  swingAt: number;      // 最近攻击时刻（表现层动画），-1=无
+  focusUid?: number;    // 点击集火目标（敌人死亡/漏怪后清除）
+}
+
+/** 场上塔符（掉落物，激活后自动飞向真人，到达即授予对应塔能力） */
+export interface TowerSigil {
+  uid: number;
+  x: number;   // 当前格坐标（小数，含中偏移：5.5 = 第 5 列中心）
+  y: number;
+  school: HeroTowerSchool;
+  spawnAt: number;
+  lifeSec: number;
+}
+
+/** 关卡模式（缺省 classic）；lane=车道防守；stream=连续流夜袭（纵向车道）；forge=三路经营战 */
+export type LevelMode = 'classic' | 'lane' | 'stream' | 'forge';
+
+/** 连续流（夜袭）模式配置：全屏随机列出怪 + 妖风变列 + 神雷锤击 */
+export interface StreamConfig {
+  /** 横扫符触发行（敌人 y ≥ row 时触发） */
+  sweepRow: number;
+  /** 连续流参数：波间准备秒数（0=清波即刻开下一波） */
+  prepBetweenSec: number;
+  /** 防线横扫符数量（按列随机布点，种子化） */
+  sweeperCount: number;
+  /** 妖风变列间隔秒（0=禁用）；触发时全场存活敌人横移 ±1~2 列 */
+  windIntervalSec: number;
+  /** 神雷锤击：每发伤害 = 关卡敌人基准血 × 此比例（建议 0.30） */
+  hammerDmgPct?: number;
+  /** 神雷锤击：每波弹药数（0=禁用锤击） */
+  hammerAmmo?: number;
+  /** 敌人冲锋速度倍率（夜袭冲阵感 + 压缩塔暴露时间，建议 1.4） */
+  enemySpeedMul?: number;
+  /** 本关塔数量上限（防"1-2 塔通关"，建议 6；缺省用全局 towerConfig） */
+  maxTowers?: number;
+  /** 御剑真人（v0.96 英雄模式）：是否启用（5 个夜袭关全开） */
+  heroEnabled?: boolean;
+  /** 御剑守城（v0.97 纯英雄）：彻底无塔，鼠标移动+拾取塔能力+点击集火 */
+  pureHero?: boolean;
+  /** 城墙行号覆盖（v0.98 御剑守城贴底：城墙在最后两行 rows-2；缺省用 wallRowOf = rows-5） */
+  wallRow?: number;
+}
+
+/** 锻炉（三路经营战）模式配置 */
+export interface ForgeConfig {  /** 锻炉格坐标（丹炉/剑炉经营位，不可建塔） */
+  forges: GridPoint[];
+  /** 每级锻造时长（秒，index=炉等级，最后一档循环用） */
+  forgeSecPerLevel: number[];
+  /** 收取伤害符的加成：每级 +dmgPct（全塔伤害，加法叠入封顶池） */
+  collectDmgPctPerLevel: number;
+  /** 伤害符加成封顶（防止无限囤） */
+  maxTotalDmgPct: number;
+  /** 合并：点击一炉再点相邻同级炉 → 合并为 1 个 level+1（占用 2 格释放 1 格） */
+  mergeEnabled: boolean;
+}
+
+/** 车道模式配置 */
+export interface LaneConfig {
+  /** 一次性横扫符触发线（敌人 x ≤ col 时触发，清空该道敌人）；每个车道 1 次/关 */
+  sweepCol: number;
+  /** 灵石拾取：value=单颗价值，intervalSec=平均间隔秒，maxPerWave=每波上限 */
+  pickup: { value: number; intervalSec: number; maxPerWave: number };
+}
+
+/** 灵石拾取物运行时状态（表现层渲染 + 点击拾取） */
+export interface PickupStone {
+  uid: number;
+  col: number;        // 所在列（格）
+  row: number;        // 所在行（车道行）
+  value: number;
+  spawnAt: number;    // 引擎 elapsed（落地时间）
+  lifeSec: number;    // 存活时长（超时消失，防囤积）
+  collected: boolean;
+}
+
 export interface GridPoint { x: number; y: number; } // 格坐标 (col, row)
 
 export type TerrainType = 'rock' | 'tree' | 'water';
@@ -172,6 +275,14 @@ export interface LevelConfig {
   activePaths?: number[];
   /** 不可建区域（岩石/树木/水域） */
   blocked?: BlockedCell[];
+  /** 关卡模式（缺省 classic）；lane=车道防守；stream=连续流夜袭（纵向车道）；forge=三路经营战 */
+  mode?: LevelMode;
+  /** 车道模式参数（mode==='lane' 时生效） */
+  lane?: LaneConfig;
+  /** 连续流模式参数（mode==='stream' 时生效） */
+  stream?: StreamConfig;
+  /** 锻炉模式参数（mode==='forge' 时生效） */
+  forge?: ForgeConfig;
 }
 
 /** 阵眼类型 */

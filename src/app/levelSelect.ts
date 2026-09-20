@@ -276,6 +276,19 @@ function onGameEvent(e: GameEventLike): void {
     case 'win': audio.sfx('win'); break;
     case 'lose': audio.sfx('lose'); break;
     case 'boss': audio.sfx('boss'); break;
+    case 'sweep':
+      // 横扫符演出音（复用 wave sting 变体）+ 提示
+      audio.sfx('wave');
+      break;
+    case 'wind':
+      // 妖风变列（夜袭）：低风声用 leak 音变体 + 屏幕提示由 Game.msg 驱动
+      audio.sfx('leak');
+      break;
+    case 'hammerStrike':
+      // 神雷锤击：击杀用 kill 音、暴击用 realmup0 高音、普击用 click——音调递增靠连击时的 kill 变调
+      if (e.killed) audio.sfx('kill');
+      else audio.sfx(e.crit ? 'realmup0' : 'click');
+      break;
   }
 }
 
@@ -293,7 +306,10 @@ type GameEventLike =
   | { type: 'kill'; enemyId?: string } | { type: 'leak' }
   | { type: 'waveStart'; wave: number }
   | { type: 'win' } | { type: 'lose' }
-  | { type: 'boss' };
+  | { type: 'boss' }
+  | { type: 'sweep'; pathIndex: number }
+  | { type: 'wind'; movedCount: number }
+  | { type: 'hammerStrike'; uid: number; crit: boolean; killed: boolean; combo: number; comboBonus: boolean };
 
 function pulseLives(): void {
   const el = document.getElementById('h-lives');

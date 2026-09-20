@@ -73,3 +73,11 @@ describe('ConfigLoader', () => {
     skinSpy.mockRestore();
   });
 });
+
+describe('多路等长铁律 (v0.89 Phase 0)', () => {
+  it('当前全量配置通过校验（新 CHAPTER_MAPS + lane 关）', () => {
+    const r = validateConfigs();
+    for (const e of r.errors) console.error(e);
+    expect(r.ok).toBe(true);
+  });
+});

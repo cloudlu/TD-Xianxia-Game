@@ -188,11 +188,17 @@ export const LEVELS: Record<string, LevelConfig> = {
 
 // 章节地图合并：将 CHAPTER_MAPS 中的路径/障碍/基地等覆盖到对应关卡
 // 同时 l3 关卡获得 hpMul ×1.5 数值难度（替代旧全局难度 toggle）
+// v0.89：mode==='lane' 的异变关（车道防守）自带专属地图（LANE_MAPS），跳过 CHAPTER_MAPS 覆盖
 for (const [chapterId, map] of Object.entries(CHAPTER_MAPS)) {
   for (const diff of ['l1', 'l2', 'l3'] as const) {
     const levelId = `${chapterId}-${diff}` as keyof typeof LEVELS;
     const level = LEVELS[levelId];
     if (!level) continue;
+    if (level.mode === 'lane' || level.mode === 'stream') {
+      // 车道/夜袭异变关：保留专属地图（LANE_MAPS/STREAM_MAPS），仅注入境界封顶（与其他关同档）
+      LEVELS[levelId] = { ...level, maxTowerLevel: realmCapForChapter(chapterId) };
+      continue;
+    }
     const hpMul = diff === 'l3' ? 1.5 : 1.0;
     const active = map.actives[diff];
     LEVELS[levelId] = {

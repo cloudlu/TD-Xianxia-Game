@@ -1,21 +1,24 @@
 import type { LevelConfig } from '../../../types';
 import { buildableFromPaths } from './buildable';
+import { LANE_MAPS } from '../laneMaps';
 
-// 第 5 章 第 2 关 · 九幽血池（三路径，血修+傀儡+隐身综合）
-const PATHS = [
-  [{ x: 0, y: 1 }, { x: 15, y: 1 }],
-  [{ x: 0, y: 4 }, { x: 15, y: 4 }],
-  [{ x: 0, y: 6 }, { x: 15, y: 6 }],
-];
+// 第 5 章 第 2 关 · 九幽血池【异变·车道防守】
+// 妖潮受血池异变影响化作直线血浪，从右侧三道压入；守左端宗门。
+// 新机制：每道一枚"横扫符"（漏怪自动清道，一次性）+ 波内灵晶拾取。
+const MAP = LANE_MAPS['ch5-l2'];
 
 export const CH5_L2: LevelConfig = {
-  id: 'ch5-l2', name: '九幽血池',
+  id: 'ch5-l2', name: '九幽血池·异变',
   startStones: 520, lives: 3,
-  cols: 16, rows: 8,
-  paths: PATHS,
-  buildable: buildableFromPaths(16, 8, PATHS),
+  cols: MAP.cols, rows: MAP.rows,
+  mode: 'lane',
+  lane: MAP.lane,
+  paths: MAP.paths,
+  base: MAP.base,
+  buildable: buildableFromPaths(MAP.cols, MAP.rows, MAP.paths),
   hpMul: 1.5,
   maxTowerLevel: 6,
+  activePaths: MAP.laneRows.map((_, i) => i),
   waves: [
     { spawns: [
       { enemy: 'blood_cultist', count: 7, gap: 1.1, delay: 0, path: 0 },
@@ -46,13 +49,18 @@ export const CH5_L2: LevelConfig = {
   ],
   story: {
     intro: {
-      chapter: '第 五 章', title: '九 幽 血 池',
-      lines: ['九幽血池，血气冲天。', '血修吞吐血气，傀儡铁甲，隐身狐妖——前路所学，缺一不可。'],
-      btn: '血 池 决 战',
+      chapter: '第 五 章', title: '血 浪 压 境',
+      lines: [
+        '九幽血池异变陡生！血气化作笔直血浪，只从右侧三道压来。',
+        '宗门阵图早已推演：此种阵势，每道可布一枚"横扫符"——',
+        '妖物踏过符线，符箓自燃，横扫全道（每道仅一次，慎用！）。',
+        '波内天降灵晶，点击可拾取，作布阵之资。',
+      ],
+      btn: '血 浪 决 战',
     },
     outro: {
       chapter: '劫 后', title: '血 池 干 涸',
-      lines: ['血池干涸，魔气稍歇。', '登天阶上，魔尊血煞正等你来。'],
+      lines: ['血浪退去，血池干涸，魔气稍歇。', '登天阶上，魔尊血煞正等你来。'],
       btn: '登 阶 决 战',
     },
   },

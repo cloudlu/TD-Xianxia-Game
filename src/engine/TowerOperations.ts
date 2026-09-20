@@ -45,13 +45,18 @@ export class TowerOperations {
     if (col < 0 || row < 0 || col >= this.level.cols || row >= this.level.rows) return false;
     if (!this.level.buildable[row][col]) return false;
     if (this.towers.some((t) => t.col === col && t.row === row)) return false;
+    // 关卡级塔上限（夜袭 v0.93：防"1-2 塔通关"，缺省回落全局配置）
+    const cap = this.level.mode === 'stream' ? (this.level.stream?.maxTowers ?? towerConfig.maxTowers) : towerConfig.maxTowers;
+    if (this.towers.length >= cap) return false;
     return this.towers.length < towerConfig.maxTowers;
   }
 
   placeTower(col: number, row: number, towerId: string): boolean {
     const def = this.reg.tower(towerId);
     if (!def || !this.canPlace(col, row)) {
-      if (this.towers.length >= towerConfig.maxTowers) this.msg = `已达塔数量上限（${towerConfig.maxTowers}）！`;
+      const cap = this.level.mode === 'stream' ? (this.level.stream?.maxTowers ?? towerConfig.maxTowers) : towerConfig.maxTowers;
+      if (this.towers.length >= cap) this.msg = `夜袭阵图限制：最多 ${cap} 座塔，择位要紧！`;
+      else if (this.towers.length >= towerConfig.maxTowers) this.msg = `已达塔数量上限（${towerConfig.maxTowers}）！`;
       return false;
     }
     if (this.stones < def.cost) { this.msg = '灵石不足！'; return false; }

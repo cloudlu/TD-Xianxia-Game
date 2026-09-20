@@ -34,11 +34,12 @@ export interface EnemyR {
 
 /** 每帧波次事件，Game 据此更新 stones/lives/status */
 export interface WaveEvents {
-  leacked: number;       // 本帧漏怪总数
+  leacked: number;       // 本帧漏怪总数（已经过横扫符拦截，实际扣心数）
   killed: number;        // 累计击杀（战报快照用）
   spawned: number;       // 累计生成（战报快照用）
   waveCleared: boolean;  // 本帧是否清完一波
   allCleared: boolean;   // 所有波次是否已清完
+  sweptEnemies: EnemyR[]; // 本帧被横扫符清掉的敌人（车道模式，Game 负责发赏金/演出）
 }
 
 export class WaveManager {
@@ -51,6 +52,8 @@ export class WaveManager {
   readonly segs: Segment[][];
   readonly pathLens: number[];
   readonly levelLives: number;
+  /** 关卡级敌人速度倍率（夜袭冲阵；1=默认） */
+  private readonly speedMul: number;
 
   private waveDir = new WaveDirector();
   private mods: ModifierSet;
@@ -63,6 +66,8 @@ export class WaveManager {
     this.waves = level.waves.slice();
     this.mods = mods;
     this.levelLives = level.lives;
+    // 夜袭冲阵速度倍率（v0.93）：敌人整体加速，压缩塔的暴露输出窗口
+    this.speedMul = level.mode === 'stream' ? (level.stream?.enemySpeedMul ?? 1) : 1;
   }
 
   /** 当前波次是否全部生成完毕 */
@@ -80,6 +85,20 @@ export class WaveManager {
 
   posAt(pathIndex: number, dist: number): { x: number; y: number } {
     return positionAt(this.segs[pathIndex] ?? [], dist);
+  }
+
+  /**
+   * 妖风变列（v0.92）：把敌人重绑到另一条路径（列），保留行进进度 dist。
+   * 路径几何必须同构（同长度纵向直线），否则位置会跳变——调用方保证。
+   * 返回是否成功（目标路径存在时 true）。
+   */
+  retargetPath(e: EnemyR, newPathIndex: number): boolean {
+    const segs = this.segs[newPathIndex];
+    if (!segs) return false;
+    e.pathIndex = newPathIndex;
+    const p = positionAt(segs, e.dist);
+    e.x = p.x; e.y = p.y;
+    return true;
   }
 
   /** 开始一波 */
@@ -110,9 +129,9 @@ export class WaveManager {
   }
 
   /** 推进一帧波次（生成 + 移动 + 漏怪判定），返回本帧事件 */
-  update(dt: number, mods: ModifierSet, regLookup: { enemy(id: string): EnemyConfig | undefined }, hpMul: number, bountyMul?: number): WaveEvents {
+  update(dt: number, mods: ModifierSet, regLookup: { enemy(id: string): EnemyConfig | undefined }, hpMul: number, bountyMul?: number, sweepCheck?: (e: EnemyR) => boolean): WaveEvents {
     this.elapsed += dt;
-    const result: WaveEvents = { leacked: 0, killed: this.waveKilled, spawned: this.waveTotalSpawned, waveCleared: false, allCleared: false };
+    const result: WaveEvents = { leacked: 0, killed: this.waveKilled, spawned: this.waveTotalSpawned, waveCleared: false, allCleared: false, sweptEnemies: [] };
 
     // 生成
     this.waveDir.update(dt, (id, pathIndex) => {
@@ -123,15 +142,25 @@ export class WaveManager {
     // 移动
     const globalSlow = mods.enemySlowAura();
     for (const e of this.enemies) {
+      if (e.leaked || e.dead) continue;
       const slowMul = (this.elapsed < e.slowUntil) ? e.slowFactor : globalSlow;
-      e.dist += e.def.speed * e.speedMul * slowMul * dt;
+      e.dist += e.def.speed * this.speedMul * e.speedMul * slowMul * dt;
       const pathLen = this.pathLens[e.pathIndex] ?? 0;
-      if (e.dist >= pathLen) {
-        e.leaked = true;
-        result.leacked++;
-      } else {
+      if (e.dist < pathLen) {
         const p = this.posAt(e.pathIndex, e.dist);
         e.x = p.x; e.y = p.y;
+        // 越过横扫符触发线即扫（lane/stream 的防线可在路径中段）
+        if (sweepCheck && sweepCheck(e)) {
+          e.leaked = true;       // 从场上移除，但不计漏怪（不扣心）
+          result.sweptEnemies.push(e);
+        }
+      } else if (sweepCheck && sweepCheck(e)) {
+        // 抵达终点时的最后机会（触发线在终点附近/越过时兜底）
+        e.leaked = true;
+        result.sweptEnemies.push(e);
+      } else {
+        e.leaked = true;
+        result.leacked++;
       }
     }
 

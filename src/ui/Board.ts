@@ -9,6 +9,7 @@ import { shakeOffset, NO_SHAKE } from '../engine/pure/shake';
 import { drawMoodLight, drawDayTint, drawLeakVignette, drawFinalWaveRite, zoomPulseScale, type FxCtx } from './boardFx';
 import { toon, TOON_FACE, TOON_OUTLINE, TOON_VIGNETTE, type Theme } from '../data/config/theme';
 import { towerRange } from '../engine/combat/effectiveRange';
+import { HERO_SCHOOL_META, HERO_ABILITY_SPECS } from '../engine/pure/hero';
 
 const CELL = 60;
 
@@ -48,13 +49,26 @@ export class Board {
   streakAt = -1;
   /** 视觉主题（v0.89 卡通化）：cartoon 时色板提亮 + Q 版表情/描边 */
   theme: Theme = 'cartoon';
+  /** 逻辑宽高（格 × CELL），DPR 缩放前的坐标系；cellAt 等输入换算用它 */
+  logicalW: number;
+  logicalH: number;
 
   constructor(private canvas: HTMLCanvasElement, cols: number, rows: number) {
     this.ctx = canvas.getContext('2d')!;
     this.cols = cols;
     this.rows = rows;
-    canvas.width = cols * CELL;
-    canvas.height = rows * CELL;
+    this.logicalW = cols * CELL;
+    this.logicalH = rows * CELL;
+    this.applyCanvasSize();
+  }
+
+  /** DPR 高清：内部像素 = 逻辑尺寸 × devicePixelRatio，渲染前 ctx.scale(dpr)；
+      逻辑坐标系（格×CELL）对所有绘制代码保持不变 */
+  private applyCanvasSize(): void {
+    const dpr = Math.min(2, Math.max(1, Math.round(window.devicePixelRatio || 1)));
+    this.canvas.width = this.logicalW * dpr;
+    this.canvas.height = this.logicalH * dpr;
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   /** 主题色：cartoon 时过 toon() 提亮映射，classic 原样 */
@@ -70,30 +84,39 @@ export class Board {
     this.rows = rows;
     this.paths = paths.map((p) => p.map((pt) => ({ ...pt })));
     this.formations = formations ?? null;
-    this.canvas.width = cols * CELL;
-    this.canvas.height = rows * CELL;
+    this.logicalW = cols * CELL;
+    this.logicalH = rows * CELL;
+    this.applyCanvasSize();
   }
 
   cellAt(clientX: number, clientY: number): { col: number; row: number } {
     const rect = this.canvas.getBoundingClientRect();
-    const scaleX = this.canvas.width / rect.width;
-    const scaleY = this.canvas.height / rect.height;
+    // 输入换算用逻辑尺寸（canvas.width 含 DPR 倍数，不能直接用）
+    const scaleX = this.logicalW / rect.width;
+    const scaleY = this.logicalH / rect.height;
     const x = (clientX - rect.left) * scaleX;
     const y = (clientY - rect.top) * scaleY;
     return { col: Math.floor(x / CELL), row: Math.floor(y / CELL) };
   }
 
+  /** 客户端横坐标 → 网格 x（格坐标中心，含小数；御剑守城鼠标跟随用） */
+  gridXFromClient(clientX: number): number {
+    const rect = this.canvas.getBoundingClientRect();
+    const scaleX = this.logicalW / rect.width;
+    return (clientX - rect.left) * scaleX / CELL;
+  }
+
   render(state: GameState, buildable: boolean[][]): void {
     const ctx = this.ctx;
     this.lastBuildable = buildable;
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.clearRect(0, 0, this.logicalW, this.logicalH);
 
     // 连杀 zoom 脉冲（与震动互斥：zoom 激活时跳过 shake）
     const zoom = zoomPulseScale(this.streakAt, state.elapsed);
     let shake2x = 0, shake2y = 0;
     ctx.save();
     if (zoom > 1) {
-      const cxp = this.canvas.width / 2, cyp = this.canvas.height / 2;
+      const cxp = this.logicalW / 2, cyp = this.logicalH / 2;
       ctx.translate(cxp, cyp); ctx.scale(zoom, zoom); ctx.translate(-cxp, -cyp);
     } else {
       // 屏幕震动：确定性相位偏移，整帧平移
@@ -108,6 +131,7 @@ export class Board {
     this.currentPathColor = this.tc(bg.pathColor);
     this.currentCellA = this.tc(bg.cellA);
     this.currentActivePaths = state.activePaths ?? null;
+    this.streamScene = !!state.streamMode;
 
     // 格子底色
     for (let r = 0; r < this.rows; r++) {
@@ -139,8 +163,16 @@ export class Board {
     for (let c = 0; c <= this.cols; c++) { ctx.beginPath(); ctx.moveTo(c * CELL, 0); ctx.lineTo(c * CELL, this.rows * CELL); ctx.stroke(); }
     for (let r = 0; r <= this.rows; r++) { ctx.beginPath(); ctx.moveTo(0, r * CELL); ctx.lineTo(this.cols * CELL, r * CELL); ctx.stroke(); }
 
-    // 路径发光缎带
-    this.drawPath();
+    // 路径发光缎带（夜袭模式跳过：全屏开阔地，敌人随机列下行）
+    if (!this.streamScene) this.drawPath();
+    // 夜袭场景：防线地面 + 按列横扫符 + 出生预警光柱（v0.92）
+    if (this.streamScene) this.drawStreamScene(state);
+
+    // 车道模式：横扫符（触发线）+ 待拾取灵石（v0.89 Phase 1）
+    if (state.laneMode) this.drawLaneProps(state);
+    // 夜袭模式横扫符已并入 drawStreamScene（v0.92 全屏场景）
+    // 经营模式：锻炉（进度环/就绪发光/选中态）（v0.91 P3）
+    if (state.forges) this.drawForges(state);
 
     // 阵眼标记
     if (this.formations) {
@@ -308,6 +340,9 @@ export class Board {
     const auraTowers = state.towers.filter((t) => t.def.behavior === 'aura');
     for (const e of state.enemies) this.drawEnemy(e, auraTowers, state);
 
+    // 夜袭：技能符卷轴（敌人之上）+ 御剑真人（最上层，v0.96）
+    if (state.streamMode) this.drawHeroLayer(state);
+
     // BOSS 顶部大血条 + 狂暴全屏红光
     const boss = state.enemies.find((e) => !e.dead && e.def.bossAbility);
     if (boss) {
@@ -316,10 +351,10 @@ export class Board {
       if (enraged) {
         const pulse2 = 0.5 + 0.5 * Math.sin(state.elapsed * 5);
         ctx.fillStyle = `rgba(255,40,40,${0.06 + pulse2 * 0.05})`;
-        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        ctx.fillRect(0, 0, this.logicalW, this.logicalH);
       }
-      const bw = this.canvas.width * 0.6, bh = 12;
-      const bx = (this.canvas.width - bw) / 2, by = 10;
+      const bw = this.logicalW * 0.6, bh = 12;
+      const bx = (this.logicalW - bw) / 2, by = 10;
       ctx.fillStyle = '#000a';
       ctx.fillRect(bx - 2, by - 2, bw + 4, bh + 4);
       const ratio = Math.max(0, boss.hp / boss.maxHp);
@@ -338,7 +373,7 @@ export class Board {
       ctx.fillStyle = enraged ? '#ff6b6b' : '#ffd93d';
       ctx.font = 'bold 13px "Microsoft YaHei", sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-      ctx.fillText(`${boss.def.name}${enraged ? ' · 狂暴' : ''}`, this.canvas.width / 2, by - 4);
+      ctx.fillText(`${boss.def.name}${enraged ? ' · 狂暴' : ''}`, this.logicalW / 2, by - 4);
     }
 
     // 弹道（流派形状化：剑形/符纸/枪形/冰晶/火球/电弧）+ faint 主次区分
@@ -668,7 +703,7 @@ export class Board {
           ctx.lineTo(x, y); ctx.stroke();
           ctx.globalAlpha = Math.max(0, 0.35 - progress * 0.5);
           ctx.fillStyle = '#fff';
-          ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+          ctx.fillRect(0, 0, this.logicalW, this.logicalH);
           ctx.globalAlpha = Math.max(0, 1 - progress);
         } else if (spec.realmUp === 'ice') {
           // 冰：冰晶绽放（六向尖晶）
@@ -714,7 +749,31 @@ export class Board {
         const scale = (fx.crit ? 1.6 : 1) * (1 + tier * 0.2);
         ctx.save();
         ctx.globalAlpha = Math.max(0, 1 - progress);
-        if (spec.hit === 'slash') {
+        if (fx.style === 'hammer') {
+          // 神雷锤击（夜袭打小人）：冲击星环 + 伤害飘字 + 锤影（v0.93）
+          const p = progress;
+          // 冲击环
+          ctx.strokeStyle = fx.color ?? '#ffd93d';
+          ctx.lineWidth = 3 - p * 2;
+          ctx.beginPath(); ctx.arc(x, y, CELL * (0.15 + p * 0.35), 0, Math.PI * 2); ctx.stroke();
+          // 星芒（8 向短射）
+          ctx.lineWidth = 2;
+          for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2;
+            const r1 = CELL * (0.18 + p * 0.15);
+            const r2 = CELL * (0.3 + p * 0.3);
+            ctx.beginPath();
+            ctx.moveTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1);
+            ctx.lineTo(x + Math.cos(a) * r2, y + Math.sin(a) * r2);
+            ctx.stroke();
+          }
+          // 锤影（从上方砸落的重影）
+          ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+          ctx.lineWidth = 4;
+          ctx.lineCap = 'round';
+          const drop = p * CELL * 0.4;
+          ctx.beginPath(); ctx.moveTo(x, y - CELL * 0.5 + drop); ctx.lineTo(x, y - CELL * 0.2 + drop); ctx.stroke();
+        } else if (spec.hit === 'slash') {
           // 剑：斜切闪光（两道交叉短线）
           const len = CELL * 0.35 * scale;
           ctx.strokeStyle = fx.crit ? '#ffd700' : '#ffffff';
@@ -931,7 +990,7 @@ export class Board {
     }
 
     // ---- 全屏特效层（v0.87 boardFx）：时段色温 → 灵气光照 → 漏怪红晕 → 最后一波仪式 ----
-    const fxCtx: FxCtx = { ctx, w: this.canvas.width, h: this.canvas.height, elapsed: state.elapsed };
+    const fxCtx: FxCtx = { ctx, w: this.logicalW, h: this.logicalH, elapsed: state.elapsed };
     drawDayTint(fxCtx, state.waveIndex, state.totalWaves);
     const bossAliveNow = state.enemies.some((e) => !e.dead && !!e.def.bossAbility);
     drawMoodLight(fxCtx, state.status === 'won' ? 'won' : state.status === 'lost' ? 'lost' : state.status === 'prep' ? 'prep' : 'wave', bossAliveNow, this.toonTheme);
@@ -940,18 +999,18 @@ export class Board {
       state.waveActive && state.totalWaves > 0 && state.waveIndex === state.totalWaves - 1);
 
     // 暗角（vignette）
-    const vg = ctx.createRadialGradient(this.canvas.width / 2, this.canvas.height / 2, this.canvas.height * 0.3, this.canvas.width / 2, this.canvas.height / 2, this.canvas.width * 0.7);
+    const vg = ctx.createRadialGradient(this.logicalW / 2, this.logicalH / 2, this.logicalH * 0.3, this.logicalW / 2, this.logicalH / 2, this.logicalW * 0.7);
     vg.addColorStop(0, 'rgba(0,0,0,0)');
     vg.addColorStop(1, `rgba(0,0,0,${this.toonTheme ? TOON_VIGNETTE : 0.45})`);
     ctx.fillStyle = vg;
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.fillRect(0, 0, this.logicalW, this.logicalH);
 
     ctx.restore(); // 震动/zoom 变换结束
   }
 
   /** 环境灵气粒子更新 */
   private updateAmbient(status: string): void {
-    const w = this.canvas.width, h = this.canvas.height;
+    const w = this.logicalW, h = this.logicalH;
     const spawnRate = status === 'prep' ? 0.4 : 0.15;
     if (Math.random() < spawnRate) {
       this.ambientParticles.push({
@@ -1022,8 +1081,435 @@ export class Board {
   }
   private lastBuildable: boolean[][] = [];
 
-  private drawHover(state: GameState): void {
+  /** 车道模式道具：横扫符（每道一次性，未用=发光符纸，已用=残痕）+ 灵石拾取物（呼吸光圈，快过期闪烁） */
+  private drawLaneProps(state: GameState): void {
     const ctx = this.ctx;
+    // 横扫符：位于触发线列 × 各车道行
+    if (state.sweepsLeft && state.sweepCol !== undefined) {
+      for (let pi = 0; pi < this.paths.length; pi++) {
+        const isActive = !this.currentActivePaths || this.currentActivePaths.includes(pi);
+        if (!isActive) continue;
+        const left = state.sweepsLeft[pi] ?? 0;
+        const cx = (state.sweepCol + 0.5) * CELL;
+        const cy = (this.paths[pi][0].y + 0.5) * CELL;
+        ctx.save();
+        if (left > 0) {
+          // 未消耗：金色符纸 + 相位呼吸光晕（确定性相位）
+          const pulse = 0.5 + 0.5 * Math.sin(state.elapsed * 3 + pi);
+          ctx.fillStyle = `rgba(255,215,0,${0.10 + pulse * 0.12})`;
+          ctx.beginPath(); ctx.arc(cx, cy, CELL * (0.42 + pulse * 0.05), 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#ffe9b8';
+          ctx.strokeStyle = '#c8a02d'; ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - CELL * 0.26); ctx.lineTo(cx + CELL * 0.18, cy - CELL * 0.18);
+          ctx.lineTo(cx + CELL * 0.2, cy + CELL * 0.2); ctx.lineTo(cx - CELL * 0.2, cy + CELL * 0.22);
+          ctx.lineTo(cx - CELL * 0.18, cy - CELL * 0.18);
+          ctx.closePath(); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#8a5a00';
+          ctx.font = 'bold 13px "Microsoft YaHei", sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('掃', cx, cy + 1);
+        } else {
+          // 已消耗：地面残痕
+          ctx.strokeStyle = 'rgba(200,160,90,0.25)';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.24, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+    // 待拾取灵石：绿色灵晶 + 呼吸外圈，快过期时闪烁；大灵晶（清波奖 ≥100）金色加大
+    if (state.pickups) {
+      for (const p of state.pickups) {
+        if (p.collected) continue;
+        const cx = (p.col + 0.5) * CELL;
+        const cy = (p.row + 0.5) * CELL;
+        const big = p.value >= 100;   // 大灵晶 = 清波奖掉落
+        const remain = p.spawnAt + p.lifeSec - state.elapsed;
+        const blink = remain < 3 ? (Math.sin(state.elapsed * 10) > 0 ? 1 : 0.25) : 1;
+        const pulse = 0.5 + 0.5 * Math.sin(state.elapsed * 4 + p.uid);
+        ctx.save();
+        ctx.globalAlpha = blink;
+        const glowColor = big ? '255,215,0' : '126,231,135';
+        ctx.fillStyle = `rgba(${glowColor},${0.15 + pulse * 0.15})`;
+        ctx.beginPath(); ctx.arc(cx, cy, CELL * ((big ? 0.42 : 0.34) + pulse * 0.04), 0, Math.PI * 2); ctx.fill();
+        // 灵晶（菱形；大灵晶金色更大 + 价值标注）
+        ctx.fillStyle = big ? '#ffd700' : '#7ee787';
+        ctx.strokeStyle = big ? '#8a5a00' : '#2e7d32';
+        ctx.lineWidth = 1.5;
+        const half = big ? 0.26 : 0.2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - CELL * half); ctx.lineTo(cx + CELL * half * 0.7, cy);
+        ctx.lineTo(cx, cy + CELL * half); ctx.lineTo(cx - CELL * half * 0.7, cy);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        // 高光
+        ctx.fillStyle = big ? '#fff3c4' : '#d7ffd9';
+        ctx.beginPath(); ctx.arc(cx - CELL * 0.04, cy - CELL * 0.06, 2, 0, Math.PI * 2); ctx.fill();
+        if (big) {
+          ctx.fillStyle = '#5a3e00';
+          ctx.font = 'bold 11px "Microsoft YaHei", sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(String(p.value), cx, cy + 1);
+        }
+        ctx.restore();
+      }
+    }
+  }
+
+  /** 锻炉渲染（三路经营战）：丹炉 + 进度环 + 就绪金光 + 选中白框 + 等级星 */
+  private drawForges(state: GameState): void {
+    const ctx = this.ctx;
+    for (const f of state.forges ?? []) {
+      const cx = (f.col + 0.5) * CELL;
+      const cy = (f.row + 0.5) * CELL;
+      ctx.save();
+      // 炉体（三足丹炉剪影）
+      const bodyColor = f.ready ? '#ffd54f' : '#8d6e63';
+      const outline = f.ready ? '#ff8f00' : '#5d4037';
+      ctx.fillStyle = bodyColor;
+      ctx.strokeStyle = outline; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + CELL * 0.02, CELL * 0.26, CELL * 0.2, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      // 炉口
+      ctx.fillStyle = '#3e2723';
+      ctx.beginPath(); ctx.ellipse(cx, cy - CELL * 0.12, CELL * 0.16, CELL * 0.06, 0, 0, Math.PI * 2); ctx.fill();
+      // 三足
+      ctx.strokeStyle = outline; ctx.lineWidth = 2.5;
+      for (const dx of [-0.14, 0.14]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + dx * CELL, cy + CELL * 0.14);
+        ctx.lineTo(cx + dx * CELL * 1.3, cy + CELL * 0.3);
+        ctx.stroke();
+      }
+      // 就绪：火光呼吸
+      if (f.ready) {
+        const pulse = 0.5 + 0.5 * Math.sin(state.elapsed * 5 + f.uid);
+        ctx.fillStyle = `rgba(255,167,38,${0.18 + pulse * 0.2})`;
+        ctx.beginPath(); ctx.arc(cx, cy, CELL * (0.4 + pulse * 0.06), 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff8e1';
+        ctx.font = 'bold 12px "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('收', cx, cy + CELL * 0.02);
+      } else {
+        // 锻造进度环
+        ctx.strokeStyle = '#ffb74d'; ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, CELL * 0.34, -Math.PI / 2, -Math.PI / 2 + f.progress * Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 3.5;
+        ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.34, 0, Math.PI * 2); ctx.stroke();
+      }
+      // 等级星（炉等级 = 合并次数 +1）
+      ctx.fillStyle = '#ffe9b8';
+      ctx.font = 'bold 10px "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText('★'.repeat(Math.min(5, f.level + 1)), cx, cy + CELL * 0.3);
+      // 选中态白框
+      if (f.selected) {
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+        ctx.setLineDash([5, 4]);
+        ctx.strokeRect(f.col * CELL + 3, f.row * CELL + 3, CELL - 6, CELL - 6);
+        ctx.setLineDash([]);
+      }
+      ctx.restore();
+    }
+  }
+
+  /** 夜袭场景开关（render 时由 state.streamMode 驱动） */
+  private streamScene = false;
+
+  /**
+   * 夜袭全屏场景（v0.92）：防线地面色带 + 按列横扫符 + 出生预警光柱 + 妖风演出。
+   * 不画路径缎带——整个棋盘都是开阔防守区。
+   */
+  private drawStreamScene(state: GameState): void {
+    const ctx = this.ctx;
+    // ⓪ 城墙：优先 stream.wallRow（v0.98 御剑守城贴底覆盖），否则从 buildable 推算墙行
+    //    （每列首个可建行的上一行），青灰砖纹 + 垛口；城外地面偏冷暗、城内偏暖（据点感）
+    let wallRow = state.streamWallRow ?? -1;
+    if (wallRow < 0) {
+      for (let r = 0; r < this.rows; r++) {
+        if (this.lastBuildable[r]?.some((v) => v)) { wallRow = r - 1; break; }
+      }
+    }
+    if (wallRow >= 0) {
+      // 城内外地面色差（画在最底色之上、其余元素之下）
+      ctx.fillStyle = 'rgba(40,55,75,0.18)';        // 城外：冷暗荒野
+      ctx.fillRect(0, 0, this.logicalW, wallRow * CELL);
+      ctx.fillStyle = 'rgba(120,90,40,0.10)';       // 城内：暖色据点
+      ctx.fillRect(0, (wallRow + 1) * CELL, this.logicalW, this.logicalH - (wallRow + 1) * CELL);
+      // 墙体（青灰砖 + 错缝砖纹）
+      const wy = wallRow * CELL;
+      const brickGrad = ctx.createLinearGradient(0, wy, 0, wy + CELL);
+      brickGrad.addColorStop(0, '#5a6b7d');
+      brickGrad.addColorStop(1, '#3e4c5c');
+      ctx.fillStyle = brickGrad;
+      ctx.fillRect(0, wy + 3, this.logicalW, CELL - 6);
+      ctx.strokeStyle = 'rgba(20,30,40,0.6)';
+      ctx.lineWidth = 1;
+      // 横缝
+      for (const fy of [wy + CELL * 0.33, wy + CELL * 0.66]) {
+        ctx.beginPath(); ctx.moveTo(0, fy); ctx.lineTo(this.logicalW, fy); ctx.stroke();
+      }
+      // 竖缝（错缝：三排砖各错半格）
+      const half = CELL / 2;
+      for (let c = 0; c < this.cols * 2; c++) {
+        const x = c * half;
+        const rowIdx = c % 2 === 0 ? 0 : 1;
+        const y1 = wy + 3 + rowIdx * CELL * 0.33;
+        const y2 = y1 + CELL * 0.33;
+        ctx.beginPath(); ctx.moveTo(x, y1); ctx.lineTo(x, y2); ctx.stroke();
+      }
+      // 垛口（顶部等距齿）
+      ctx.fillStyle = '#6b7c8f';
+      const merlon = CELL * 0.5, gap = CELL * 0.28;
+      for (let x = 0; x + merlon <= this.logicalW + 1; x += merlon + gap) {
+        ctx.fillRect(x, wy - CELL * 0.18, merlon, CELL * 0.2);
+      }
+      // 墙顶描边
+      ctx.strokeStyle = 'rgba(15,25,35,0.8)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(0, wy + 3, this.logicalW, CELL - 6);
+    }
+    // ① 防线地面：sweepRow 行以下画暗金地平线（防线语义）
+    const sweepRow = state.sweepRow ?? this.rows - 3;
+    const lineY = sweepRow * CELL;
+    const grad = ctx.createLinearGradient(0, lineY - CELL * 0.6, 0, this.logicalH);
+    grad.addColorStop(0, 'rgba(200,160,90,0)');
+    grad.addColorStop(1, 'rgba(200,160,90,0.10)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, lineY - CELL * 0.6, this.logicalW, this.logicalH - lineY + CELL * 0.6);
+    ctx.strokeStyle = 'rgba(200,160,90,0.35)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath(); ctx.moveTo(0, lineY); ctx.lineTo(this.logicalW, lineY); ctx.stroke();
+    ctx.setLineDash([]);
+    // ② 按列横扫符（未消耗=青色符纸，已消耗=残痕）
+    if (state.sweepsLeft) {
+      for (let c = 0; c < this.cols; c++) {
+        if ((state.sweepsLeft[c] ?? 0) <= 0) continue;
+        const cx = (c + 0.5) * CELL;
+        const cy = (sweepRow + 0.5) * CELL;
+        const pulse = 0.5 + 0.5 * Math.sin(state.elapsed * 3 + c);
+        ctx.save();
+        ctx.fillStyle = `rgba(79,195,247,${0.10 + pulse * 0.12})`;
+        ctx.beginPath(); ctx.arc(cx, cy, CELL * (0.42 + pulse * 0.05), 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#b3e5fc';
+        ctx.strokeStyle = '#0277bd'; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - CELL * 0.26); ctx.lineTo(cx + CELL * 0.18, cy - CELL * 0.18);
+        ctx.lineTo(cx + CELL * 0.2, cy + CELL * 0.2); ctx.lineTo(cx - CELL * 0.2, cy + CELL * 0.22);
+        ctx.lineTo(cx - CELL * 0.18, cy - CELL * 0.18);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#01579b';
+        ctx.font = 'bold 13px "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('掃', cx, cy + 1);
+        ctx.restore();
+      }
+    }
+    // ③ 出生预警光柱：[warnAt, spawnAt) 窗口内的列顶部红光聚气
+    if (state.spawnWarnings) {
+      for (const w of state.spawnWarnings) {
+        if (state.elapsed < w.warnAt || state.elapsed >= w.spawnAt) continue;
+        const p = (state.elapsed - w.warnAt) / Math.max(0.001, w.spawnAt - w.warnAt);   // 0→1
+        const cx = (w.col + 0.5) * CELL;
+        const alpha = 0.10 + p * 0.30;
+        const h = CELL * (1.2 + p * 0.8);
+        const grad2 = ctx.createLinearGradient(0, 0, 0, h);
+        grad2.addColorStop(0, `rgba(255,60,60,${alpha * 0.2})`);
+        grad2.addColorStop(1, `rgba(255,60,60,${alpha})`);
+        ctx.fillStyle = grad2;
+        ctx.fillRect(cx - CELL * 0.32, 0, CELL * 0.64, h);
+        // 底部收束环
+        ctx.strokeStyle = `rgba(255,90,90,${alpha})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(cx, h * 0.9, CELL * 0.22 * (1 - p * 0.4), 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+    // ④ 妖风演出：lastWindAt 后 1.2s 内画横向风纹（确定性相位）
+    if (state.lastWindAt !== undefined && state.lastWindAt >= 0) {
+      const t = state.elapsed - state.lastWindAt;
+      if (t >= 0 && t < 1.2) {
+        const fade = 1 - t / 1.2;
+        ctx.save();
+        ctx.globalAlpha = fade * 0.5;
+        ctx.strokeStyle = '#b0bec5';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 6; i++) {
+          const y = ((i + 0.5) / 6) * this.logicalH;
+          const offset = ((t * 400 + i * 90) % (this.logicalW + 120)) - 60;
+          ctx.beginPath();
+          ctx.moveTo(offset, y);
+          ctx.quadraticCurveTo(offset + 30, y - 6, offset + 60, y);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+  }
+
+  /** 夜袭英雄层：自动飞行的塔符 + 御剑真人（敌人之上渲染，v0.96→v0.98） */
+  private drawHeroLayer(state: GameState): void {
+    const ctx = this.ctx;
+    const hero = state.hero;
+    // 塔符：发光玉牌（塔系色+图标），已激活后自动飞向真人——画飞行光束
+    for (const sc of state.sigils ?? []) {
+      if (state.elapsed < sc.spawnAt) continue;   // 未落地（还在从天而降）
+      const cx = sc.x * CELL;
+      const cy = sc.y * CELL;
+      const meta = HERO_SCHOOL_META[sc.school] ?? HERO_SCHOOL_META.sword;
+      const pulse = 0.5 + 0.5 * Math.sin(state.elapsed * 3 + sc.uid);
+      const remain = sc.spawnAt + sc.lifeSec - state.elapsed;
+      ctx.save();
+      ctx.globalAlpha = remain < 5 ? (Math.sin(state.elapsed * 8) > 0 ? 1 : 0.3) : 1;   // 快消失闪烁
+      // 飞行尾光：塔符→真人的求导光束（带动画，提示"飞过来"）
+      if (hero) {
+        const hx2 = hero.x * CELL, hy2 = hero.y * CELL;
+        const dg = Math.hypot(hx2 - cx, hy2 - cy);
+        if (dg > 14) {
+          ctx.strokeStyle = `${meta.color.slice(0, 7)}55`;
+          ctx.lineWidth = 2;
+          ctx.setLineDash([2, 6]);
+          ctx.lineDashOffset = -(state.elapsed * 60) % 8;
+          ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(hx2, hy2); ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+      ctx.fillStyle = `${meta.color.slice(0, 7)}33`;
+      ctx.beginPath(); ctx.arc(cx, cy, CELL * (0.32 + pulse * 0.05), 0, Math.PI * 2); ctx.fill();
+      // 塔符玉牌
+      ctx.fillStyle = `${meta.color}`;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - CELL * 0.18);
+      ctx.lineTo(cx + CELL * 0.17, cy);
+      ctx.lineTo(cx, cy + CELL * 0.18);
+      ctx.lineTo(cx - CELL * 0.17, cy);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#1a1626';
+      ctx.font = 'bold 15px "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(meta.icon, cx, cy + 1);
+      ctx.restore();
+    }
+    // 御剑真人
+    if (!hero) return;
+    const hx = hero.x * CELL, hy = hero.y * CELL;
+    const t = state.elapsed;
+    ctx.save();
+    // 鼠标瞄准线（纯英雄模式：竖直光柱标示当前目标列）
+    if (state.pureHero && hero.targetX !== undefined) {
+      const tx = hero.targetX * CELL;
+      ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 8]);
+      ctx.beginPath(); ctx.moveTo(tx, 0); ctx.lineTo(tx, this.logicalH); ctx.stroke();
+      ctx.setLineDash([]);
+      // 目标点光斑
+      ctx.fillStyle = 'rgba(224,247,250,0.55)';
+      ctx.beginPath(); ctx.arc(tx, hy, CELL * 0.12, 0, Math.PI * 2); ctx.fill();
+    }
+    // 御剑光弧底座（呼吸）
+    const breathe = 0.5 + 0.5 * Math.sin(t * 4);
+    ctx.strokeStyle = `rgba(129,212,250,${0.35 + breathe * 0.25})`;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.ellipse(hx, hy + CELL * 0.22, CELL * 0.34, CELL * 0.1, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // 剑身（斜置光剑，随朝向翻转）
+    ctx.save();
+    ctx.translate(hx, hy + CELL * 0.1);
+    ctx.scale(hero.facing, 1);
+    ctx.strokeStyle = '#e1f5fe';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-CELL * 0.3, 0); ctx.lineTo(CELL * 0.3, -CELL * 0.08); ctx.stroke();
+    ctx.strokeStyle = 'rgba(129,212,250,0.6)';
+    ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.moveTo(-CELL * 0.28, 0); ctx.lineTo(CELL * 0.26, -CELL * 0.07); ctx.stroke();
+    ctx.restore();
+    // 身体（青白袍剪影：斗笠 + 袍摆）
+    ctx.fillStyle = '#e0f2f1';
+    ctx.beginPath();
+    ctx.moveTo(hx, hy - CELL * 0.3);           // 斗笠顶
+    ctx.lineTo(hx + CELL * 0.16, hy - CELL * 0.18);
+    ctx.lineTo(hx - CELL * 0.16, hy - CELL * 0.18);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#b2dfdb';
+    ctx.beginPath();
+    ctx.moveTo(hx - CELL * 0.12, hy - CELL * 0.18);
+    ctx.lineTo(hx + CELL * 0.12, hy - CELL * 0.18);
+    ctx.lineTo(hx + CELL * 0.16 * hero.facing, hy + CELL * 0.16);
+    ctx.lineTo(hx - CELL * 0.16 * hero.facing, hy + CELL * 0.16);
+    ctx.closePath(); ctx.fill();
+    // 攻击动画：swingAt 后 0.15s 内画扇形剑光
+    if (hero.swingAt >= 0 && t - hero.swingAt < 0.15) {
+      const p = (t - hero.swingAt) / 0.15;
+      ctx.strokeStyle = `rgba(255,255,255,${1 - p})`;
+      ctx.lineWidth = 3;
+      const a0 = hero.facing > 0 ? -0.6 : Math.PI + 0.6;
+      const a1 = hero.facing > 0 ? 0.6 : Math.PI - 0.6;
+      ctx.beginPath();
+      ctx.arc(hx, hy, CELL * (0.5 + p * 0.3), Math.min(a0, a1), Math.max(a0, a1));
+      ctx.stroke();
+    }
+    // 已拥有塔能力：真人头顶竖排图标（本命飞剑 + 拾取系）
+    if (state.pureHero && hero.abilities && hero.abilities.length > 0) {
+      ctx.font = 'bold 13px "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      hero.abilities.forEach((a, i) => {
+        const meta = HERO_SCHOOL_META[a.school] ?? HERO_SCHOOL_META.sword;
+        const ix = hx - CELL * 0.28 - i * CELL * 0.22;
+        const iy = hy - CELL * 0.45;
+        ctx.globalAlpha = a.cd > 0 ? 0.35 : 1;   // 冷却中变暗
+        const cdRing = a.cd > 0;
+        if (cdRing) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(ix, iy, CELL * 0.14, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = '#fff';
+          const end = (1 - a.cd / HERO_ABILITY_SPECS[a.school].rate) * Math.PI * 2;
+          ctx.beginPath(); ctx.moveTo(ix, iy); ctx.arc(ix, iy, CELL * 0.14, -Math.PI / 2, -Math.PI / 2 + end); ctx.closePath(); ctx.stroke();
+        }
+        ctx.fillStyle = meta.color;
+        ctx.fillText(meta.icon, ix, iy);
+        ctx.globalAlpha = 1;
+        // 等级徽标（0 级不显示）
+        if (a.level > 0) {
+          ctx.fillStyle = '#fff';
+          ctx.font = 'bold 9px "Microsoft YaHei", sans-serif';
+          ctx.fillText(String(a.level + 1), ix + CELL * 0.13, iy + CELL * 0.15);
+          ctx.font = 'bold 13px "Microsoft YaHei", sans-serif';
+        }
+      });
+      ctx.fillStyle = '#4dd8ff';
+      ctx.font = 'bold 10px "Microsoft YaHei", sans-serif';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText('塔符自动入体·点击集火', hx, hy + CELL * 0.62);
+    }
+    ctx.restore();
+    // 集火目标：锁定准星
+    if (state.pureHero && hero.focusUid !== undefined && state.enemies) {
+      const foe = state.enemies.find((e) => e.uid === hero.focusUid && !e.dead && !e.leaked);
+      if (foe) {
+        const fx = foe.x * CELL, fy = foe.y * CELL;
+        ctx.save();
+        ctx.strokeStyle = '#ff5252';
+        ctx.lineWidth = 2;
+        const R = CELL * 0.5;
+        for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+          ctx.beginPath();
+          ctx.moveTo(fx + Math.cos(a) * R * 0.55, fy + Math.sin(a) * R * 0.55);
+          ctx.lineTo(fx + Math.cos(a) * R, fy + Math.sin(a) * R);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+  }
+
+  private drawHover(state: GameState): void {    const ctx = this.ctx;
     const { hoverCol: c, hoverRow: r } = this;
     if (c < 0 || r < 0 || c >= this.cols || r >= this.rows) return;
     const x = c * CELL, y = r * CELL;
@@ -1089,7 +1575,7 @@ export class Board {
       const style = FORMATION_STYLE[ft.type];
       const tooltip = `${style.label}眼 · ${style.desc}`;
       const tw = tooltip.length * 9;
-      const tx = Math.min(x, this.canvas.width - tw - 8);
+      const tx = Math.min(x, this.logicalW - tw - 8);
       const ty = y + CELL + 6;
       ctx.save();
       ctx.fillStyle = 'rgba(13,17,32,0.92)';

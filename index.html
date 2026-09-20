@@ -307,8 +307,13 @@
     canvas {
       background: #0f1320; border: 2px solid #3a4a6a; border-radius: 8px;
       cursor: crosshair; box-shadow: 0 6px 28px rgba(0,0,0,0.5), inset 0 0 60px rgba(0,0,0,0.4);
-      flex: 1; min-height: 0; width: auto; aspect-ratio: 32 / 12;
-      max-width: 100%; display: block; margin: 0 auto;
+      /* 自适应双约束：宽度不超容器、高度不挤爆视口（预留 HUD~72px + 预告~36px + 面板~86px + 边距），
+         内部比例由 width/height 属性维持 → 任何板型（32x12 经典 / 10x22 夜袭窄长）都不变形 */
+      display: block; margin: 0 auto;
+      max-width: 100%;
+      max-height: calc(100vh - 210px);
+      width: auto; height: auto;
+      object-fit: contain;
     }
     #panel {
       display: flex; gap: 8px; background: linear-gradient(180deg,#1e2a4a,#16213e);
@@ -501,7 +506,7 @@
   <div id="app">
     <div id="hud"></div>
     <div id="wavePreview"></div>
-    <canvas id="board" width="1920" height="720"></canvas>
+    <canvas id="board"></canvas>
     <div id="panel"></div>
     <div id="hint">波次自动来袭 · 点塔弹出操作面板（升级/出售/切目标）· 右键塔快捷出售 · 左键空地建塔 · 顶部可暂停/加速    </div>
   </div>
